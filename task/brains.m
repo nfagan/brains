@@ -1,6 +1,12 @@
-function brains()
+function brains(is_master)
 
-opts = setup();
+%   BRAINS -- Configure and run the brains task.
+%
+%     IN:
+%       - `is_master` (true, false) -- Specify whether the current computer
+%         is the master or slave computer.
+
+opts = setup( is_master );
 
 try
   run( opts );
@@ -12,12 +18,12 @@ end
 
 end
 
-function opts = setup()
+function opts = setup( is_master )
 
 %   SETUP -- Define constants and initial settings.
 %
 %   OUT:
-%     `opts` (struct)
+%     - `opts` (struct)
 
 addpath( './helpers' );
 
@@ -39,7 +45,7 @@ WINDOW.center = [];
 INTERFACE.use_mouse = false;
 INTERFACE.use_eyelink = false;
 INTERFACE.stop_key = 'space';
-INTERFACE.is_master = true;
+INTERFACE.is_master = is_master;
 
 % - STATES - %
 STATES.pre_fixation = 0;
@@ -57,16 +63,25 @@ TIMINGS.total_time = Inf; % total experiment time.
 TIMINGS.synchronization_timeout = 5;  % seconds before synchronization is deemed unsuccessful.
 
 % - COMMUNICATOR - %
-messages = { ...
-  struct('message', 'SYNCHRONIZE', 'char', 'S'), ...
-  struct('message', 'REWARD1', 'char', 'A'), ...
-  struct('message', 'REWARD2', 'char', 'B'), ...
-  struct('message', 'REWARD3', 'char', 'M'), ...
-  struct('message', 'REWARD4', 'char', 'N'), ...
-  struct('message', 'PRINT_GAZE', 'char', 'P'), ...
-  struct('message', 'COMPARE', 'char', 'C' ) ...
-};
-port = 'COM4';
+if ( is_master )
+  messages = { ...
+    struct('message', 'SYNCHRONIZE', 'char', 'S'), ...
+    struct('message', 'REWARD1', 'char', 'A'), ...
+    struct('message', 'REWARD2', 'char', 'B'), ...
+    struct('message', 'PRINT_GAZE', 'char', 'P'), ...
+    struct('message', 'COMPARE', 'char', 'C' ) ...
+  };
+  port = 'COM4';
+else
+  messages = { ...
+    struct('message', 'SYNCHRONIZE', 'char', 'S'), ...
+    struct('message', 'REWARD1', 'char', 'M'), ...
+    struct('message', 'REWARD2', 'char', 'N'), ...
+    struct('message', 'PRINT_GAZE', 'char', 'P'), ...
+    struct('message', 'COMPARE', 'char', 'C' ) ...
+  };
+  port = 'COM4';
+end
 baud_rate = 115200;
 COMMUNICATOR = Communicator( messages, port, baud_rate );
 
@@ -75,6 +90,9 @@ STIMULI.fixation.position = 'center';
 STIMULI.fixation.color = [];
 STIMULI.fixation.shape = 'square';
 STIMULI.fixation.size = 100;
+
+% - REWARDS - %
+REWARDS.main = 100; % ms
 
 %   output as one struct
 
@@ -86,6 +104,7 @@ opts.TIMINGS =      TIMINGS;
 opts.STATES =       STATES;
 opts.COMMUNICATOR = COMMUNICATOR;
 opts.STIMULI =      STIMULI;
+opts.REWARDS =      REWARDS;
 
 end
 
@@ -114,6 +133,11 @@ opts.WINDOW.rect = wrect;
 %   extract communicator
 
 communicator = opts.COMMUNICATOR;
+
+%   set main reward size
+
+set_reward_size( opts, 1, opts.REWARDS.main );
+set_reward_size( opts, 2, opts.REWARDS.main );
 
 %   define starting state
 
@@ -330,6 +354,22 @@ end
 
 end
 
+function set_reward_size( opts, index, sz )
+
+%   SET_REWARD_SIZE -- Set the reward size (in ms) for the given index.
+%
+%     IN:
+%       - `opts` (struct) -- Options struct.
+%       - `index` (double, int) -- I.e., 1 or 2, usually.
+%       - `sz` (double, int) -- Reward size in ms.
+
+communicator = opts.COMMUNICATOR;
+%   get the character associated with the given reward index.
+reward_char = communicator.get_char( ['REWARD' num2str(index)] );
+communicator.send_reward_size( reward_char, sz );
+
+end
+
 function t = get_time( opts, id_name )
 
 %   GET_TIME -- Get the elapsed time associated with the given timer id.
@@ -342,6 +382,21 @@ function t = get_time( opts, id_name )
 %       - `t` (double) -- Elapsed time.
 
 t = toc( opts.TIMINGS.timer_ids.(id_name) );
+
+end
+
+function opts = reset_timer( opts, id_name )
+
+%   RESET_TIMER -- Reset the timer associated with the given id.
+%
+%     IN:
+%       - `opts` (struct) -- Options struct.
+%       - `id_name` (char) -- Fieldname of the timer_ids struct in
+%         opts.TIMING.
+%     OUT:
+%       - `opts` (struct) -- Updated options struct.
+
+opts.TIMINGS.timer_ids.(id_name) = tic;
 
 end
 
