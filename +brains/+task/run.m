@@ -201,6 +201,8 @@ while ( true )
       response_target2.reset_targets();
       [opts, m2choice] = debounce_arduino( opts, @get_choice );
       opts.STRUCTURE.correct_choice = m2choice;
+      opts.STRUCTURE.did_choose = [];
+      made_choice = false;
       first_entry = false;
     end
     TRACKER.update_coordinates();
@@ -213,10 +215,8 @@ while ( true )
     else
       clear_screen( opts );
     end
-    made_choice = false;
     if ( response_target1.duration_met() )
       made_choice = true;
-      opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
       opts.STRUCTURE.did_choose = 1;
       %   MARK: goto: evaluate_choice
       STATES.current = STATES.evaluate_choice;
@@ -225,7 +225,6 @@ while ( true )
     end
     if ( response_target2.duration_met() )
       made_choice = true;
-      opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
       opts.STRUCTURE.did_choose = 2;
       %   MARK: goto: evaluate_choice
       STATES.current = STATES.evaluate_choice;
@@ -252,7 +251,7 @@ while ( true )
     end
     if ( opts.STRUCTURE.is_master_monkey )
       if ( isequal(opts.STRUCTURE.did_choose, opts.STRUCTURE.correct_choice) )
-        %   reward
+        opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
       else
         % something
       end
