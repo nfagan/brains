@@ -10,6 +10,7 @@ opts = reset_arduino( opts );
 
 %   define starting state
 opts.STATES.current = opts.STATES.new_trial;
+opts = debounce_arduino( opts, @set_state, opts.STATES.current );
 
 %   extract
 ROIS = opts.ROIS;
