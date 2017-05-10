@@ -60,7 +60,7 @@ while ( true )
       opts = debounce_arduino( opts, @set_fix_met, true );
       [opts, fix_was_met] = debounce_arduino( opts, @fix_met_match );
       if ( fix_was_met )
-        opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
+%         opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
         %   MARK: goto: rule cue
         STATES.current = STATES.rule_cue;
         opts = debounce_arduino( opts, @set_state, STATES.current );
