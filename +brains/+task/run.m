@@ -57,9 +57,9 @@ while ( true )
     opts = debounce_arduino( opts, @update_arduino_gaze );
     if ( fix_targ.duration_met() )
       opts = debounce_arduino( opts, @set_fix_met, true );
-      opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
       [opts, fix_was_met] = debounce_arduino( opts, @fix_met_match );
       if ( fix_was_met )
+        opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
         %   MARK: goto: rule cue
         STATES.current = STATES.rule_cue;
         first_entry = true;
@@ -358,10 +358,32 @@ function opts = await_matching_state( opts )
 %         call to an arduino function.
 
 if ( ~opts.INTERFACE.require_synch ), return; end;
+% [opts, matching_state] = debounce_arduino( opts, @states_match );
+% if ( ~matching_state )
+%   opts = await_matching_state( opts );
+% end
+% 
 matching_state = false;
+start_synch = tic;
 while ( ~matching_state )
   [opts, matching_state] = debounce_arduino( opts, @states_match );
+  if ( toc(start_synch) > opts.TIMINGS.synch_timeout )
+    error( 'Synchronization timed out.' );
+  end
 end
+
+% comm = opts.COMMUNICATOR;
+% comm.send( 'COMPARE_STATES' );
+% matching_state = comm.await_and_return_non_null();
+% if ( ~isfield(opts.TIMING, 'synch_timer') || isnan(opts.TIMING.synch_timer) )
+%   opts.TIMING.synch_timer = tic;
+% end
+% if ( toc(opts.TIMING.synch_timer) > opts.TIMING.synch_timeout )
+%   error( 'Synchronization timed out.' );
+% end
+% if ( ~matching_state )
+%   await_mathing_state( opts );
+% end
     
 end
 

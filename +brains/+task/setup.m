@@ -82,6 +82,7 @@ time_in.debounce_arduino_messages = .001;
 
 TIMINGS.fixations = fixations;
 TIMINGS.time_in = time_in;
+TIMINGS.synch_timeout = 10;
 
 TIMER = Timer();
 TIMER.register( time_in );
