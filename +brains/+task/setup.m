@@ -37,7 +37,7 @@ WINDOW.rect = wrect;
 INTERFACE.use_mouse = true;
 INTERFACE.use_eyelink = false;
 INTERFACE.use_arduino = true;
-INTERFACE.require_synch = true;
+INTERFACE.require_synch = false;
 INTERFACE.stop_key = 'space';
 INTERFACE.is_master_arduino = is_master_arduino;
 

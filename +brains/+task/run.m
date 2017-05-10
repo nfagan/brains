@@ -199,10 +199,11 @@ while ( true )
       response_target2 = STIMULI.response_target2;
       response_target1.reset_targets();
       response_target2.reset_targets();
-      [opts, m2choice] = debounce_arduino( opts, @get_choice );
-      opts.STRUCTURE.correct_choice = m2choice;
+      if ( opts.STRUCTURE.is_master_monkey )
+        [opts, m2choice] = debounce_arduino( opts, @get_choice );
+        opts.STRUCTURE.correct_choice = m2choice;
+      end
       opts.STRUCTURE.did_choose = [];
-      made_choice = false;
       first_entry = false;
     end
     TRACKER.update_coordinates();
@@ -212,11 +213,8 @@ while ( true )
       response_target1.draw();
       response_target2.draw();
       Screen( 'Flip', opts.WINDOW.index );
-    else
-      clear_screen( opts );
     end
     if ( response_target1.duration_met() )
-      made_choice = true;
       opts.STRUCTURE.did_choose = 1;
       %   MARK: goto: evaluate_choice
       STATES.current = STATES.evaluate_choice;
@@ -224,15 +222,13 @@ while ( true )
       first_entry = true;
     end
     if ( response_target2.duration_met() )
-      made_choice = true;
       opts.STRUCTURE.did_choose = 2;
       %   MARK: goto: evaluate_choice
       STATES.current = STATES.evaluate_choice;
       opts = debounce_arduino( opts, @set_state, STATES.current );
       first_entry = true;
     end
-    if ( TIMER.duration_met('use_rule') && ~made_choice )
-      opts.STRUCTURE.did_choose = [];
+    if ( TIMER.duration_met('use_rule') )
       %   MARK: goto: evaluate_choice
       STATES.current = STATES.evaluate_choice;
       opts = debounce_arduino( opts, @set_state, STATES.current );
