@@ -26,6 +26,7 @@ while ( true )
   
   %   STATE NEW_TRIAL
   if ( STATES.current == STATES.new_trial )
+    Screen( 'Flip', opts.WINDOW.index );
     opts = await_matching_state( opts );
     clear_screen( opts );
     %   get correct choice
@@ -40,13 +41,13 @@ while ( true )
   %   STATE FIXATION
   if ( STATES.current == STATES.fixation )
     if ( first_entry )
+      Screen( 'Flip', opts.WINDOW.index );
       opts = await_matching_state( opts );
       TIMER.reset_timers( 'fixation' );
       fix_targ = STIMULI.fixation;
       fix_targ.reset_targets();
       fix_targ.blink( 0 );
       opts = debounce_arduino( opts, @set_fix_met, false );
-      opts = debounce_arduino( opts, @set_state, STATES.current );
       first_entry = false;
     end
     TRACKER.update_coordinates();
@@ -62,6 +63,7 @@ while ( true )
         opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
         %   MARK: goto: rule cue
         STATES.current = STATES.rule_cue;
+        opts = debounce_arduino( opts, @set_state, STATES.current );
         first_entry = true;
       else
         if ( ~fix_targ.in_bounds() )
@@ -71,7 +73,9 @@ while ( true )
       end
     end
     if ( TIMER.duration_met('fixation') )
+      %   MARK: goto: rule cue
       STATES.current = STATES.rule_cue;
+      opts = debounce_arduino( opts, @set_state, STATES.current );
       first_entry = true;
     end
   end
@@ -79,6 +83,7 @@ while ( true )
   %   STATE RULE_CUE
   if ( STATES.current == STATES.rule_cue )
     if ( first_entry )
+      Screen( 'Flip', opts.WINDOW.index );
       opts = await_matching_state( opts );
       TIMER.reset_timers( 'rule_cue' );
       if ( rand() > .5 )
@@ -88,7 +93,6 @@ while ( true )
       end
       gaze_cue = STIMULI.rule_cue_gaze;
       laser_cue = STIMULI.rule_cue_laser;
-      opts = debounce_arduino( opts, @set_state, STATES.current );
       first_entry = false;
     end
     if ( opts.STRUCTURE.is_master_monkey )
@@ -107,6 +111,7 @@ while ( true )
     if ( TIMER.duration_met('rule_cue') )
       %   MARK: goto: post_rule_cue
       STATES.current = STATES.post_rule_cue;
+      opts = debounce_arduino( opts, @set_state, STATES.current );
       first_entry = true;
     end
   end
@@ -114,6 +119,7 @@ while ( true )
   %   STATE POST_RULE_CUE
   if ( STATES.current == STATES.post_rule_cue ) 
     if ( first_entry )
+      Screen( 'Flip', opts.WINDOW.index );
       opts = await_matching_state( opts );
       TIMER.reset_timers( 'post_rule_cue' );
       correct_target = STIMULI.gaze_cue_correct;
@@ -132,7 +138,6 @@ while ( true )
       incorrect_target.reset_targets();
       correct_target.reset_targets();
       last_pulse = NaN;
-      opts = debounce_arduino( opts, @set_state, STATES.current );
       first_entry = false;
     end
     TRACKER.update_coordinates();
@@ -162,6 +167,7 @@ while ( true )
         %   MARK: goto: USE_RULE
         opts = debounce_arduino( opts, @set_choice, correct_is );
         STATES.current = STATES.use_rule;
+        opts = debounce_arduino( opts, @set_state, STATES.current );
         first_entry = true;
       end
       if ( incorrect_target.duration_met() )
@@ -169,6 +175,7 @@ while ( true )
         %   MARK: goto: USE_RULE
         opts = debounce_arduino( opts, @set_choice, incorrect_is );
         STATES.current = STATES.use_rule;
+        opts = debounce_arduino( opts, @set_state, STATES.current );
         first_entry = true;
       end
     else
@@ -177,6 +184,7 @@ while ( true )
     if ( TIMER.duration_met('post_rule_cue') )
       %   MARK: goto: USE_RULE
       STATES.current = STATES.use_rule;
+      opts = debounce_arduino( opts, @set_state, STATES.current );
       first_entry = true;
     end
   end
@@ -184,6 +192,7 @@ while ( true )
   %   STATE USE_RULE
   if ( STATES.current == STATES.use_rule )
     if ( first_entry )
+      Screen( 'Flip', opts.WINDOW.index );
       opts = await_matching_state( opts );
       TIMER.reset_timers( 'use_rule' );
       response_target1 = STIMULI.response_target1;
@@ -192,7 +201,6 @@ while ( true )
       response_target2.reset_targets();
       [opts, m2choice] = debounce_arduino( opts, @get_choice );
       opts.STRUCTURE.correct_choice = m2choice;
-      opts = debounce_arduino( opts, @set_state, STATES.current );
       first_entry = false;
     end
     TRACKER.update_coordinates();
@@ -212,6 +220,7 @@ while ( true )
       opts.STRUCTURE.did_choose = 1;
       %   MARK: goto: evaluate_choice
       STATES.current = STATES.evaluate_choice;
+      opts = debounce_arduino( opts, @set_state, STATES.current );
       first_entry = true;
     end
     if ( response_target2.duration_met() )
@@ -220,12 +229,14 @@ while ( true )
       opts.STRUCTURE.did_choose = 2;
       %   MARK: goto: evaluate_choice
       STATES.current = STATES.evaluate_choice;
+      opts = debounce_arduino( opts, @set_state, STATES.current );
       first_entry = true;
     end
     if ( TIMER.duration_met('use_rule') && ~made_choice )
       opts.STRUCTURE.did_choose = [];
       %   MARK: goto: evaluate_choice
       STATES.current = STATES.evaluate_choice;
+      opts = debounce_arduino( opts, @set_state, STATES.current );
       first_entry = true;
     end
   end
@@ -234,9 +245,9 @@ while ( true )
   if ( STATES.current == STATES.evaluate_choice )
     clear_screen( opts );
     if ( first_entry )
+      Screen( 'Flip', opts.WINDOW.index );
       opts = await_matching_state( opts );
       TIMER.reset_timers( 'evaluate_choice' );
-      opts = debounce_arduino( opts, @set_state, STATES.current );
       first_entry = false;
     end
     if ( opts.STRUCTURE.is_master_monkey )
@@ -249,6 +260,7 @@ while ( true )
     if ( TIMER.duration_met('evaluate_choice') )
       %   MARK: goto: iti
       STATES.current = STATES.iti;
+      opts = debounce_arduino( opts, @set_state, STATES.current );
       first_entry = true;
     end
   end
@@ -256,14 +268,16 @@ while ( true )
   %   STATE ITI
   if ( STATES.current == STATES.iti )
     if ( first_entry )
+      Screen( 'Flip', opts.WINDOW.index );
+      opts = await_matching_state( opts );
       TIMER.reset_timers( 'iti' );
-      opts = debounce_arduino( opts, @set_state, STATES.current );
       first_entry = false;
     end
     if ( TIMER.duration_met('iti') )
       %   MARK: goto: new_trial
       first_entry = true;
       STATES.current = STATES.new_trial;
+      opts = debounce_arduino( opts, @set_state, STATES.current );
     end
   end
   

@@ -78,7 +78,7 @@ time_in.post_rule_cue = 5;
 time_in.use_rule = 2;
 time_in.evaluate_choice = 1;
 time_in.iti = 2;
-time_in.debounce_arduino_messages = .001;
+time_in.debounce_arduino_messages = .05;
 
 TIMINGS.fixations = fixations;
 TIMINGS.time_in = time_in;
