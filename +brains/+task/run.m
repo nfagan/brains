@@ -238,19 +238,16 @@ while ( true )
   
   %   STATE EVALUATE_CHOICE
   if ( STATES.current == STATES.evaluate_choice )
-    clear_screen( opts );
     if ( first_entry )
       Screen( 'Flip', opts.WINDOW.index );
       opts = await_matching_state( opts );
       TIMER.reset_timers( 'evaluate_choice' );
-      first_entry = false;
-    end
-    if ( opts.STRUCTURE.is_master_monkey )
-      if ( isequal(opts.STRUCTURE.did_choose, opts.STRUCTURE.correct_choice) )
-        opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
-      else
-        % something
+      if ( opts.STRUCTURE.is_master_monkey )
+        if ( isequal(opts.STRUCTURE.did_choose, opts.STRUCTURE.correct_choice) )
+          opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
+        end
       end
+      first_entry = false;
     end
     if ( TIMER.duration_met('evaluate_choice') )
       %   MARK: goto: iti
@@ -270,9 +267,9 @@ while ( true )
     end
     if ( TIMER.duration_met('iti') )
       %   MARK: goto: new_trial
-      first_entry = true;
       STATES.current = STATES.new_trial;
       opts = debounce_arduino( opts, @set_state, STATES.current );
+      first_entry = true;
     end
   end
   
