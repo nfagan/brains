@@ -8,7 +8,16 @@ function err = brains(is_master_arduino, is_master_monkey)
 %       - `is_master_monkey` (true, false) -- Specify whether the current
 %         computer will begin in the master or slave 
 
-opts = setup( is_master_arduino, is_master_monkey );
+try
+  opts = setup( is_master_arduino, is_master_monkey );
+catch err
+  sca;
+  ListenChar( 0 );
+  close_ports();
+  print_error_stack( err );
+  Eyelink( 'StopRecording' );
+  return;
+end
 
 try
   run( opts );
@@ -16,7 +25,7 @@ try
 catch err
   cleanup( opts );
   commandwindow;
-  fprintf( '\n\n%s', err.message );
+  print_error_stack( err );
 end
 
 end
@@ -28,14 +37,21 @@ function opts = setup( is_master_arduino, is_master_monkey )
 %   OUT:
 %     - `opts` (struct)
 
-addpath( './helpers' );
+addpath( fullfile(fileparts(which(mfilename)), 'helpers') );
+addpath( genpath('C:\Repositories\ptb_helpers') );
+
+PsychDefaultSetup( 1 );
+ListenChar( 2 );
 
 % - IO - %
 IO.edf_filename = 'tstx.edf';
+IO.save_folder = cd;
 
 % - SCREEN - %
 SCREEN.index = 0;
 SCREEN.background_color = [ 0 0 0 ];
+% SCREEN.rect = [ 0 0, 1024*2, 768 ];
+SCREEN.rect = [];
 
 % - WINDOW - %
 WINDOW.index = [];
@@ -44,46 +60,69 @@ WINDOW.height = [];
 WINDOW.rect = [];
 WINDOW.center = [];
 
+%   open windows
+[windex, wrect] = Screen( 'OpenWindow', SCREEN.index, SCREEN.background_color, SCREEN.rect );
+WINDOW.center = round( [mean(wrect([1 3])), mean(wrect([2 4]))] );
+WINDOW.index = windex;
+WINDOW.rect = wrect;
+
 % - INTERFACE - %
-INTERFACE.use_mouse = false;
-INTERFACE.use_eyelink = true;
+INTERFACE.use_mouse = true;
+INTERFACE.use_eyelink = false;
 INTERFACE.use_arduino = true;
+INTERFACE.require_synch = false;
 INTERFACE.stop_key = 'space';
 INTERFACE.is_master_arduino = is_master_arduino;
+
+% - TRACKER - %
+TRACKER = EyeTracker( IO.edf_filename, IO.save_folder, WINDOW.index );
+TRACKER.bypass = ~INTERFACE.use_eyelink;
+success = TRACKER.init();
+assert( success, 'Eyelink initialization failed.' );
 
 % - STRUCTURE - %
 STRUCTURE.is_master_monkey = is_master_monkey;
 STRUCTURE.correct_choice = [];
+STRUCTURE.did_choose = [];
 STRUCTURE.rule_cue_type = 'gaze';
 
 % - STATES - %
-STATES.pre_fixation = 0;
-STATES.fixation = 1;
-STATES.synchronize = 2;
-STATES.rule_cue = 3;
-STATES.post_rule_cue = 4;
-STATES.use_rule = 5;
+state_sequence = { 'new_trial', 'fixation', 'rule_cue', 'post_rule_cue' ...
+  , 'use_rule', 'evaluate_choice', 'iti' };
+for i = 0:numel(state_sequence)-1
+  STATES.(state_sequence{i+1}) = i;
+end
 STATES.current = [];
+STATES.sequence = state_sequence;
 
 % - TIMINGS - %
+TIMINGS.do_reset = true;
+
+for i = 1:numel(state_sequence)
+  TIMINGS.timer_ids.(state_sequence{i}) = [];
+end
 TIMINGS.timer_ids.main = [];  % id of main timer
-TIMINGS.timer_ids.fixation = [];
-TIMINGS.timer_ids.rule_cue = [];
-TIMINGS.timer_ids.post_rule_cue = [];
-TIMINGS.timer_ids.use_rule = [];
 TIMINGS.timer_ids.last_arduino_message = [];
+
+TIMINGS.fixations.fixation.duration = 3;
+TIMINGS.fixations.left_rule_cue.duration = 2;
+TIMINGS.fixations.right_rule_cue.duration = 2;
+TIMINGS.fixations.response_target_left.duration = 1;
+TIMINGS.fixations.response_target_right.duration = 1;
+TIMINGS.fixations.gaze_cue_correct.duration = 3;
+TIMINGS.fixations.gaze_cue_incorrect.duration = 3;
 
 TIMINGS.start = 0;
 TIMINGS.last_frame = 0;
-TIMINGS.cumulative_fixation = 0;
-TIMINGS.fixation_duration = 2; % seconds required to fixate.
 TIMINGS.total_time = Inf; % total experiment time.
 TIMINGS.synchronization_timeout = 5;  % seconds before synchronization is deemed unsuccessful.
 
 TIMINGS.time_in.fixation = Inf;
 TIMINGS.time_in.rule_cue = 2;
-TIMINGS.time_in.post_rule_cue = 1;
+TIMINGS.time_in.post_rule_cue = 5;
 TIMINGS.time_in.use_rule = 1;
+TIMINGS.time_in.evaluate_choice = 1;
+TIMINGS.time_in.iti = 2;
 
 TIMINGS.debounce_arduino_messages = .001;  % seconds before a new message can be sent to the arduino.
 
@@ -101,13 +140,13 @@ if ( is_master_arduino )
 else
   messages = { ...
     struct('message', 'SYNCHRONIZE', 'char', 'S'), ...
-    struct('message', 'REWARD1', 'char', 'M'), ...
+    struct('message', 'REWARD1', 'char', 'A'), ...
     struct('message', 'REWARD2', 'char', 'N'), ...
     struct('message', 'PRINT_GAZE', 'char', 'P'), ...
     struct('message', 'COMPARE_STATES', 'char', 'W' ), ...
     struct('message', 'COMPARE_GAZE', 'char', 'L') ...
   };
-  port = 'COM4';
+  port = 'COM3';
 end
 baud_rate = 115200;
 if ( INTERFACE.use_arduino )
@@ -116,23 +155,52 @@ else COMMUNICATOR = [];
 end
 
 % - STIMULI - %
-STIMULI.fixation.position = 'center';
-STIMULI.fixation.color = [];
-STIMULI.fixation.shape = 'square';
-STIMULI.fixation.size = 100;
+stim_path = 'C:\Repositories\brains\stimuli\m2';
+image_files = dir( stim_path );
+image_files = { image_files(:).name };
+image_files = image_files( cellfun(@(x) ~isempty(strfind(x, '.png')), image_files) );
+image_files = cellfun( @(x) fullfile(stim_path, x), image_files, 'un', false );
+image_files = cellfun( @(x) imread(x), image_files, 'un', false );
 
-STIMULI.rule_cue_gaze_left.position = 'left';
-STIMULI.rule_cue_gaze_left.color = [];
-STIMULI.rule_cue_gaze_left.shape = 'square';
-STIMULI.rule_cue_gaze_left.size = 100;
+STIMULI.fixation = Rectangle( WINDOW.index, WINDOW.rect, [150, 150] );
+STIMULI.fixation.color = [96, 110, 132];
+STIMULI.fixation.put( 'center' );
+%   set up gaze targets
+STIMULI.fixation.make_target( TRACKER, TIMINGS.fixations.fixation.duration );
 
-STIMULI.rule_cue_gaze_right.position = 'right';
-STIMULI.rule_cue_gaze_right.color = [];
-STIMULI.rule_cue_gaze_right.shape = 'square';
-STIMULI.rule_cue_gaze_right.size = 100;
+STIMULI.rule_cue_gaze_left = Rectangle( WINDOW.index, WINDOW.rect, [250, 250] );
+STIMULI.rule_cue_gaze_left.color = [151, 17, 178];
+STIMULI.rule_cue_gaze_left.put( 'center-left' );
+
+STIMULI.rule_cue_gaze_right = Rectangle( WINDOW.index, WINDOW.rect, [250, 250] );
+STIMULI.rule_cue_gaze_right.color = [178, 17, 57];
+STIMULI.rule_cue_gaze_right.put( 'center-right' );
+
+STIMULI.gaze_cue_correct = Image( WINDOW.index, WINDOW.rect, [250, 250], image_files{1} );
+STIMULI.gaze_cue_correct.color = [50, 150, 57];
+STIMULI.gaze_cue_correct.put( 'center-left' );
+
+STIMULI.gaze_cue_incorrect = Image( WINDOW.index, WINDOW.rect, [250, 250], image_files{2} );
+STIMULI.gaze_cue_incorrect.color = [178, 17, 20];
+STIMULI.gaze_cue_incorrect.put( 'center-right' );
+%   set up gaze targets
+STIMULI.gaze_cue_correct.make_target( TRACKER, TIMINGS.fixations.gaze_cue_correct.duration );
+STIMULI.gaze_cue_incorrect.make_target( TRACKER, TIMINGS.fixations.gaze_cue_incorrect.duration );
+
+STIMULI.response_target_left = Rectangle( WINDOW.index, WINDOW.rect, [250, 250] );
+STIMULI.response_target_left.color = [17, 41, 178];
+STIMULI.response_target_left.put( 'center-left' );
+
+STIMULI.response_target_right = Rectangle( WINDOW.index, WINDOW.rect, [250, 250] );
+STIMULI.response_target_right.color = [178, 178, 17];
+STIMULI.response_target_right.put( 'center-right' );
+%   set up gaze targets
+STIMULI.response_target_left.make_target( TRACKER, TIMINGS.fixations.response_target_left.duration );
+STIMULI.response_target_right.make_target( TRACKER, TIMINGS.fixations.response_target_right.duration );
 
 % - REWARDS - %
 REWARDS.main = 100; % ms
+REWARDS.pulse_frequency = .5;
 REWARDS.last_reward_size = []; % ms
 
 %   output as one struct
@@ -147,6 +215,7 @@ opts.STATES =       STATES;
 opts.COMMUNICATOR = COMMUNICATOR;
 opts.STIMULI =      STIMULI;
 opts.REWARDS =      REWARDS;
+opts.TRACKER =      TRACKER;
 
 end
 
@@ -157,24 +226,17 @@ function run(opts)
 %   IN:
 %     - `opts` (struct) -- Options as generated by `setup()`.
 
-%   initialize EyeLink connections, etc.
-PsychDefaultSetup( 1 );
-ListenChar( 2 );
-err = eyeTrackingInit( opts );
-assert( ~err, 'Eyelink initialization failed.' );
-
 %   reset arduino
 opts = reset_arduino( opts );
 
-%   open windows
-SCREEN = opts.SCREEN;
-[windex, wrect] = Screen( 'OpenWindow', SCREEN.index, SCREEN.background_color, [], 32 );
-opts.WINDOW.center = round( [mean(wrect([1 3])), mean(wrect([2 4]))] );
-opts.WINDOW.index = windex;
-opts.WINDOW.rect = wrect;
-
 %   define starting state
-opts.STATES.current = opts.STATES.synchronize;
+opts.STATES.current = opts.STATES.new_trial;
+
+%   add cumulative field to TIMINGS.fixations
+fs = fieldnames( opts.TIMINGS.fixations );
+for i = 1:numel(fs)
+  opts.TIMINGS.fixations.(fs{i}).cumulative = 0;
+end
 
 %   start timing
 timer_ids = fieldnames( opts.TIMINGS.timer_ids );
@@ -187,67 +249,63 @@ opts.TIMINGS.last_frame = opts.TIMINGS.start;
 %   main loop
 while ( true )
   
-  %   STATE SYNCHRONIZE
-  if ( opts.STATES.current == opts.STATES.synchronize )
-    synch_success = false;
-    while ( ~synch_success )
-      synch_success = synchronize( opts );
-    end
-    %   MARK: goto: pre_fixation
-    opts.STATES.current = opts.STATES.pre_fixation;
-  end
-  
-  %   STATE PRE_FIXATION
-  if ( opts.STATES.current == opts.STATES.pre_fixation )
+  %   STATE NEW_TRIAL
+  if ( opts.STATES.current == opts.STATES.new_trial )
+%     opts = await_matching_state( opts );
     clear_screen( opts );
-    opts.TIMINGS.cumulative_fixation = 0;
     opts.TIMINGS.last_frame = get_time( opts, 'main' );
-    opts = reset_timer( opts, 'fixation' );
+    %   get correct choice
+    opts.STRUCTURE.correct_choice = 1;
+    %   get type of cue for this trial
     %   MARK: goto: fixation
     opts.STATES.current = opts.STATES.fixation;
     opts = debounce_arduino( opts, @set_state, opts.STATES.current );
+    opts.TIMINGS.do_reset = true;
   end
   
   %   STATE FIXATION
   if ( opts.STATES.current == opts.STATES.fixation )
-%     opts = await_matching_state( opts );
-    %   where is the stimulus to be placed?
-    stimulus_bounds = get_square_stimulus_bounds( opts, 'center', opts.STIMULI.fixation.size );
-    %   draw the rectangle at that location
-    draw_rect( opts, stimulus_bounds, opts.STIMULI.fixation.color );
-    %   display it
+    opts.TRACKER.update_coordinates();
+    if ( opts.TIMINGS.do_reset )
+      opts = await_matching_state( opts );
+      opts = reset_timer( opts, 'fixation' );
+      opts.STIMULI.fixation.reset_targets();
+      opts.STIMULI.fixation.blink( 0 );
+    end
+    opts.STIMULI.fixation.update_targets();
+    opts.STIMULI.fixation.draw();
     Screen( 'Flip', opts.WINDOW.index );
-    %   continuousy check whether gaze coordinates fall within the stimulus
-    %   bounds, and update the cumulative time spent fixating as
-    %   appropriate.
-    opts = update_cumulative_fixation_time( opts, stimulus_bounds, 'cumulative_fixation' );
     opts = debounce_arduino( opts, @update_arduino_gaze );
-    if ( opts.TIMINGS.cumulative_fixation >= opts.TIMINGS.fixation_duration )
-      %   determine whether the gaze matches the gaze of the other monkey.
+    if ( opts.STIMULI.fixation.duration_met() )
       [opts, m2_gaze_matches] = debounce_arduino( opts, @gazes_match );
+      opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
       if ( m2_gaze_matches )
         %   MARK: goto: rule cue
         opts.STATES.current = opts.STATES.rule_cue;
+        opts.TIMINGS.do_reset = true;
+      else
+        %   TODO: \\ REMOVE THIS
+        opts.STATES.current = opts.STATES.rule_cue;
+        opts.TIMINGS.do_reset = true;
       end
     end
-    if ( get_time(opts, 'fixation') > opts.TIMINGS.time_in.fixation )
-      %   do something
+    if ( exceeded_time_in(opts, 'fixation') )
+      %   MARK: goto: rule cue
+      opts.STATES.current = opts.STATES.rule_cue;
+      opts.TIMINGS.do_reset = true;
     end
   end
   
   %   STATE RULE_CUE
   if ( opts.STATES.current == opts.STATES.rule_cue )
+    if ( opts.TIMINGS.do_reset )
+      opts = reset_timer( opts, 'rule_cue' );
+    end
     if ( opts.STRUCTURE.is_master_monkey )
       switch ( opts.STRUCTURE.rule_cue_type )
         case 'gaze'
-          left_cue_size = opts.STIMULI.rule_cue_gaze_left.size;
-          right_cue_size = opts.STIMULI.rule_cue_gaze_right.size;
-          %   get bounds for left and right cues
-          left_stimulus_bounds = get_square_stimulus_bounds( opts, 'left', left_cue_size );
-          right_stimulus_bounds = get_square_stimulus_bounds( opts, 'right', right_cue_size );
-          %   draw the rectangles at those locations
-          draw_rect( opts, left_stimulus_bounds, opts.STIMULI.rule_cue_gaze_left.color );
-          draw_rect( opts, right_stimulus_bounds, opts.STIMULI.rule_cue_gaze_right.color );
+          opts.STIMULI.rule_cue_gaze_left.draw_frame();
+          opts.STIMULI.rule_cue_gaze_right.draw_frame();
         case 'laser'
           %   fill in
         otherwise
@@ -257,34 +315,161 @@ while ( true )
     else
       clear_screen( opts );
     end
-    if ( get_time(opts, 'rule_cue') > opts.TIMINGS.time_in.rule_cue )
+    if ( exceeded_time_in(opts, 'rule_cue') )
       %   MARK: goto: post_rule_cue
       opts.STATES.current = opts.STATES.post_rule_cue;
+      opts.TIMINGS.do_reset = true;
     end
   end
   
-  %   STATE POST_RULE_CUE  
+  %   STATE POST_RULE_CUE
   if ( opts.STATES.current == opts.STATES.post_rule_cue )
-    clear_screen( opts );
-    if ( get_time(opts, 'post_rule_cue') > opts.TIMINGS.time_in.post_rule_cue )
+    opts.TRACKER.update_coordinates();
+    is_master = opts.STRUCTURE.is_master_monkey;
+    is_slave = ~is_master;
+    if ( opts.TIMINGS.do_reset )
+      opts = reset_timer( opts, 'post_rule_cue' );
+      if ( rand() > .5 )
+        opts.STIMULI.gaze_cue_incorrect.put( 'center-left' );
+        opts.STIMULI.gaze_cue_correct.put( 'center-right' );
+        correct_choice = 1;
+      else
+        opts.STIMULI.gaze_cue_correct.put( 'center-left' );
+        opts.STIMULI.gaze_cue_incorrect.put( 'center-right' );
+        correct_choice = 2;
+      end
+      opts.STIMULI.gaze_cue_incorrect.reset_targets();
+      opts.STIMULI.gaze_cue_correct.reset_targets();
+      correct_target = opts.STIMULI.gaze_cue_correct;
+      incorrect_target = opts.STIMULI.gaze_cue_incorrect;
+      last_pulse = NaN;
+    end
+    if ( is_slave )
+      switch ( opts.STRUCTURE.rule_cue_type )
+        case 'gaze'
+          opts.STIMULI.gaze_cue_incorrect.update_targets();
+          opts.STIMULI.gaze_cue_correct.update_targets();
+          opts.STIMULI.gaze_cue_incorrect.draw();
+          opts.STIMULI.gaze_cue_correct.draw();
+        case 'laser'
+          %   fill in
+        otherwise
+          error( 'Unrecognized rule_cue_type ''%s''', opts.STRUCTURE.rule_cue_type );
+      end
+      Screen( 'Flip', opts.WINDOW.index );
+      if ( is_slave )
+        opts = debounce_arduino( opts, @set_choice, correct_choice );
+        if ( correct_target.in_bounds() )
+          if ( isnan(last_pulse) )
+            should_deliver = true;
+            last_pulse = tic;
+          else
+            should_deliver = toc( last_pulse ) > opts.REWARDS.pulse_frequency;
+          end
+          if ( should_deliver )
+            opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
+            last_pulse = tic;
+          end
+        else
+          last_pulse = tic;
+        end
+        if ( correct_target.duration_met() )
+          %   MARK: goto: USE_RULE          
+          opts.STATES.current = opts.STATES.use_rule;
+          opts.TIMINGS.do_reset = true;
+        end
+        if ( incorrect_target.duration_met() )
+          %   opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
+          %   MARK: goto: USE_RULE
+          opts.STATES.current = opts.STATES.use_rule;
+          opts.TIMINGS.do_reset = true;
+        end
+      end
+    else
+      clear_screen( opts );
+    end
+    if ( exceeded_time_in(opts, 'post_rule_cue') )
       %   MARK: goto: USE_RULE
       opts.STATES.current = opts.STATES.use_rule;
+      opts.TIMINGS.do_reset = true;
     end
   end
   
   %   STATE USE_RULE
   if ( opts.STATES.current == opts.STATES.use_rule )
-    opts = update_cumulative_fixation_time( opts, left_stimulus_bounds, 'left_option' );
-    opts = update_cumulative_fixation_time( opts, right_stimulus_bounds, 'right_option' );
-    if ( get_time(opts, 'use_rule') > opts.TIMINGS.time_in.use_rule )
-      break;
-      %   do something
+    opts.TRACKER.update_coordinates();
+    if ( opts.TIMINGS.do_reset )
+      opts = reset_timer( opts, 'use_rule' );
+      opts.STIMULI.response_target_left.reset_targets();
+      opts.STIMULI.response_target_right.reset_targets();
+    end
+    if ( opts.STRUCTURE.is_master_monkey )
+      opts.STIMULI.response_target_left.update_targets();
+      opts.STIMULI.response_target_right.update_targets();
+      opts.STIMULI.response_target_left.draw();
+      opts.STIMULI.response_target_right.draw();
+      Screen( 'Flip', opts.WINDOW.index );
+    else
+      clear_screen( opts );
+    end
+    made_choice = false;
+    if ( opts.STIMULI.response_target_left.duration_met() )
+      made_choice = true;
+      opts.STRUCTURE.did_choose = 1;
+      %   MARK: goto: evaluate_choice
+      opts.STATES.current = opts.STATES.evaluate_choice;
+      opts.TIMINGS.do_reset = true;
+    end
+    if ( opts.STIMULI.response_target_right.duration_met() )
+      made_choice = true;
+      opts.STRUCTURE.did_choose = 2;
+      %   MARK: goto: evaluate_choice
+      opts.STATES.current = opts.STATES.evaluate_choice;
+      opts.TIMINGS.do_reset = true;
+    end
+    if ( exceeded_time_in(opts, 'use_rule') && ~made_choice )
+      opts.STRUCTURE.did_choose = [];
+      %   MARK: goto: evaluate_choice
+      opts.STATES.current = opts.STATES.evaluate_choice;
+      opts.TIMINGS.do_reset = true;
+    end
+  end
+  
+  %   STATE EVALUATE_CHOICE
+  if ( opts.STATES.current == opts.STATES.evaluate_choice )
+    clear_screen( opts );
+    if ( opts.TIMINGS.do_reset )
+      opts = reset_timer( opts, 'evaluate_choice' );
+    end
+    if ( opts.STRUCTURE.is_master_monkey )
+      if ( isequal(opts.STRUCTURE.did_choose, opts.STRUCTURE.correct_choice) )
+        %   reward
+        fprintf( '\n was correct' );
+      else
+        fprintf( '\n was incorrect' );
+      end
+    end
+    if ( exceeded_time_in(opts, 'evaluate_choice') )
+      %   MARK: goto: iti
+      opts.STATES.current = opts.STATES.iti;
+      opts.TIMINGS.do_reset = true;
+    end
+  end
+  
+  %   STATE ITI
+  if ( opts.STATES.current == opts.STATES.iti )
+    if ( opts.TIMINGS.do_reset )
+      opts = reset_timer( opts, 'iti' );
+    end
+    if ( exceeded_time_in(opts, 'iti') )
+      %   MARK: goto: new_trial
+      opts.STATES.current = opts.STATES.new_trial;
     end
   end
   
   %   Quit if error in EyeLink
-  err = checkRecording( opts );
-  if ( err ~= 0 )
+  success = checkRecording( opts );
+  if ( success ~= 0 )
     break;
   end
   %   Quit if key is pressed
@@ -299,18 +484,18 @@ while ( true )
   end
 end
 
-opts = debounce_arduino( opts, @set_state, 0 );
-[opts, matches] = debounce_arduino( opts, @states_match );
-disp( 'Do the states match?' );
-disp( matches );
-disp( 'Do the gazes match?' );
-[opts, matches] = debounce_arduino( opts, @gazes_match );
-disp( matches );
-ListenChar(1);
+% opts = debounce_arduino( opts, @set_state, 0 );
+% [opts, matches] = debounce_arduino( opts, @states_match );
+% disp( 'Do the states match?' );
+% disp( matches );
+% disp( 'Do the gazes match?' );
+% [opts, matches] = debounce_arduino( opts, @gazes_match );
+% disp( matches );
+ListenChar(0);
 sca;
 
-shutdownEyelink( opts );   
 cleanup( opts );
+% shutdownEyelink( opts );   
 
 end
 
@@ -343,9 +528,10 @@ within_y = gaze_y >= bounds(2) && gaze_y < bounds(4);
 
 if ( within_x && within_y )
   delta = get_time(opts, 'main') - opts.TIMINGS.last_frame;
-  opts.TIMINGS.(timing_type) = opts.TIMINGS.(timing_type) + delta;
+  opts.TIMINGS.fixations.(timing_type).cumulative = ...
+    opts.TIMINGS.fixations.(timing_type).cumulative + delta;
 else
-  opts.TIMINGS.(timing_type) = 0;
+  opts.TIMINGS.fixations.(timing_type).cumulative = 0;
 end
 
 opts.TIMINGS.last_frame = get_time( opts, 'main' );
@@ -374,14 +560,14 @@ switch ( placement )
   case 'center'
     center = [ center, center ];
     bounds = center + position;
-  case 'left'
-    center_left = center - center/2;
-    center_left = [ center_left, center_left ];
-    bounds = center_left + position;
-  case 'right'
-    center_right = center + center/2;
-    center_right = [ center_right, center_right ];
-    bounds = center_right + position;
+  case 'center-left'
+    dx = center(1) - center(1)/2;
+    dy = center(2);
+    bounds = [ dx, dy, dx, dy ] + position;
+  case 'center-right'
+    dx = center(1) + center(1)/2;
+    dy = center(2);
+    bounds = [ dx, dy, dx, dy ] + position;
   otherwise
     error( 'Unrecognized object placement ''%s''', placement );
 end
@@ -399,6 +585,34 @@ function draw_rect(opts, rect, color)
 
 window = opts.WINDOW.index;
 Screen( 'FillRect', window, color, rect );
+
+end
+
+function draw_frame_rect(opts, rect, color)
+
+%   DRAW_RECT -- Display a rect-frame of the specified dimensions and color.
+%
+%     IN:
+%       - `opts` (struct) -- Options struct as generated by `setup()`.
+%       - `rect` (double) -- 4-element vector specifying [x1, y1, x2, y2].
+%       - `color` (double) -- 3-element vector specifying the fill-color.
+
+window = opts.WINDOW.index;
+Screen( 'FrameRect', window, color, rect );
+
+end
+
+function draw_image(opts, image, rect)
+
+%   DRAW_IMAGE -- Display an image in the given position.
+%
+%     IN:
+%       - `image` (double) -- Image matrix as loaded by imread()
+%       - `rect` (double) -- 4-element 4-element vector specifying 
+%       [x1, y1, x2, y2]; i.e., the vertices of the image.
+
+texture = Screen( 'MakeTexture', opts.WINDOW.index, image );
+Screen( 'DrawTexture', opts.WINDOW.index, texture, [], rect );
 
 end
 
@@ -432,6 +646,37 @@ if ( nargin < 3 ), variable_name = 'input'; end;
 assert( isa(variable, kind), 'Expected %s to be a %s; was a %s' ...
   , variable_name, kind, class(variable) );
   
+end
+
+function tf = exceeded_fixation_to(opts, target)
+
+%   EXCEEDED_FIXATION_TO -- Return whether the cumulative fixation
+%     duration to a target is above the pre-determined threshold.
+%
+%     IN:
+%       - `opts` (struct) -- Options struct.
+%       - `target` (char) -- Fixation target as defined in setup().
+%     OUT:
+%       - `tf` (logical) |SCALAR|
+
+tf = opts.TIMINGS.fixations.(target).cumulative > ...
+  opts.TIMINGS.fixations.(target).duration;
+  
+end
+
+function tf = exceeded_time_in(opts, state)
+
+%   EXCEEDED_TIME_IN -- Return whether the cumulative time in a given state
+%     is above the predetermined threshold.
+%
+%     IN:
+%       - `opts` (struct) -- Options struct.
+%       - `state` (char) -- State name.
+%     OUT:
+%       - `tf` (logical) |SCALAR|
+
+tf = get_time(opts, state) > opts.TIMINGS.time_in.(state);
+
 end
 
 
@@ -536,7 +781,7 @@ function opts = await_matching_state( opts )
 %       - `opts` (struct) -- Options struct updated to reflect the last
 %         call to an arduino function.
 
-
+if ( ~opts.INTERFACE.require_synch ), return; end;
 matching_state = false;
 while ( ~matching_state )
   [opts, matching_state] = debounce_arduino( opts, @states_match );
@@ -611,6 +856,21 @@ function opts = set_state( opts, state_num )
 
 opts.COMMUNICATOR.send_state( state_num );
 
+end
+
+function opts = set_choice( opts, choice )
+
+%   SET_CHOICE -- Update the Arduino's choice variable.
+%
+%     IN:
+%       - `opts` (struct) -- Options struct.
+%       - `choice` (int)
+%
+%     OUT:
+%       - `opts` (struct) -- Options struct updated to reflect the last
+%         call to `set_state()`.
+
+opts.COMMUNICATOR.send_choice( choice );
 end
 
 function varargout = debounce_arduino( opts, func, varargin )
@@ -716,6 +976,59 @@ function opts = reset_timer( opts, id_name )
 %       - `opts` (struct) -- Updated options struct.
 
 opts.TIMINGS.timer_ids.(id_name) = tic;
+opts.TIMINGS.do_reset = false;
+
+end
+
+function opts = reset_timers(opts, ids)
+
+%   RESET_TIMERS -- Reset the timers associated with the given ids
+%
+%     IN:
+%       - `opts` (struct) -- Options struct.
+%       - `ids` (cell array of strings, char) -- Fieldname(s) of the
+%         timer_ids struct in opts.TIMING.
+%     OUT:
+%       - `opts` (struct) -- Updated options struct.
+
+if ( ~iscell(ids) ), ids = { ids }; end;
+for i = 1:numel(ids)
+  opts = reset_timer( opts, ids{i} );
+end
+
+end
+
+function opts = reset_fixation(opts, fixation_name)
+
+%   RESET_FIXATION -- Reset the cumulative fixation duration to 0.
+%
+%     IN:
+%       - `opts` (struct) -- Options struct.
+%       - `fixation_name` (char) -- Name of the fixation-target.
+%     OUT:
+%       - `opts` (struct)
+
+opts.TIMINGS.fixations.(fixation_name).cumulative = 0;
+
+end
+
+
+%{
+    UTILS
+%}
+
+function print_error_stack( err )
+
+%   PRINT_ERROR_STACK -- Display the complete function-stack upon error.
+%
+%     IN:
+%       - `err` (MException)
+
+stack = err.stack;
+for i = numel(stack):-1:1
+  fprintf( '\n %d - %s', stack(i).line, stack(i).name );
+end
+fprintf( '\n %s', err.message );
 
 end
 
@@ -725,26 +1038,41 @@ end
 
 
 
-%Cleanup routine:
-function cleanup(opts)
+% %Cleanup routine:
+% function cleanup(opts)
+% %Restore keyboard output to Matlab:
+% ListenChar( 0 );
+% 
+% use_mouse = opts.INTERFACE.use_mouse;
+% use_eyelink = opts.INTERFACE.use_eyelink;
+% 
+% % finish up: stop recording eye-movements,
+% % close graphics window, close data file and shut down tracker
+% if ( ~use_mouse && use_eyelink )
+%   Eyelink( 'Shutdown' );
+% end
+% 
+% opts.COMMUNICATOR.stop();
+% 
+% if ( isfield(opts, 'TRACKER') )
+%   opts.TRACKER.shutdown();
+% end
+% 
+% sca;
+% 
+% close_ports();
+% end
+
+function cleanup( opts )
+
 %Restore keyboard output to Matlab:
 ListenChar( 0 );
-
-use_mouse = opts.INTERFACE.use_mouse;
-use_eyelink = opts.INTERFACE.use_eyelink;
-
-% finish up: stop recording eye-movements,
-% close graphics window, close data file and shut down tracker
-if ( ~use_mouse && use_eyelink )
-  Eyelink( 'Shutdown' );
-end
-
-opts.COMMUNICATOR.stop();
-
+opts.TRACKER.shutdown();
 sca;
-
 close_ports();
+
 end
+
 %Runs Eyelink Initialization procedures
 function err = eyeTrackingInit(opts)
 
@@ -779,7 +1107,8 @@ end
 function data_ready = newGazeDataReady(opts)
 
 use_mouse = opts.INTERFACE.use_mouse;
-if ( use_mouse )
+use_eyelink = opts.INTERFACE.use_eyelink;
+if ( use_mouse || ~use_eyelink )
   data_ready = true;
   return;
 end
@@ -836,8 +1165,9 @@ end
 function err = checkRecording(opts)
 
   use_mouse = opts.INTERFACE.use_mouse;
+  use_eyelink = opts.INTERFACE.use_eyelink;
 	err = false;
-	if ( use_mouse )
+	if ( use_mouse || ~use_eyelink )
 		return;
   end
 	err = Eyelink( 'CheckRecording' );
