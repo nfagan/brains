@@ -314,7 +314,15 @@ end
 %}
 
 
+function opts = flush_buffer( opts )
 
+%   FLUSH_BUFFER -- Flush the Arduino's buffer.
+
+if ( opts.COMMUNICATOR.communicator.BytesAvailable > 0 )
+  opts.COMMUNICATOR.communicator.receive_all();
+end
+
+end
 
 
 function opts = reset_arduino( opts )
