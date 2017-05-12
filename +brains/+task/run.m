@@ -27,7 +27,7 @@ while ( true )
   %   STATE NEW_TRIAL
   if ( STATES.current == STATES.new_trial )
     Screen( 'Flip', opts.WINDOW.index );
-    opts = await_matching_state( opts );
+%     opts = await_matching_state( opts );
     clear_screen( opts );
     %   get correct choice
     opts.STRUCTURE.correct_choice = 1;

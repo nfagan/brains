@@ -6,6 +6,7 @@ function opts = setup( is_master_arduino, is_master_monkey )
 %     - `opts` (struct)
 
 addpath( genpath('C:\Repositories\ptb_helpers') );
+addpath( genpath('C:\Repositories\arduino\communicator') );
 
 PsychDefaultSetup( 1 );
 ListenChar( 2 );
@@ -17,8 +18,8 @@ IO.save_folder = cd;
 % - SCREEN - %
 SCREEN.index = 0;
 SCREEN.background_color = [ 0 0 0 ];
-% SCREEN.rect = [ 0 0, 1024*2, 768 ];
-SCREEN.rect = [];
+SCREEN.rect = [ 0 0, 1024*3, 768 ];
+% SCREEN.rect = [];
 
 % - WINDOW - %
 WINDOW.index = [];
@@ -37,7 +38,7 @@ WINDOW.rect = wrect;
 INTERFACE.use_mouse = true;
 INTERFACE.use_eyelink = false;
 INTERFACE.use_arduino = true;
-INTERFACE.require_synch = true;
+INTERFACE.require_synch = false;
 INTERFACE.stop_key = 'space';
 INTERFACE.is_master_arduino = is_master_arduino;
 
@@ -63,22 +64,22 @@ STATES.current = [];
 STATES.sequence = state_sequence;
 
 % - TIMINGS - %
-fixations.fixation.duration = 3;
+fixations.fixation.duration = .3;
 fixations.left_rule_cue.duration = 2;
 fixations.right_rule_cue.duration = 2;
-fixations.response_target1.duration = 1;
-fixations.response_target2.duration = 1;
+fixations.response_target1.duration = .5;
+fixations.response_target2.duration = .5;
 fixations.gaze_cue_correct.duration = 3;
 fixations.gaze_cue_incorrect.duration = 3;
 
 time_in.task = Inf;
 time_in.fixation = Inf;
-time_in.rule_cue = 2;
+time_in.rule_cue = 1;
 time_in.post_rule_cue = 5;
 time_in.use_rule = 2;
 time_in.evaluate_choice = 0;
 time_in.iti = 2;
-time_in.debounce_arduino_messages = .08;
+time_in.debounce_arduino_messages = .1;
 
 TIMINGS.fixations = fixations;
 TIMINGS.time_in = time_in;
