@@ -75,10 +75,10 @@ fixations.gaze_cue_incorrect.duration = 3;
 time_in.task = Inf;
 time_in.fixation = Inf;
 time_in.rule_cue = 1;
-time_in.post_rule_cue = 5;
-time_in.use_rule = 2;
+time_in.post_rule_cue = 3;
+time_in.use_rule = 1;
 time_in.evaluate_choice = 0;
-time_in.iti = 2;
+time_in.iti = 1;
 time_in.debounce_arduino_messages = .1;
 
 TIMINGS.fixations = fixations;
