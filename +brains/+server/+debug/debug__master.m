@@ -19,8 +19,20 @@ for i=0:10
 %     pause(0.5);
 end
 
-if ( t.BytesAvailable > 0 )
-  DataReceived = fread( t, 2 )
+start_await = tic;
+success = true;
+
+while ( t.BytesAvailable == 0 )
+  if ( toc(start_await) > 5 )
+    success = false;
+    break;
+  end
+end
+if ( success )
+  DataReceived = fread( t, 2 );
+  disp( DataReceived );
+else
+  fprintf( '\n Unsuccessful' );
 end
 
 % Close and delete connection
