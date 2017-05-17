@@ -1,4 +1,10 @@
-function debug__slave()
+function debug__slave( address, port )
+
+
+if ( nargin == 0 )
+  address = '127.0.0.1';
+  port = 55e3;
+end
 
 %% TCP/IP Receiver
 
@@ -9,7 +15,7 @@ clc;
 
 % Configuration and connection
 disp ('Receiver started');
-t=tcpip('127.0.0.1', 55e3,'NetworkRole','server');
+t=tcpip( address, port, 'NetworkRole','server');
 
 % Wait for connection
 disp('Waiting for connection');

@@ -1,4 +1,9 @@
-function debug__master()
+function debug__master( address, port )
+
+if ( nargin == 0 )
+  address = '127.0.0.1';
+  port = 55e3;
+end
 
 % Clear console and workspace
 clc;
@@ -6,7 +11,7 @@ clear all;
 close all;
 
 % Configuration and connection
-t = tcpip('127.0.0.1',55e3);
+t = tcpip( address, port );
 
 % Open socket and wait before sending data
 fopen(t);
