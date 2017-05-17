@@ -5,11 +5,6 @@ if ( nargin == 0 )
   port = 55e3;
 end
 
-% Clear console and workspace
-clc;
-clear all;
-close all;
-
 % Configuration and connection
 t = tcpip( address, port );
 

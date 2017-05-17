@@ -8,11 +8,6 @@ end
 
 %% TCP/IP Receiver
 
-% Clear console and workspace
-close all;
-clear all;
-clc;
-
 % Configuration and connection
 disp ('Receiver started');
 t=tcpip( address, port, 'NetworkRole','server');
