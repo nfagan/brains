@@ -12,7 +12,7 @@ reward_messages = { ...
   struct('message', 'REWARD2', 'char', 'B') ...
 };
 
-port = brains.util.get_arduino_port();
+port = brains.arduino.get_arduino_port();
 baud_rate = 115200;
 
 comm = Communicator( reward_messages, port, baud_rate );
