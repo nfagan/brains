@@ -5,6 +5,8 @@ function opts = setup( is_master_arduino, is_master_monkey )
 %   OUT:
 %     - `opts` (struct)
 
+import brains.util.assert__file_does_not_exist
+
 addpath( genpath('C:\Repositories\ptb_helpers') );
 addpath( genpath('C:\Repositories\arduino\communicator') );
 
@@ -12,14 +14,36 @@ PsychDefaultSetup( 1 );
 ListenChar( 2 );
 
 % - IO - %
-IO.edf_filename = 'tstx.edf';
-IO.save_folder = cd;
+IO.edf_file = 'tstx.edf';
+IO.edf_folder = cd;
+IO.data_file = 'tstx.mat';
+% IO.data_folder = 'C:\Repositories\brains\data';
+IO.data_folder = '/Volumes/My Passport/NICK/Chang Lab 2016/repositories/brains/brains/data';
+% IO.stimuli_path = 'C:\Repositories\brains\stimuli\m2';
+IO.stimuli_path = '/Volumes/My Passport/NICK/Chang Lab 2016/repositories/brains/brains/stimuli/m2';
+
+% assert__file_does_not_exist( fullfile(IO.data_folder, IO.data_file) );
+
+% - INTERFACE - %
+INTERFACE.use_mouse = true;
+INTERFACE.use_eyelink = false;
+INTERFACE.use_arduino = false;
+INTERFACE.require_synch = false;
+INTERFACE.rwd_key = KbName( 'r' );
+INTERFACE.stop_key = KbName( 'escape' );
+INTERFACE.is_master_arduino = is_master_arduino;
+
+% - META - %
+META.m1 = '';
+META.m2 = '';
+META.date = '';
+META.etc = '';
 
 % - SCREEN - %
 SCREEN.index = 0;
 SCREEN.background_color = [ 0 0 0 ];
-SCREEN.rect = [ 0 0, 1024*3, 768 ];
-% SCREEN.rect = [];
+% SCREEN.rect = [ 0 0, 1024*3, 768 ];
+SCREEN.rect = [];
 
 % - WINDOW - %
 WINDOW.index = [];
@@ -34,16 +58,8 @@ WINDOW.center = round( [mean(wrect([1 3])), mean(wrect([2 4]))] );
 WINDOW.index = windex;
 WINDOW.rect = wrect;
 
-% - INTERFACE - %
-INTERFACE.use_mouse = false;
-INTERFACE.use_eyelink = true;
-INTERFACE.use_arduino = true;
-INTERFACE.require_synch = false;
-INTERFACE.stop_key = 'space';
-INTERFACE.is_master_arduino = is_master_arduino;
-
 % - TRACKER - %
-TRACKER = EyeTracker( IO.edf_filename, IO.save_folder, WINDOW.index );
+TRACKER = EyeTracker( IO.edf_file, IO.edf_folder, WINDOW.index );
 TRACKER.bypass = ~INTERFACE.use_eyelink;
 success = TRACKER.init();
 assert( success, 'Eyelink initialization failed.' );
@@ -123,11 +139,10 @@ ROIS.eyes = Target( TRACKER, [0 0 500 500], Inf );
 ROIS.mouth = Target( TRACKER, [0 0 500 500], Inf );
 
 % - STIMULI - %
-stim_path = 'C:\Repositories\brains\stimuli\m2';
-image_files = dir( stim_path );
+image_files = dir( IO.stimuli_path );
 image_files = { image_files(:).name };
 image_files = image_files( cellfun(@(x) ~isempty(strfind(x, '.png')), image_files) );
-image_files = cellfun( @(x) fullfile(stim_path, x), image_files, 'un', false );
+image_files = cellfun( @(x) fullfile(IO.stimuli_path, x), image_files, 'un', false );
 image_files = cellfun( @(x) imread(x), image_files, 'un', false );
 
 STIMULI.fixation = Rectangle( WINDOW.index, WINDOW.rect, [150, 150] );
@@ -178,8 +193,9 @@ REWARDS.last_reward_size = []; % ms
 %   output as one struct
 
 opts.IO =           IO;
-opts.SCREEN =       SCREEN;
 opts.INTERFACE =    INTERFACE;
+opts.META =         META;
+opts.SCREEN =       SCREEN;
 opts.WINDOW =       WINDOW;
 opts.TIMINGS =      TIMINGS;
 opts.TIMER =        TIMER;

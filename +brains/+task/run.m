@@ -13,15 +13,18 @@ opts.STATES.current = opts.STATES.new_trial;
 opts = debounce_arduino( opts, @set_state, opts.STATES.current );
 
 %   extract
-ROIS = opts.ROIS;
-TIMER = opts.TIMER;
-STATES = opts.STATES;
-TRACKER = opts.TRACKER;
-STIMULI = opts.STIMULI;
+IO =        opts.IO;
+ROIS =      opts.ROIS;
+TIMER =     opts.TIMER;
+STATES =    opts.STATES;
+TRACKER =   opts.TRACKER;
+STIMULI =   opts.STIMULI;
+STRUCTURE = opts.STRUCTURE;
 
 first_entry = true;
 
 DATA = struct();
+PROGRESS = struct();
 TRIAL_NUMBER = 0;
 
 %   main loop
@@ -30,17 +33,41 @@ while ( true )
   %   STATE NEW_TRIAL
   if ( STATES.current == STATES.new_trial )
     Screen( 'Flip', opts.WINDOW.index );
-%     opts = await_matching_state( opts );
     clear_screen( opts );
     if ( TRIAL_NUMBER > 0 )
       tn = TRIAL_NUMBER;
-%       DATA(tn).was_correct = was_correct;
-%       DATA(tn).made_choice = made_choice;
-%       DATA(tn).chosen_option = chosen_option;
+      DATA(tn).trial_number = tn;
+      DATA(tn).m1_chose = STRUCTURE.m1_chose;
+      DATA(tn).m2_chose = STRUCTURE.m2_chose;
+      DATA(tn).rule_cue_type = STRUCTURE.rule_cue_type;
+      DATA(tn).correct_location = correct_location;
+      DATA(tn).incorrect_location = incorrect_location;
+      DATA(tn).events = PROGRESS;
     end
     TRIAL_NUMBER = TRIAL_NUMBER + 1;
-    %   get correct choice
-    opts.STRUCTURE.correct_choice = 1;
+    %   reset event times
+    PROGRESS = structfun( @(x) NaN, PROGRESS, 'un', false );
+    %   determine rule cue type
+    if ( rand() > .5 )
+      STRUCTURE.rule_cue_type = 'gaze';
+    else
+      STRUCTURE.rule_cue_type = 'laser';
+    end
+    %   get correct target location for m2
+    if ( rand() > .5 )
+      incorrect_location = 'center-left';
+      correct_location = 'center-right';
+      incorrect_is = 1;
+      correct_is = 2;
+    else
+      incorrect_location = 'center-right';
+      correct_location = 'center-left';
+      incorrect_is = 2;
+      correct_is = 1;
+    end
+    %   reset choice parameters
+    STRUCTURE.m1_chose = [];
+    STRUCTURE.m2_chose = [];
     %   get type of cue for this trial
     %   MARK: goto: fixation
     STATES.current = STATES.fixation;
@@ -58,6 +85,7 @@ while ( true )
       fix_targ.reset_targets();
       fix_targ.blink( 0 );
       opts = debounce_arduino( opts, @set_fix_met, false );
+      log_progress = true;
       first_entry = false;
     end
     TRACKER.update_coordinates();
@@ -65,8 +93,13 @@ while ( true )
     fix_targ.update_targets();
     fix_targ.draw();
     Screen( 'Flip', opts.WINDOW.index );
+    if ( log_progress )
+      PROGRESS.fixation_onset = TIMER.get_time( 'task' );
+      log_progress = false;
+    end
     opts = debounce_arduino( opts, @update_arduino_gaze );
     if ( fix_targ.duration_met() )
+      PROGRESS.fixation_acquired = TIMER.get_time( 'task' );
       opts = debounce_arduino( opts, @set_fix_met, true );
       [opts, fix_was_met] = debounce_arduino( opts, @fix_met_match );
       if ( fix_was_met )
@@ -95,28 +128,27 @@ while ( true )
     if ( first_entry )
       Screen( 'Flip', opts.WINDOW.index );
       opts = await_matching_state( opts );
+      PROGRESS.rule_cue = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'rule_cue' );
-      if ( rand() > .5 )
-        opts.STRUCTURE.rule_cue_type = 'gaze';
-      else
-        opts.STRUCTURE.rule_cue_type = 'laser';
-      end
       gaze_cue = STIMULI.rule_cue_gaze;
       laser_cue = STIMULI.rule_cue_laser;
+      log_progress = true;
       first_entry = false;
     end
-    if ( opts.STRUCTURE.is_master_monkey )
-      switch ( opts.STRUCTURE.rule_cue_type )
+    if ( STRUCTURE.is_master_monkey )
+      switch ( STRUCTURE.rule_cue_type )
         case 'gaze'
          gaze_cue.draw_frame();
         case 'laser'
           laser_cue.draw_frame();
         otherwise
-          error( 'Unrecognized rule_cue_type ''%s''', opts.STRUCTURE.rule_cue_type );
+          error( 'Unrecognized rule_cue_type ''%s''', STRUCTURE.rule_cue_type );
       end
-      Screen( 'Flip', opts.WINDOW.index );
-    else
-      clear_screen( opts );
+    end
+    Screen( 'Flip', opts.WINDOW.index );
+    if ( log_progress )
+      PROGRESS.rule_cue_onset = TIMER.get_time( 'task' );
+      log_progress = false;
     end
     if ( TIMER.duration_met('rule_cue') )
       %   MARK: goto: post_rule_cue
@@ -130,35 +162,33 @@ while ( true )
   if ( STATES.current == STATES.post_rule_cue ) 
     if ( first_entry )
       Screen( 'Flip', opts.WINDOW.index );
+      PROGRESS.rule_cue_offset = TIMER.get_time( 'task' );
       opts = await_matching_state( opts );
+      PROGRESS.post_rule_cue = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'post_rule_cue' );
       correct_target = STIMULI.gaze_cue_correct;
       incorrect_target = STIMULI.gaze_cue_incorrect;
-      if ( rand() > .5 )
-        incorrect_target.put( 'center-left' );
-        correct_target.put( 'center-right' );
-        correct_is = 2;
-        incorrect_is = 1;
-      else
-        correct_target.put( 'center-left' );
-        incorrect_target.put( 'center-right' );
-        correct_is = 1;
-        incorrect_is = 2;
-      end
+      incorrect_target.put( incorrect_location );
+      correct_target.put( correct_location );
       incorrect_target.reset_targets();
       correct_target.reset_targets();
       last_pulse = NaN;
+      log_progress = true;
       first_entry = false;
     end
     TRACKER.update_coordinates();
-    is_master = opts.STRUCTURE.is_master_monkey;
+    is_master = STRUCTURE.is_master_monkey;
     is_slave = ~is_master;
     if ( is_slave )
       incorrect_target.update_targets();
       correct_target.update_targets();
       incorrect_target.draw();
       correct_target.draw();
-      Screen( 'Flip', opts.WINDOW.index );      
+      Screen( 'Flip', opts.WINDOW.index );
+      if ( log_progress )
+        PROGRESS.m2_target_onset = TIMER.get_time( 'task' );
+        log_progress = false;
+      end
 %       if ( correct_target.in_bounds() )
 %         if ( isnan(last_pulse) )
 %           should_deliver = true;
@@ -175,6 +205,7 @@ while ( true )
 %       end
       if ( correct_target.duration_met() )
         %   MARK: goto: USE_RULE
+        STRUCTURE.m2_chose = correct_is;
         opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
         opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
         opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
@@ -184,7 +215,7 @@ while ( true )
         first_entry = true;
       end
       if ( incorrect_target.duration_met() )
-        %   opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
+        STRUCTURE.m2_chose = incorrect_is;
         %   MARK: goto: USE_RULE
         opts = debounce_arduino( opts, @set_choice, incorrect_is );
         STATES.current = STATES.use_rule;
@@ -206,21 +237,23 @@ while ( true )
   if ( STATES.current == STATES.use_rule )
     if ( first_entry )
       Screen( 'Flip', opts.WINDOW.index );
+      PROGRESS.m2_target_offset = TIMER.get_time( 'task' );
       opts = await_matching_state( opts );
+      PROGRESS.use_rule = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'use_rule' );
       response_target1 = STIMULI.response_target1;
       response_target2 = STIMULI.response_target2;
       response_target1.reset_targets();
       response_target2.reset_targets();
-      if ( opts.STRUCTURE.is_master_monkey )
+      if ( STRUCTURE.is_master_monkey )
         [opts, m2choice] = debounce_arduino( opts, @get_choice );
-        opts.STRUCTURE.correct_choice = m2choice;
+        STRUCTURE.m2_chose = m2choice;
       end
-      opts.STRUCTURE.did_choose = [];
+      STRUCTURE.m1_chose = [];
       first_entry = false;
     end
     TRACKER.update_coordinates();
-    if ( opts.STRUCTURE.is_master_monkey )
+    if ( STRUCTURE.is_master_monkey )
       response_target1.update_targets();
       response_target2.update_targets();
       response_target1.draw();
@@ -228,14 +261,14 @@ while ( true )
       Screen( 'Flip', opts.WINDOW.index );
     end
     if ( response_target1.duration_met() )
-      opts.STRUCTURE.did_choose = 1;
+      STRUCTURE.m1_chose = 1;
       %   MARK: goto: evaluate_choice
       STATES.current = STATES.evaluate_choice;
       opts = debounce_arduino( opts, @set_state, STATES.current );
       first_entry = true;
     end
     if ( response_target2.duration_met() )
-      opts.STRUCTURE.did_choose = 2;
+      STRUCTURE.m1_chose = 2;
       %   MARK: goto: evaluate_choice
       STATES.current = STATES.evaluate_choice;
       opts = debounce_arduino( opts, @set_state, STATES.current );
@@ -254,9 +287,10 @@ while ( true )
     if ( first_entry )
       Screen( 'Flip', opts.WINDOW.index );
       opts = await_matching_state( opts );
+      PROGRESS.evaluate_choice = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'evaluate_choice' );
-      if ( opts.STRUCTURE.is_master_monkey )
-        if ( isequal(opts.STRUCTURE.did_choose, opts.STRUCTURE.correct_choice) )
+      if ( STRUCTURE.is_master_monkey )
+        if ( isequal(STRUCTURE.m1_chose, STRUCTURE.m2_chose) )
           opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
         end
       end
@@ -275,6 +309,7 @@ while ( true )
     if ( first_entry )
       Screen( 'Flip', opts.WINDOW.index );
       opts = await_matching_state( opts );
+      PROGRESS.iti = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'iti' );
       first_entry = false;
     end
@@ -291,10 +326,17 @@ while ( true )
   if ( success ~= 0 )
     break;
   end
-  %   Quit if key is pressed
-  [key_pressed, ~, ~] = KbCheck();
+  %   Check if key is pressed
+  [key_pressed, ~, key_code] = KbCheck();
   if ( key_pressed )
-    break;
+    %   Quite if stop_key is pressed
+    if ( key_code(opts.INTERFACE.stop_key) )
+      break;
+    end
+    %   Deliver reward if reward key is pressed
+    if ( key_code(opts.INTERFACE.rwd_key) )
+      opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
+    end
   end
   %   Quit if time exceeds total time
   if ( TIMER.duration_met('task') )
@@ -304,7 +346,24 @@ end
 
 TRACKER.shutdown();
 
+data = struct();
+data.DATA = DATA;
+data.opts = opts;
+
+save( fullfile(IO.data_folder, IO.data_file), 'data' );
+
 end
+
+
+
+
+%{
+    private utilities
+%}
+
+
+
+
 
 function clear_screen(opts)
 
@@ -347,6 +406,7 @@ function opts = reset_arduino( opts )
 %     OUT:
 %       - `opts` (struct)
 
+if ( ~opts.INTERFACE.use_arduino ), return; end;
 opts.COMMUNICATOR.send_gaze( 'X', 0 );
 opts.COMMUNICATOR.send_gaze( 'Y', 0 );
 opts = set_state( opts, 0 );
@@ -418,6 +478,7 @@ function [opts, response] = get_choice( opts )
 
 %   GET_CHOICE -- Get M2's choice.
 
+if ( ~opts.INTERFACE.use_arduino ), response = []; return; end;
 opts.COMMUNICATOR.send( 'GET_CHOICE' );
 response = opts.COMMUNICATOR.await_and_return_non_null();
 response = str2double( response );
@@ -459,6 +520,7 @@ function [opts, tf] = states_match( opts )
 %     OUT:
 %       - `tf` (true, false)
 
+if ( ~opts.INTERFACE.use_arduino ), tf = true; return; end;
 [opts, tf] = matches_other( opts, 'COMPARE_STATES' );
 
 end
@@ -473,6 +535,7 @@ function [opts, tf] = gazes_match( opts )
 %     OUT:
 %       - `tf` (true, false)
 
+if ( ~opts.INTERFACE.use_arduino ), tf = true; return; end;
 [opts, tf] = matches_other( opts, 'COMPARE_GAZE' );
 
 end
@@ -487,6 +550,7 @@ function [opts, tf] = fix_met_match( opts )
 %     OUT:
 %       - `tf` (true, false)
 
+if ( ~opts.INTERFACE.use_arduino ), tf = true; return; end;
 if ( ~opts.INTERFACE.require_synch ), tf = true; return; end;
 [opts, tf] = matches_other( opts, 'COMPARE_FIX_MET' );
 
@@ -504,6 +568,7 @@ function opts = set_fix_met( opts, tf )
 %       - `opts` (struct) -- Options struct updated to reflect the last
 %         call to `set_state()`.
 
+if ( ~opts.INTERFACE.use_arduino ), return; end;
 opts.COMMUNICATOR.send_fix_met( tf );
 end
 
@@ -519,6 +584,7 @@ function opts = set_state( opts, state_num )
 %       - `opts` (struct) -- Options struct updated to reflect the last
 %         call to `set_state()`.
 
+if ( ~opts.INTERFACE.use_arduino ), return; end;
 opts.COMMUNICATOR.send_state( state_num );
 
 end
@@ -535,6 +601,7 @@ function opts = set_choice( opts, choice )
 %       - `opts` (struct) -- Options struct updated to reflect the last
 %         call to `set_state()`.
 
+if ( ~opts.INTERFACE.use_arduino ), tf = true; return; end;
 opts.COMMUNICATOR.send_choice( choice );
 end
 
@@ -555,9 +622,6 @@ function varargout = debounce_arduino( opts, func, varargin )
 %     OUT:
 %       - `varargout` (/any/) -- Various outputs as required by `func`.
 
-if ( ~opts.INTERFACE.use_arduino )
-  return;
-end
 while ( ~opts.TIMER.duration_met('debounce_arduino_messages') )
   %   wait
 end
@@ -582,9 +646,7 @@ function opts = set_reward_size( opts, index, sz )
 %       - `opts` (struct) -- Options struct updated to reflect the last
 %         reward size sent.
 
-if ( ~opts.INTERFACE.use_arduino )
-  return;
-end
+if ( ~opts.INTERFACE.use_arduino ), return; end;
 communicator = opts.COMMUNICATOR;
 %   get the character associated with the given reward index.
 reward_char = communicator.get_char( ['REWARD' num2str(index)] );
@@ -607,6 +669,8 @@ last_size = opts.REWARDS.last_reward_size;
 if ( isempty(last_size) || sz ~= last_size )
   opts = set_reward_size( opts, index, sz );
 end
+
+if ( ~opts.INTERFACE.use_arduino ), return; end;
 
 reward_str = sprintf( 'REWARD%d', index );
 opts.COMMUNICATOR.send( reward_str );
