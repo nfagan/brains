@@ -346,11 +346,12 @@ end
 
 TRACKER.shutdown();
 
-data = struct();
-data.DATA = DATA;
-data.opts = opts;
-
-save( fullfile(IO.data_folder, IO.data_file), 'data' );
+if ( opts.INTERFACE.save_data )
+  data = struct();
+  data.DATA = DATA;
+  data.opts = opts;
+  save( fullfile(IO.data_folder, IO.data_file), 'data' );
+end
 
 end
 

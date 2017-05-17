@@ -1,7 +1,7 @@
 function cleanup()
 
 sca;
-brains.util.close_ports();
+brains.arduino.close_ports();
 ListenChar( 0 );
 try
   Eyelink( 'StopRecording' )

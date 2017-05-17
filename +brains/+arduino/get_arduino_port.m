@@ -16,6 +16,7 @@ for i = 1:n_ports
   try
     comm = Communicator( messages, port, baud_rate );
     found_port = true;
+    comm.stop();
   catch err
     continue;
   end
@@ -26,6 +27,5 @@ if ( ~found_port )
   error( ['Could not locate any Arduinos. If an Arduino is plugged in,' ...
     , ' it must be setup with a slave.ino or master.ino file.'] );
 end
-
 
 end

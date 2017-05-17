@@ -17,17 +17,17 @@ ListenChar( 2 );
 IO.edf_file = 'tstx.edf';
 IO.edf_folder = cd;
 IO.data_file = 'tstx.mat';
-% IO.data_folder = 'C:\Repositories\brains\data';
-IO.data_folder = '/Volumes/My Passport/NICK/Chang Lab 2016/repositories/brains/brains/data';
-% IO.stimuli_path = 'C:\Repositories\brains\stimuli\m2';
-IO.stimuli_path = '/Volumes/My Passport/NICK/Chang Lab 2016/repositories/brains/brains/stimuli/m2';
+IO.data_folder = 'C:\Repositories\brains\data';
+IO.stimuli_path = 'C:\Repositories\brains\stimuli\m2';
+% IO.stimuli_path = '/Volumes/My Passport/NICK/Chang Lab 2016/repositories/brains/brains/stimuli/m2';
+% IO.data_folder = '/Volumes/My Passport/NICK/Chang Lab 2016/repositories/brains/brains/data';
 
 % assert__file_does_not_exist( fullfile(IO.data_folder, IO.data_file) );
 
 % - INTERFACE - %
-INTERFACE.use_mouse = true;
+INTERFACE.save_data = false;
 INTERFACE.use_eyelink = false;
-INTERFACE.use_arduino = false;
+INTERFACE.use_arduino = true;
 INTERFACE.require_synch = false;
 INTERFACE.rwd_key = KbName( 'r' );
 INTERFACE.stop_key = KbName( 'escape' );
