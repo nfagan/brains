@@ -9,17 +9,17 @@ else
 
   % Open socket and wait before sending data
   fopen(t);
-  pause(0.2);
+  pause(1);
 end
 
 ready = true;
-timeout = 10;
+timeout = 30;
 timer_id = tic;
 
 if ( ~is_server )  
   while ( true )
     if ( ready )
-      fwrite(t, [1, 65] );
+      fwrite(t, [1; 65] );
       ready = false;
     else
       ready = check_if_ready( t );
@@ -50,6 +50,7 @@ function ready = check_if_ready( t )
 
 ready = false;
 if ( t.BytesAvailable <= 0 ), return; end;
+disp( t.BytesAvailable );
 received = fread( t, 1 );
 if ( char(received) == 'A' )
   fprintf( '\n Success' );
