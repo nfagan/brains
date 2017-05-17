@@ -30,10 +30,11 @@ function EyeCal
 %     SerialInit(bReflective,bPaired);
     
     try
-        EYECALWin();
+        brains.calibrate.EYECALWin();
+        brains.task.cleanup();
     catch err
-      throw( err );
-        return;
+        brains.task.cleanup();
+        brains.util.print_error_stack( err );
     end
 %     SerialCleanup();
 end

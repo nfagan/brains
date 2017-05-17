@@ -1,6 +1,21 @@
 function EYECALWin()   % modified from eyecal_gka
 
-addpath( fullfile(fileparts(which(mfilename)), 'images') );
+Screen('Preference', 'SkipSyncTests', 0);
+
+import brains.calibrate.sharedWorkspace;
+import brains.calibrate.escapeHandler;
+import brains.calibrate.sleepWithKbCheck;
+
+addpath( genpath('C:\Repositories\arduino\communicator') );
+messages = struct( 'message', 'REWARD1', 'char', 'A' );
+port = 'COM3';
+baud_rate = 115200;
+comm = Communicator( {messages}, port, baud_rate );
+WaitSecs( 1 );
+comm.send_reward_size( 'A', 200 );
+
+% addpath( fullfile(fileparts(which(mfilename)), 'images') );
+img_path = 'C:\Repositories\brains\+brains\+calibrate\images';
 Pictures=1; %Enter 1 to show Monkey Pictures, Enter 0 for original squares
 NumMonkeys=5; %Number of monkeys to show per trial/fixation point
 
@@ -26,16 +41,20 @@ end
 
 %KbControlSWC('Start'); % Set up KbQueue* for key presses
 %HideCursor;
-[window, wRect] = Screen('OpenWindow', const.monkeyScreen, const.bgColor, [], 32);%#ok<*NASGU>
-newX = wRect(3)*const.nScreens;
-fullRect = [0, 0, newX, wRect(4)];
-disp( fullRect );
-sca;
+% [window, wRect] = Screen('OpenWindow', const.monkeyScreen, const.bgColor, [], 32);%#ok<*NASGU>
+% newX = wRect(3)*const.nScreens;
+% fullRect = [0, 0, newX, wRect(4)];
+% disp( fullRect );
+% sca;
+fullRect = [0 0 1024*3 768];
+% fullRect = [ 1024, 0, 2048, 768 ];
+calRect = [ 1024, 0, 2048, 768 ];
+
 [window, wRect] = Screen('OpenWindow', const.monkeyScreen, const.bgColor, fullRect );%#ok<*NASGU>
 
-blankScreen = Screen('OpenOffscreenWindow', const.monkeyScreen, const.bgColor, [], 32);
+% blankScreen = Screen('OpenOffscreenWindow', const.monkeyScreen, const.bgColor, [], 32);
 const.screenCenter = round([mean(wRect([1 3])) mean(wRect([2 4]))]);
-startEyelinkCal(wRect, nCalPts); % Open communications with Eyelink and put it into calibration mode
+startEyelinkCal(calRect, nCalPts); % Open communications with Eyelink and put it into calibration mode
 
 % Set up keys and functions to handle keypresses during the calibration
 % task:
@@ -63,9 +82,11 @@ keyHandlers(1).key = 'ESCAPE'; % Terminate the task
 keyHandlers(1).func = @escapeHandler;  % keyHandlers(1).func = @(x,y,z)(<cmd>) or
 keyHandlers(1).wake = true;            % keyHandlers(1).func = @Name Of Function
 keyHandlers(2).key = 'j';
+keyHandlers(3).key = 'r';
+keyHandlers(3).func = @() comm.send('REWARD1');
 %keyHandlers(2).func = @()(fprintf(serialthing,'%s','2'));  % or keyHandlers(2).func = {@J1, 100}; ... using empty func, (), is slightly fater
 
-Screen('CopyWindow',blankScreen,window,wRect,wRect); % Sync with the screen
+% Screen('CopyWindow',blankScreen,window,wRect,wRect); % Sync with the screen
 Screen('Flip',window);
 
 % Create a "shared workspace" to store data that needs to be accessed by multiple functions, but isn't appropriate for passing as arguments:
@@ -124,8 +145,9 @@ while sharedWorkspace('EYECALWin','keepGoing') %global workspace saves values ou
             imgfile{8}='m8.jpg';
             imgfile{9}='m9.jpg';
             imgfile{10}='m10.jpg';
+            imgfile = cellfun( @(x) fullfile(img_path, x), imgfile, 'un', false );
             d=1; %multiplier
-            targShape  = [-75 -75; 75  75].*d;
+            targShape  = [-50 -50; 50  50].*d;
             %targShape  = [-100 -100; 100  100].*d;
             %             targShape  = [-52 -52; 52  52];
             [dummy, targX, targY] = Eyelink('TargetCheck');
@@ -137,9 +159,10 @@ while sharedWorkspace('EYECALWin','keepGoing') %global workspace saves values ou
             Screen('Flip', window);
             WaitSecs(0.5);
             end
-        catch
-            Screen('CloseAll');
-            disp('Picture Error');
+        catch err
+            throw( err );
+%             Screen('CloseAll');
+%             disp('Picture Error');
         end
     end
     if Eyelink('CurrentMode')~=10
@@ -153,13 +176,18 @@ while sharedWorkspace('EYECALWin','keepGoing') %global workspace saves values ou
     if ~sharedWorkspace('EYECALWin','keepGoing');
         break;
     end       
+    
+    [key_pressed, ~, ~] = KbCheck();
+    if ( key_pressed )
+        comm.send( 'REWARD1' );
+    end
     % if RewardTrial % Reward
 
       %   fprintf(serialthing,'%s','2');
      %end    
     %fprintf('TRIAL %d CORRECT\n', trialNum);
     % Clear the screen:
-    Screen('CopyWindow', blankScreen, window, wRect, wRect);
+%     Screen('CopyWindow', blankScreen, window, wRect, wRect);
     Screen('Flip', window);
     % Wait the intertrial interval:
     sleepWithKbCheck(const.interTrial,keyHandlers);

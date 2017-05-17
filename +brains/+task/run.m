@@ -21,6 +21,9 @@ STIMULI = opts.STIMULI;
 
 first_entry = true;
 
+DATA = struct();
+TRIAL_NUMBER = 0;
+
 %   main loop
 while ( true )
   
@@ -29,6 +32,13 @@ while ( true )
     Screen( 'Flip', opts.WINDOW.index );
 %     opts = await_matching_state( opts );
     clear_screen( opts );
+    if ( TRIAL_NUMBER > 0 )
+      tn = TRIAL_NUMBER;
+%       DATA(tn).was_correct = was_correct;
+%       DATA(tn).made_choice = made_choice;
+%       DATA(tn).chosen_option = chosen_option;
+    end
+    TRIAL_NUMBER = TRIAL_NUMBER + 1;
     %   get correct choice
     opts.STRUCTURE.correct_choice = 1;
     %   get type of cue for this trial
@@ -60,7 +70,7 @@ while ( true )
       opts = debounce_arduino( opts, @set_fix_met, true );
       [opts, fix_was_met] = debounce_arduino( opts, @fix_met_match );
       if ( fix_was_met )
-%         opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
+        opts = debounce_arduino( opts, @reward, 1, 150 );
         %   MARK: goto: rule cue
         STATES.current = STATES.rule_cue;
         opts = debounce_arduino( opts, @set_state, STATES.current );
@@ -149,22 +159,25 @@ while ( true )
       incorrect_target.draw();
       correct_target.draw();
       Screen( 'Flip', opts.WINDOW.index );      
-      if ( correct_target.in_bounds() )
-        if ( isnan(last_pulse) )
-          should_deliver = true;
-          last_pulse = tic;
-        else
-          should_deliver = toc( last_pulse ) > opts.REWARDS.pulse_frequency;
-        end
-        if ( should_deliver )
-          opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
-          last_pulse = tic;
-        end
-      else
-        last_pulse = tic;
-      end
+%       if ( correct_target.in_bounds() )
+%         if ( isnan(last_pulse) )
+%           should_deliver = true;
+%           last_pulse = tic;
+%         else
+%           should_deliver = toc( last_pulse ) > opts.REWARDS.pulse_frequency;
+%         end
+%         if ( should_deliver )
+%           opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
+%           last_pulse = tic;
+%         end
+%       else
+%         last_pulse = tic;
+%       end
       if ( correct_target.duration_met() )
         %   MARK: goto: USE_RULE
+        opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
+        opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
+        opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
         opts = debounce_arduino( opts, @set_choice, correct_is );
         STATES.current = STATES.use_rule;
         opts = debounce_arduino( opts, @set_state, STATES.current );

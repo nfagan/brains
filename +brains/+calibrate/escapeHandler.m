@@ -1,3 +1,3 @@
 function escapeHandler
-    sharedWorkspace('EYECALWin','keepGoing',false);
+    brains.calibrate.sharedWorkspace('EYECALWin','keepGoing',false);
 end

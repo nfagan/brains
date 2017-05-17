@@ -35,8 +35,8 @@ WINDOW.index = windex;
 WINDOW.rect = wrect;
 
 % - INTERFACE - %
-INTERFACE.use_mouse = true;
-INTERFACE.use_eyelink = false;
+INTERFACE.use_mouse = false;
+INTERFACE.use_eyelink = true;
 INTERFACE.use_arduino = true;
 INTERFACE.require_synch = false;
 INTERFACE.stop_key = 'space';
@@ -65,18 +65,18 @@ STATES.sequence = state_sequence;
 
 % - TIMINGS - %
 fixations.fixation.duration = .3;
-fixations.left_rule_cue.duration = 2;
-fixations.right_rule_cue.duration = 2;
-fixations.response_target1.duration = .5;
-fixations.response_target2.duration = .5;
-fixations.gaze_cue_correct.duration = 3;
-fixations.gaze_cue_incorrect.duration = 3;
+fixations.left_rule_cue.duration = .2;
+fixations.right_rule_cue.duration = .2;
+fixations.response_target1.duration = .2;
+fixations.response_target2.duration = .2;
+fixations.gaze_cue_correct.duration = .2;
+fixations.gaze_cue_incorrect.duration = .2;
 
 time_in.task = Inf;
 time_in.fixation = Inf;
 time_in.rule_cue = 1;
-time_in.post_rule_cue = 3;
-time_in.use_rule = 1;
+time_in.post_rule_cue = 6;
+time_in.use_rule = 2;
 time_in.evaluate_choice = 0;
 time_in.iti = 1;
 time_in.debounce_arduino_messages = .1;
@@ -144,16 +144,20 @@ STIMULI.rule_cue_laser = Rectangle( WINDOW.index, WINDOW.rect, [250, 250] );
 STIMULI.rule_cue_laser.color = [178, 17, 57];
 STIMULI.rule_cue_laser.put( 'center' );
 
-STIMULI.gaze_cue_correct = Image( WINDOW.index, WINDOW.rect, [250, 250], image_files{1} );
+STIMULI.gaze_cue_correct = Image( WINDOW.index, WINDOW.rect, [300, 300], image_files{1} );
 STIMULI.gaze_cue_correct.color = [50, 150, 57];
 STIMULI.gaze_cue_correct.put( 'center-left' );
 
-STIMULI.gaze_cue_incorrect = Image( WINDOW.index, WINDOW.rect, [250, 250], image_files{2} );
+STIMULI.gaze_cue_incorrect = Image( WINDOW.index, WINDOW.rect, [300, 300], image_files{2} );
 STIMULI.gaze_cue_incorrect.color = [178, 17, 20];
 STIMULI.gaze_cue_incorrect.put( 'center-right' );
 %   set up gaze targets
 STIMULI.gaze_cue_correct.make_target( TRACKER, fixations.gaze_cue_correct.duration );
 STIMULI.gaze_cue_incorrect.make_target( TRACKER, fixations.gaze_cue_incorrect.duration );
+bounds1 = STIMULI.gaze_cue_correct.targets{1}.bounds;
+bounds2 = STIMULI.gaze_cue_incorrect.targets{1}.bounds;
+STIMULI.gaze_cue_correct.targets{1}.bounds = [bounds1(1)-100, bounds1(2)-100, bounds1(3)+100, bounds1(4)+100];
+STIMULI.gaze_cue_incorrect.targets{1}.bounds = [bounds2(1)-100, bounds2(2)-100, bounds2(3)+100, bounds2(4)+100];
 
 STIMULI.response_target1 = Rectangle( WINDOW.index, WINDOW.rect, [250, 250] );
 STIMULI.response_target1.color = [17, 41, 178];
@@ -167,7 +171,7 @@ STIMULI.response_target1.make_target( TRACKER, fixations.response_target1.durati
 STIMULI.response_target2.make_target( TRACKER, fixations.response_target2.duration );
 
 % - REWARDS - %
-REWARDS.main = 100; % ms
+REWARDS.main = 250; % ms
 REWARDS.pulse_frequency = .5;
 REWARDS.last_reward_size = []; % ms
 
