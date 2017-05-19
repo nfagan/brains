@@ -602,7 +602,7 @@ function opts = set_choice( opts, choice )
 %       - `opts` (struct) -- Options struct updated to reflect the last
 %         call to `set_state()`.
 
-if ( ~opts.INTERFACE.use_arduino ), tf = true; return; end;
+if ( ~opts.INTERFACE.use_arduino ), return; end;
 opts.COMMUNICATOR.send_choice( choice );
 end
 
@@ -623,6 +623,7 @@ function varargout = debounce_arduino( opts, func, varargin )
 %     OUT:
 %       - `varargout` (/any/) -- Various outputs as required by `func`.
 
+if ( ~opts.INTERFACE.use_arduino ), return; end;
 while ( ~opts.TIMER.duration_met('debounce_arduino_messages') )
   %   wait
 end
