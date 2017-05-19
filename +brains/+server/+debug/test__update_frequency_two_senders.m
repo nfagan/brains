@@ -57,8 +57,8 @@ comm.update();
 
 disp( 'Instruction rate:' );
 fprintf( '\n%0.4f ops/second \n\n', i / (completed_time-first_message_time) );
-disp( 'Average inter-instruction interval:' );
-disp( num2str(mean(diff(msg_times(~isnan(msg_times))))) );
+disp( 'Average inter-instruction interval (ms):' );
+disp( num2str(1e3*mean(diff(msg_times(~isnan(msg_times))))) );
 disp( 'Gaze:' );
 disp( comm.DATA.gaze );
 disp( 'Number of iterations' );
