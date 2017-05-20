@@ -17,6 +17,7 @@ classdef IPInterface < handle
         , 'state_s',    'S',  'state_r', 's' ...
         , 'choice_s',   'C',  'choice_r', 'c' ...
     );
+    TIMEOUTS = struct( 'send_ready', 5 );
     DEBUG = false;
   end
   
@@ -97,7 +98,7 @@ classdef IPInterface < handle
       %   SEND -- Queue the sending of data of a specific kind.
       %
       %     IN:
-      %       - `kind` (char)
+      %       - `kind` (char) -- e.g., 'gaze'
       %       - `data` (double)
       
       switch ( kind )
@@ -123,6 +124,28 @@ classdef IPInterface < handle
       %       - `data` (double)
       
       fwrite( obj.tcp, data, 'double' );
+    end
+    
+    function send_when_ready(obj, varargin)
+      
+      %   SEND_WHEN_READY -- Wait until data can be sent, then send the
+      %     data.
+      %
+      %     IN:
+      %       - `varargin` (cell array) -- Inputs to be passed to send().
+      %
+      %     See also send
+      
+      timeout_check = tic;
+      while ( ~obj.can_send )
+        obj.update();
+        if ( toc(timeout_check) > obj.TIMEOUTS.send_ready )
+          error( ['Did not receive permission to send data within %0.1f' ...
+            , ' seconds.'], obj.TIMEOUTS.send_ready );
+        end
+      end
+      obj.send( varargin{:} );
+      obj.update();
     end
     
     function request(obj, kind)

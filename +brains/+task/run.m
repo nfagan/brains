@@ -33,7 +33,6 @@ while ( true )
   %   STATE NEW_TRIAL
   if ( STATES.current == STATES.new_trial )
     Screen( 'Flip', opts.WINDOW.index );
-    clear_screen( opts );
     if ( TRIAL_NUMBER > 0 )
       tn = TRIAL_NUMBER;
       DATA(tn).trial_number = tn;
