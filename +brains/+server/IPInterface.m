@@ -16,8 +16,9 @@ classdef IPInterface < handle
         , 'gaze_s',     'X',  'gaze_r', 'x' ...
         , 'state_s',    'S',  'state_r', 's' ...
         , 'choice_s',   'C',  'choice_r', 'c' ...
+        , 'fix_met_s',  'F',  'fix_met_r', 'f' ...
     );
-    TIMEOUTS = struct( 'send_ready', 5 );
+    TIMEOUTS = struct( 'send_ready', 5, 'awaits', 5 );
     DEBUG = false;
   end
   
@@ -38,7 +39,7 @@ classdef IPInterface < handle
       obj.address = address;
       obj.port = port;
       obj.network_role = network_role;
-      
+      %   DEFAULTS
       obj.defaults.DATA.gaze = [ NaN; NaN ];
       obj.defaults.DATA.state = NaN;
       obj.defaults.DATA.choice = NaN;
@@ -108,6 +109,8 @@ classdef IPInterface < handle
           id = obj.CHARS.state_s;
         case 'choice'
           id = obj.CHARS.choice_s;
+        case 'fix_met'
+          id = obj.CHARS.fix_met_s;
         otherwise
           error( 'Unrecognized data-kind ''%s''', kind );
       end
@@ -162,6 +165,8 @@ classdef IPInterface < handle
           id = obj.CHARS.state_r;
         case 'choice'
           id = obj.CHARS.choice_r;
+        case 'fix_met'
+          id = obj.CHARS.fix_met_r;
         otherwise
           error( 'Unrecognized data-kind ''%s''', kind );
       end
@@ -207,6 +212,14 @@ classdef IPInterface < handle
         % - outgoing choice data
         case chars.choice_r
           handle_data_receipt( 'choice' );
+        
+        % - incoming fix_met data
+        case chars.fix_met_s
+          handle_data_send( 'fix_met', response(2) );
+          
+        % - outgoing fix_met data
+        case chars.fix_met_r
+          handle_data_receipt( 'fix_met' );
           
         otherwise
           error( 'Unrecognized receipt identifer ''%s''', identifier );
@@ -285,6 +298,49 @@ classdef IPInterface < handle
         , ' does not exist.'], kind );
       data = obj.DATA.(kind);
       obj.DATA.(kind) = obj.defaults.DATA.(kind);
+    end
+    
+    %{
+        TASK SPECIFIC METHODS
+    %}
+    
+    function await_matching_state(obj, state)
+      
+      %   AWAIT_MATCHING_STATE -- Wait until the partner's state matches
+      %     the current state.
+      %
+      %     IN:
+      %       - `state` (double) -- State to match.
+      
+      timeout_check = tic;
+      timeout_amt = obj.TIMEOUTS.awaits;
+      while ( obj.DATA.state ~= state )
+        if ( toc(timeout_check) > timeout_amt )
+          error( 'Synchronization timed-out (%0.1f seconds ellapsed).' ...
+            , timeout_amt );
+        end
+        obj.update();
+      end
+      obj.consume( 'state' );
+    end
+    
+    function choice = await_choice(obj)
+      
+      %   AWAIT_CHOICE -- Await the receipt of M2's choice.
+      %
+      %     OUT:
+      %       - `choice` (double) -- M2's choice.
+      
+      timeout_amt = obj.TIMEOUTS.awaits;
+      timeout_check = tic;
+      while ( isnan(obj.DATA.choice) )
+        if ( toc(timeout_check) > timeout_amt )
+          error( 'Choice receipt timed-out (%0.1f seconds ellapsed).' ...
+            , timeout_amt );
+        end
+        obj.update();
+      end
+      choice = obj.consume( 'choice' );
     end
   end
   
