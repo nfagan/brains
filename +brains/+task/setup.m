@@ -79,13 +79,13 @@ STATES.current = [];
 STATES.sequence = state_sequence;
 
 % - TIMINGS - %
-fixations.fixation.duration = .3;
-fixations.left_rule_cue.duration = .2;
-fixations.right_rule_cue.duration = .2;
-fixations.response_target1.duration = .2;
-fixations.response_target2.duration = .2;
-fixations.gaze_cue_correct.duration = .2;
-fixations.gaze_cue_incorrect.duration = .2;
+fixations.fixation = .3;
+fixations.left_rule_cue = .2;
+fixations.right_rule_cue = .2;
+fixations.response_target1 = .2;
+fixations.response_target2 = .2;
+fixations.gaze_cue_correct = .2;
+fixations.gaze_cue_incorrect = .2;
 
 time_in.task = Inf;
 time_in.fixation = Inf;
@@ -161,7 +161,7 @@ STIMULI.fixation = Rectangle( WINDOW.index, WINDOW.rect, [150, 150] );
 STIMULI.fixation.color = [96, 110, 132];
 STIMULI.fixation.put( 'center' );
 %   set up gaze targets
-STIMULI.fixation.make_target( TRACKER, fixations.fixation.duration );
+STIMULI.fixation.make_target( TRACKER, fixations.fixation );
 
 STIMULI.rule_cue_gaze = Rectangle( WINDOW.index, WINDOW.rect, [250, 250] );
 STIMULI.rule_cue_gaze.color = [151, 17, 178];
@@ -179,12 +179,10 @@ STIMULI.gaze_cue_incorrect = Image( WINDOW.index, WINDOW.rect, [300, 300], image
 STIMULI.gaze_cue_incorrect.color = [178, 17, 20];
 STIMULI.gaze_cue_incorrect.put( 'center-right' );
 %   set up gaze targets
-STIMULI.gaze_cue_correct.make_target( TRACKER, fixations.gaze_cue_correct.duration );
-STIMULI.gaze_cue_incorrect.make_target( TRACKER, fixations.gaze_cue_incorrect.duration );
-bounds1 = STIMULI.gaze_cue_correct.targets{1}.bounds;
-bounds2 = STIMULI.gaze_cue_incorrect.targets{1}.bounds;
-STIMULI.gaze_cue_correct.targets{1}.bounds = [bounds1(1)-100, bounds1(2)-100, bounds1(3)+100, bounds1(4)+100];
-STIMULI.gaze_cue_incorrect.targets{1}.bounds = [bounds2(1)-100, bounds2(2)-100, bounds2(3)+100, bounds2(4)+100];
+STIMULI.gaze_cue_correct.make_target( TRACKER, fixations.gaze_cue_correct );
+STIMULI.gaze_cue_incorrect.make_target( TRACKER, fixations.gaze_cue_incorrect );
+STIMULI.gaze_cue_correct.targets{1}.padding = 100;
+STIMULI.gaze_cue_incorrect.targets{1}.padding = 100;
 
 STIMULI.response_target1 = Rectangle( WINDOW.index, WINDOW.rect, [250, 250] );
 STIMULI.response_target1.color = [17, 41, 178];
@@ -194,8 +192,8 @@ STIMULI.response_target2 = Rectangle( WINDOW.index, WINDOW.rect, [250, 250] );
 STIMULI.response_target2.color = [178, 178, 17];
 STIMULI.response_target2.put( 'center-right' );
 %   set up gaze targets
-STIMULI.response_target1.make_target( TRACKER, fixations.response_target1.duration );
-STIMULI.response_target2.make_target( TRACKER, fixations.response_target2.duration );
+STIMULI.response_target1.make_target( TRACKER, fixations.response_target1 );
+STIMULI.response_target2.make_target( TRACKER, fixations.response_target2 );
 
 % - REWARDS - %
 REWARDS.main = 250; % ms
@@ -219,3 +217,8 @@ opts.REWARDS =        REWARDS;
 opts.TRACKER =        TRACKER;
 
 end
+
+% bounds1 = STIMULI.gaze_cue_correct.targets{1}.bounds;
+% bounds2 = STIMULI.gaze_cue_incorrect.targets{1}.bounds;
+% STIMULI.gaze_cue_correct.targets{1}.bounds = [bounds1(1)-100, bounds1(2)-100, bounds1(3)+100, bounds1(4)+100];
+% STIMULI.gaze_cue_incorrect.targets{1}.bounds = [bounds2(1)-100, bounds2(2)-100, bounds2(3)+100, bounds2(4)+100];

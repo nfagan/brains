@@ -170,7 +170,7 @@ classdef IPInterface < handle
         otherwise
           error( 'Unrecognized data-kind ''%s''', kind );
       end
-      buffer = zeros( 32, 1 );
+      buffer = zeros( obj.PACKET_SIZE, 1 );
       buffer(1) = real( id );
       obj.outbox{end+1} = { @send_, {buffer} };
     end
@@ -186,7 +186,8 @@ classdef IPInterface < handle
       switch ( identifier )
         % - sent acknowledgement
         case chars.can_send
-          obj.assert__received_n_values( response, 32, 'the acknowledgement' );
+          obj.assert__received_n_values( response, obj.PACKET_SIZE ...
+            , 'the acknowledgement' );
           obj.can_send = true;
           
         % - incoming gaze data
@@ -234,7 +235,7 @@ classdef IPInterface < handle
         %       - `data` (double) -- Data to assign.
         
         msg = sprintf( 'the sent %s data', kind );
-        obj.assert__received_n_values( response, 32, msg );
+        obj.assert__received_n_values( response, obj.PACKET_SIZE, msg );
         obj.DATA.( kind ) = data;
         obj.receipt_ready_();
       end      
@@ -247,7 +248,7 @@ classdef IPInterface < handle
         %       - `kind` (char) -- Kind of data; e.g., 'choice'
         
         msg = sprintf( 'the sent %s data', kind );
-        obj.assert__received_n_values( response, 32, msg );
+        obj.assert__received_n_values( response, obj.PACKET_SIZE, msg );
         obj.send( kind, obj.DATA.(kind) );
         obj.consume( kind );
       end
@@ -294,7 +295,7 @@ classdef IPInterface < handle
       %       - `data` (double)
       
       fs = fieldnames( obj.DATA );
-      assert( any(strcmp(fs, kind)), ['The requested data-kind ''%''' ...
+      assert( any(strcmp(fs, kind)), ['The requested data-kind ''%s''' ...
         , ' does not exist.'], kind );
       data = obj.DATA.(kind);
       obj.DATA.(kind) = obj.defaults.DATA.(kind);

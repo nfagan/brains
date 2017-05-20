@@ -95,13 +95,12 @@ while ( true )
     if ( fix_targ.duration_met() )
       PROGRESS.fixation_acquired = TIMER.get_time( 'task' );
       tcp_comm.send_when_ready( 'fix_met', 1 );
-      fix_was_met = tcp_comm.consume( 'fix_met' );
-      fix_was_met = ~isnan( fix_was_met ) && fix_was_met ~= 0;
+      fix_was_met = tcp_comm.consume( 'fix_met' ) == 1;
       if ( fix_was_met )
         opts = debounce_arduino( opts, @reward, 1, 150 );
         %   MARK: goto: rule cue
         STATES.current = STATES.rule_cue;
-        opts = debounce_arduino( opts, @set_state, STATES.current );
+        tcp_comm.send_when_ready( 'state', STATES.current );
         first_entry = true;
       else
         if ( ~fix_targ.in_bounds() )
