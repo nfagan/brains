@@ -4,3 +4,4 @@
 *.edf
 archive/
 data/
++brains/+config/config.mat
