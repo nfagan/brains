@@ -1,7 +1,7 @@
-function err = start(is_master_arduino, is_master_monkey)
+function err = start(opts)
 
 try
-  opts = brains.task.setup( is_master_arduino, is_master_monkey );
+  opts = brains.task.setup( opts );
 catch err
   brains.task.cleanup();
   brains.util.print_error_stack( err );

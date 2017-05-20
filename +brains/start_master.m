@@ -1,5 +1,9 @@
-function start_master()
+function start_master(opts)
 
-brains.task.start( true, true );
+if ( nargin == 0 )
+  opts = struct( 'is_master_monkey', true, 'is_master_arduino', true );
+end
+
+brains.task.start( opts );
 
 end

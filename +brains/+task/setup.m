@@ -1,9 +1,13 @@
-function opts = setup( is_master_arduino, is_master_monkey )
+function opts = setup( opts )
 
 %   SETUP -- Define constants and initial settings.
 %
-%   OUT:
-%     - `opts` (struct)
+%     IN:
+%       - `opts` (struct) -- Global interface options to override the
+%         defaults below. Pass in an empty struct to avoid the override.
+%
+%     OUT:
+%       - `opts` (struct) -- Complete options 
 
 import brains.util.assert__file_does_not_exist;
 
@@ -31,7 +35,13 @@ INTERFACE.use_arduino = false;
 INTERFACE.require_synch = false;
 INTERFACE.rwd_key = KbName( 'r' );
 INTERFACE.stop_key = KbName( 'escape' );
-INTERFACE.is_master_arduino = is_master_arduino;
+INTERFACE.is_master_arduino = true;
+INTERFACE.is_master_monkey = true;
+
+opt_fields = fieldnames( opts );
+for i = 1:numel(opt_fields)
+  INTERFACE.(opt_fields{i}) = opts.(opt_fields{i});
+end
 
 % - META - %
 META.m1 = '';
@@ -46,7 +56,7 @@ SCREEN.background_color = [ 0 0 0 ];
 SCREEN.rect = [];
 
 sz = get( 0, 'screensize' );
-if ( is_master_monkey )
+if ( INTERFACE.is_master_monkey )
 %   SCREEN.rect = [ 0, 0, sz(3)/2, sz(4) ];
   SCREEN.rect = [ 0, 0, sz(3)/2, sz(4)/2 ];
 else
@@ -75,7 +85,7 @@ success = TRACKER.init();
 assert( success, 'Eyelink initialization failed.' );
 
 % - STRUCTURE - %
-STRUCTURE.is_master_monkey = is_master_monkey;
+STRUCTURE.is_master_monkey = INTERFACE.is_master_monkey;
 STRUCTURE.correct_choice = [];
 STRUCTURE.did_choose = [];
 STRUCTURE.rule_cue_type = 'gaze';
@@ -123,7 +133,7 @@ shared_messages = { ...
   struct('message', 'COMPARE_FIX_MET', 'char', 'w') ...
   struct('message', 'GET_CHOICE', 'char', '?' ) ...
 };
-if ( is_master_arduino )
+if ( INTERFACE.is_master_arduino )
   master_messages = { ...
     struct('message', 'REWARD1', 'char', 'A'), ...
     struct('message', 'REWARD2', 'char', 'B'), ...
@@ -144,7 +154,7 @@ if ( INTERFACE.use_arduino )
 else COMMUNICATORS.serial_comm = [];
 end
 
-if ( is_master_monkey )
+if ( INTERFACE.is_master_monkey )
   others_address = '0.0.0.0';
   tcp_comm_constructor = @brains.server.Server;
 else
@@ -193,8 +203,8 @@ STIMULI.gaze_cue_incorrect.put( 'center-right' );
 %   set up gaze targets
 STIMULI.gaze_cue_correct.make_target( TRACKER, fixations.gaze_cue_correct );
 STIMULI.gaze_cue_incorrect.make_target( TRACKER, fixations.gaze_cue_incorrect );
-STIMULI.gaze_cue_correct.targets{1}.padding = 0;
-STIMULI.gaze_cue_incorrect.targets{1}.padding = 0;
+STIMULI.gaze_cue_correct.targets{1}.padding = 100;
+STIMULI.gaze_cue_incorrect.targets{1}.padding = 100;
 
 STIMULI.response_target1 = Rectangle( WINDOW.index, WINDOW.rect, [250, 250] );
 STIMULI.response_target1.color = [17, 41, 178];
@@ -213,6 +223,7 @@ REWARDS.pulse_frequency = .5;
 REWARDS.last_reward_size = []; % ms
 
 %   output as one struct
+opts = struct();
 opts.IO =             IO;
 opts.INTERFACE =      INTERFACE;
 opts.META =           META;
