@@ -29,6 +29,7 @@ while ( true )
   %   STATE NEW_TRIAL
   if ( STATES.current == STATES.new_trial )
     Screen( 'Flip', opts.WINDOW.index );
+    disp( 'Entered new_trial' );
     if ( TRIAL_NUMBER > 0 )
       tn = TRIAL_NUMBER;
       DATA(tn).trial_number = tn;
@@ -74,15 +75,18 @@ while ( true )
   if ( STATES.current == STATES.fixation )
     if ( first_entry )
       Screen( 'Flip', opts.WINDOW.index );
-      tcp_comm.await_matching_state();
+      disp( 'Entered fixation' );
+      tcp_comm.await_matching_state( STATES.current );
       TIMER.reset_timers( 'fixation' );
       fix_targ = STIMULI.fixation;
       fix_targ.reset_targets();
       fix_targ.blink( 0 );
-      tcp_comm.send_when_ready( 'fix_met', 0 );
       log_progress = true;
+      fix_met = 0;
+      tcp_comm.send_when_ready( 'fix_met', fix_met );
       first_entry = false;
     end
+    tcp_comm.update();
     TRACKER.update_coordinates();
     structfun( @(x) x.update(), ROIS );
     fix_targ.update_targets();
@@ -93,22 +97,24 @@ while ( true )
       log_progress = false;
     end
     if ( fix_targ.duration_met() )
+      disp( 'Met fixation' );
       PROGRESS.fixation_acquired = TIMER.get_time( 'task' );
-      tcp_comm.send_when_ready( 'fix_met', 1 );
-      fix_was_met = tcp_comm.consume( 'fix_met' ) == 1;
-      if ( fix_was_met )
+      if ( opts.INTERFACE.require_synch )
+        other_fix_met = tcp_comm.consume( 'fix_met' ) == 1;
+      else other_fix_met = 1;
+      end
+      fix_met = 1;
+      if ( other_fix_met )
         opts = debounce_arduino( opts, @reward, 1, 150 );
         %   MARK: goto: rule cue
         STATES.current = STATES.rule_cue;
         tcp_comm.send_when_ready( 'state', STATES.current );
         first_entry = true;
-      else
-        if ( ~fix_targ.in_bounds() )
-          tcp_comm.send_when_ready( 'fix_met', 0 );
-          fix_targ.reset_targets();
-        end
       end
+    else
+      fix_met = 0;
     end
+    tcp_comm.send_when_ready( 'fix_met', fix_met );
     if ( TIMER.duration_met('fixation') )
       %   MARK: goto: rule cue
       STATES.current = STATES.rule_cue;
@@ -121,7 +127,8 @@ while ( true )
   if ( STATES.current == STATES.rule_cue )
     if ( first_entry )
       Screen( 'Flip', opts.WINDOW.index );
-      tcp_comm.await_matching_state();
+      disp( 'Entered rule cue' );
+      tcp_comm.await_matching_state( STATES.current );
       PROGRESS.rule_cue = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'rule_cue' );
       gaze_cue = STIMULI.rule_cue_gaze;
@@ -156,8 +163,9 @@ while ( true )
   if ( STATES.current == STATES.post_rule_cue ) 
     if ( first_entry )
       Screen( 'Flip', opts.WINDOW.index );
+      disp( 'Entered post rule cue' );
       PROGRESS.rule_cue_offset = TIMER.get_time( 'task' );
-      tcp_comm.await_matching_state();
+      tcp_comm.await_matching_state( STATES.current );
       PROGRESS.post_rule_cue = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'post_rule_cue' );
       correct_target = STIMULI.gaze_cue_correct;
@@ -189,24 +197,30 @@ while ( true )
         opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
         opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
         opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
-        STATES.current = STATES.use_rule;
         tcp_comm.send_when_ready( 'choice', correct_is );
-        tcp_comm.send_when_ready( 'state', STATES.current );
-        first_entry = true;
+        if ( ~opts.INTERFACE.require_synch )
+          %   MARK: goto: USE_RULE
+          STATES.current = STATES.use_rule;
+          first_entry = true;
+        end
       end
       if ( incorrect_target.duration_met() )
         STRUCTURE.m2_chose = incorrect_is;
-        %   MARK: goto: USE_RULE
         tcp_comm.send_when_ready( 'choice', incorrect_is );
-        STATES.current = STATES.use_rule;
-        tcp_comm.send_when_ready( 'state', STATES.current );
-        first_entry = true;
+        if ( ~opts.INTERFACE.require_synch )
+          %   MARK: goto: USE_RULE
+          STATES.current = STATES.use_rule;
+          first_entry = true;
+        end
       end
     else
       Screen( 'Flip', opts.WINDOW.index );
     end
     if ( TIMER.duration_met('post_rule_cue') )
       %   MARK: goto: USE_RULE
+      if ( is_slave && isempty(STRUCTURE.m2_chose) )
+        tcp_comm.send_when_ready( 'choice', 0 );
+      end
       STATES.current = STATES.use_rule;
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
@@ -217,8 +231,9 @@ while ( true )
   if ( STATES.current == STATES.use_rule )
     if ( first_entry )
       Screen( 'Flip', opts.WINDOW.index );
+      disp( 'Entered use rule cue' );
       PROGRESS.m2_target_offset = TIMER.get_time( 'task' );
-      tcp_comm.await_matching_state();
+      tcp_comm.await_matching_state( STATES.current );
       PROGRESS.use_rule = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'use_rule' );
       response_target1 = STIMULI.response_target1;
@@ -238,25 +253,39 @@ while ( true )
       response_target1.draw();
       response_target2.draw();
       Screen( 'Flip', opts.WINDOW.index );
-    end
-    if ( response_target1.duration_met() )
-      STRUCTURE.m1_chose = 1;
-      %   MARK: goto: evaluate_choice
-      STATES.current = STATES.evaluate_choice;
-      tcp_comm.send_when_ready( 'state', STATES.CURRENT );
-      first_entry = true;
-    end
-    if ( response_target2.duration_met() )
-      STRUCTURE.m1_chose = 2;
-      %   MARK: goto: evaluate_choice
-      STATES.current = STATES.evaluate_choice;
-      tcp_comm.send_when_ready( 'state', STATES.CURRENT );
-      first_entry = true;
+      if ( response_target1.duration_met() )
+        STRUCTURE.m1_chose = 1;
+        %   MARK: goto: evaluate_choice
+        STATES.current = STATES.evaluate_choice;
+        tcp_comm.send_when_ready( 'choice', 1 );
+        tcp_comm.send_when_ready( 'state', STATES.current );
+        first_entry = true;
+      end
+      if ( response_target2.duration_met() )
+        STRUCTURE.m1_chose = 2;
+        %   MARK: goto: evaluate_choice
+        STATES.current = STATES.evaluate_choice;
+        tcp_comm.send_when_ready( 'choice', 2 );
+        tcp_comm.send_when_ready( 'state', STATES.current );
+        first_entry = true;
+      end
+    else
+      received_m1_choice = tcp_comm.consume( 'choice' );
+      if ( ~isnan(received_m1_choice) )
+        disp( 'slave: Received choice value from master' );
+        %   MARK: goto: evaluate_choice
+        STATES.current = STATES.evaluate_choice;
+        tcp_comm.send_when_ready( 'state', STATES.current );
+        first_entry = true;
+      end
     end
     if ( TIMER.duration_met('use_rule') )
+      if ( STRUCTURE.is_master_monkey && isempty(STRUCTURE.m1_chose) )
+        tcp_comm.send_when_ready( 'choice', 0 );
+      end
       %   MARK: goto: evaluate_choice
       STATES.current = STATES.evaluate_choice;
-      tcp_comm.send_when_ready( 'state', STATES.CURRENT );
+      tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
     end
   end
@@ -264,8 +293,9 @@ while ( true )
   %   STATE EVALUATE_CHOICE
   if ( STATES.current == STATES.evaluate_choice )
     if ( first_entry )
+      disp( 'Entered evaluate_choie' );
       Screen( 'Flip', opts.WINDOW.index );
-      tcp_comm.await_matching_state();
+      tcp_comm.await_matching_state( STATES.current );
       PROGRESS.evaluate_choice = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'evaluate_choice' );
       if ( STRUCTURE.is_master_monkey )
@@ -278,7 +308,7 @@ while ( true )
     if ( TIMER.duration_met('evaluate_choice') )
       %   MARK: goto: iti
       STATES.current = STATES.iti;
-      tcp_comm.send_when_ready( 'state', STATES.CURRENT );
+      tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
     end
   end
@@ -286,8 +316,9 @@ while ( true )
   %   STATE ITI
   if ( STATES.current == STATES.iti )
     if ( first_entry )
+      disp( 'Entered ITI' );
       Screen( 'Flip', opts.WINDOW.index );
-      tcp_comm.await_matching_state();
+      tcp_comm.await_matching_state( STATES.current );
       PROGRESS.iti = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'iti' );
       first_entry = false;
@@ -295,7 +326,7 @@ while ( true )
     if ( TIMER.duration_met('iti') )
       %   MARK: goto: new_trial
       STATES.current = STATES.new_trial;
-      tcp_comm.send_when_ready( 'state', STATES.CURRENT );
+      tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
     end
   end
@@ -584,7 +615,7 @@ function varargout = debounce_arduino( opts, func, varargin )
 %     OUT:
 %       - `varargout` (/any/) -- Various outputs as required by `func`.
 
-if ( ~opts.INTERFACE.use_arduino ), return; end;
+if ( ~opts.INTERFACE.use_arduino ), varargout{1} = opts; return; end;
 while ( ~opts.TIMER.duration_met('debounce_arduino_messages') )
   %   wait
 end

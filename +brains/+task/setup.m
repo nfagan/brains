@@ -8,10 +8,11 @@ function opts = setup( is_master_arduino, is_master_monkey )
 import brains.util.assert__file_does_not_exist;
 
 PsychDefaultSetup( 1 );
-ListenChar( 2 );
+ListenChar();
 
 % - IO - %
-IO.repo_folder = 'C:\Repositories';
+% IO.repo_folder = 'C:\Repositories';
+IO.repo_folder = '/Volumes/My Passport/NICK/Chang Lab 2016/repositories/brains';
 IO.edf_file = 'tstx.edf';
 IO.data_file = 'tstx.mat';
 IO.edf_folder = fullfile( IO.repo_folder, 'brains', 'data' );
@@ -21,12 +22,12 @@ IO.stimuli_path = fullfile( IO.repo_folder, 'brains', 'stimuli', 'm2' );
 addpath( genpath(fullfile(IO.repo_folder, 'ptb_helpers')) );
 addpath( genpath(fullfile(IO.repo_folder, 'arduino', 'communicator')) );
 
-assert__file_does_not_exist( fullfile(IO.data_folder, IO.data_file) );
+% assert__file_does_not_exist( fullfile(IO.data_folder, IO.data_file) );
 
 % - INTERFACE - %
 INTERFACE.save_data = false;
 INTERFACE.use_eyelink = false;
-INTERFACE.use_arduino = true;
+INTERFACE.use_arduino = false;
 INTERFACE.require_synch = false;
 INTERFACE.rwd_key = KbName( 'r' );
 INTERFACE.stop_key = KbName( 'escape' );
@@ -43,6 +44,16 @@ SCREEN.index = 0;
 SCREEN.background_color = [ 0 0 0 ];
 % SCREEN.rect = [ 0 0, 1024*3, 768 ];
 SCREEN.rect = [];
+
+sz = get( 0, 'screensize' );
+if ( is_master_monkey )
+%   SCREEN.rect = [ 0, 0, sz(3)/2, sz(4) ];
+  SCREEN.rect = [ 0, 0, sz(3)/2, sz(4)/2 ];
+else
+  SCREEN.rect = [ 0, 0, sz(3)/2, sz(4)/2 ];
+%   SCREEN.rect = [ 0, sz(4)/2, sz(3)/2, sz(4) ];
+%   SCREEN.rect = [ sz(3)/2, 0, sz(3), sz(4) ];
+end
 
 % - WINDOW - %
 WINDOW.index = [];
@@ -137,11 +148,12 @@ if ( is_master_monkey )
   others_address = '0.0.0.0';
   tcp_comm_constructor = @brains.server.Server;
 else
-  others_address = '0.0.0.0';
+  others_address = '127.0.0.1';
   tcp_comm_constructor = @brains.server.Client;
 end
 tcp_port = 55e3;
 tcp_comm = tcp_comm_constructor( others_address, tcp_port );
+tcp_comm.bypass = ~INTERFACE.require_synch;
 tcp_comm.start();
 
 COMMUNICATORS.tcp_comm = tcp_comm;
@@ -181,8 +193,8 @@ STIMULI.gaze_cue_incorrect.put( 'center-right' );
 %   set up gaze targets
 STIMULI.gaze_cue_correct.make_target( TRACKER, fixations.gaze_cue_correct );
 STIMULI.gaze_cue_incorrect.make_target( TRACKER, fixations.gaze_cue_incorrect );
-STIMULI.gaze_cue_correct.targets{1}.padding = 100;
-STIMULI.gaze_cue_incorrect.targets{1}.padding = 100;
+STIMULI.gaze_cue_correct.targets{1}.padding = 0;
+STIMULI.gaze_cue_incorrect.targets{1}.padding = 0;
 
 STIMULI.response_target1 = Rectangle( WINDOW.index, WINDOW.rect, [250, 250] );
 STIMULI.response_target1.color = [17, 41, 178];

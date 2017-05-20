@@ -10,6 +10,7 @@ classdef IPInterface < handle
     is_open = false;
     PACKET_SIZE = 32;
     defaults;
+    bypass = false;
     DATA;
     CHARS = struct( ...
           'can_send',   '*',  'can_receive', '%' ...
@@ -18,7 +19,7 @@ classdef IPInterface < handle
         , 'choice_s',   'C',  'choice_r', 'c' ...
         , 'fix_met_s',  'F',  'fix_met_r', 'f' ...
     );
-    TIMEOUTS = struct( 'send_ready', 5, 'awaits', 5 );
+    TIMEOUTS = struct( 'send_ready', 5, 'awaits', 5, 'connect', 5 );
     DEBUG = false;
   end
   
@@ -36,6 +37,7 @@ classdef IPInterface < handle
       obj.tcp = tcpip( address, port, 'NetworkRole', network_role );
       obj.tcp.InputBufferSize = obj.PACKET_SIZE * 8;
       obj.tcp.OutputBufferSize = obj.PACKET_SIZE * 8;
+      obj.tcp.Timeout = obj.TIMEOUTS.connect;
       obj.address = address;
       obj.port = port;
       obj.network_role = network_role;
@@ -51,6 +53,7 @@ classdef IPInterface < handle
       
       %   START -- Open the tcpip object.
       
+      if ( obj.bypass ), return; end;
       fopen( obj.tcp );
       obj.is_open = true;
     end
@@ -59,6 +62,7 @@ classdef IPInterface < handle
       
       %   CLOSE -- Close the tcpip object.
       
+      if ( obj.bypass ), return; end;
       fclose( obj.tcp );
       obj.is_open = false;
     end
@@ -75,6 +79,7 @@ classdef IPInterface < handle
       %   UPDATE -- Respond to new BytesAvailable and / or update the
       %     outbox.
       
+      if ( obj.bypass ), return; end;
       obj.handle_receipt();
       obj.update_outbox();
     end
@@ -139,6 +144,7 @@ classdef IPInterface < handle
       %
       %     See also send
       
+      if ( obj.bypass ), return; end;
       timeout_check = tic;
       while ( ~obj.can_send )
         obj.update();
@@ -313,6 +319,7 @@ classdef IPInterface < handle
       %     IN:
       %       - `state` (double) -- State to match.
       
+      if ( obj.bypass ), return; end;
       timeout_check = tic;
       timeout_amt = obj.TIMEOUTS.awaits;
       while ( obj.DATA.state ~= state )
@@ -332,6 +339,7 @@ classdef IPInterface < handle
       %     OUT:
       %       - `choice` (double) -- M2's choice.
       
+      if ( obj.bypass ), choice = obj.defaults.DATA.choice; return; end;
       timeout_amt = obj.TIMEOUTS.awaits;
       timeout_check = tic;
       while ( isnan(obj.DATA.choice) )
