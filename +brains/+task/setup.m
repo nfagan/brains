@@ -5,24 +5,23 @@ function opts = setup( is_master_arduino, is_master_monkey )
 %   OUT:
 %     - `opts` (struct)
 
-import brains.util.assert__file_does_not_exist
-
-addpath( genpath('C:\Repositories\ptb_helpers') );
-addpath( genpath('C:\Repositories\arduino\communicator') );
+import brains.util.assert__file_does_not_exist;
 
 PsychDefaultSetup( 1 );
 ListenChar( 2 );
 
 % - IO - %
+IO.repo_folder = 'C:\Repositories';
 IO.edf_file = 'tstx.edf';
-IO.edf_folder = cd;
 IO.data_file = 'tstx.mat';
-IO.data_folder = 'C:\Repositories\brains\data';
-IO.stimuli_path = 'C:\Repositories\brains\stimuli\m2';
-% IO.stimuli_path = '/Volumes/My Passport/NICK/Chang Lab 2016/repositories/brains/brains/stimuli/m2';
-% IO.data_folder = '/Volumes/My Passport/NICK/Chang Lab 2016/repositories/brains/brains/data';
+IO.edf_folder = fullfile( IO.repo_folder, 'brains', 'data' );
+IO.data_folder = fullfile( IO.repo_folder, 'brains', 'data' );
+IO.stimuli_path = fullfile( IO.repo_folder, 'brains', 'stimuli', 'm2' );
 
-% assert__file_does_not_exist( fullfile(IO.data_folder, IO.data_file) );
+addpath( genpath(fullfile(IO.repo_folder, 'ptb_helpers')) );
+addpath( genpath(fullfile(IO.repo_folder, 'arduino', 'communicator')) );
+
+assert__file_does_not_exist( fullfile(IO.data_folder, IO.data_file) );
 
 % - INTERFACE - %
 INTERFACE.save_data = false;
