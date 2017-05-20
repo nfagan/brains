@@ -119,20 +119,33 @@ if ( is_master_arduino )
     struct('message', 'REWARD2', 'char', 'B'), ...
   };
   messages = [ shared_messages, master_messages ];
-  port = 'COM4';
+  serial_port = 'COM4';
 else
   slave_messages = { ...
     struct('message', 'REWARD1', 'char', 'A'), ...
     struct('message', 'REWARD2', 'char', 'N'), ...
   };
   messages = [ shared_messages, slave_messages ];
-  port = 'COM3';
+  serial_port = 'COM3';
 end
 baud_rate = 115200;
 if ( INTERFACE.use_arduino )
-  COMMUNICATOR = Communicator( messages, port, baud_rate );
-else COMMUNICATOR = [];
+  COMMUNICATORS.serial_comm = Communicator( messages, serial_port, baud_rate );
+else COMMUNICATORS.serial_comm = [];
 end
+
+if ( is_master_monkey )
+  others_address = '0.0.0.0';
+  tcp_comm_constructor = @brains.server.Server;
+else
+  others_address = '0.0.0.0';
+  tcp_comm_constructor = @brains.server.Client;
+end
+tcp_port = 55e3;
+tcp_comm = tcp_comm_constructor( others_address, tcp_port );
+tcp_comm.start();
+
+COMMUNICATORS.tcp_comm = tcp_comm;
 
 % - ROIS - %
 ROIS.eyes = Target( TRACKER, [0 0 500 500], Inf );
@@ -191,20 +204,19 @@ REWARDS.pulse_frequency = .5;
 REWARDS.last_reward_size = []; % ms
 
 %   output as one struct
-
-opts.IO =           IO;
-opts.INTERFACE =    INTERFACE;
-opts.META =         META;
-opts.SCREEN =       SCREEN;
-opts.WINDOW =       WINDOW;
-opts.TIMINGS =      TIMINGS;
-opts.TIMER =        TIMER;
-opts.STRUCTURE =    STRUCTURE;
-opts.STATES =       STATES;
-opts.COMMUNICATOR = COMMUNICATOR;
-opts.ROIS =         ROIS;
-opts.STIMULI =      STIMULI;
-opts.REWARDS =      REWARDS;
-opts.TRACKER =      TRACKER;
+opts.IO =             IO;
+opts.INTERFACE =      INTERFACE;
+opts.META =           META;
+opts.SCREEN =         SCREEN;
+opts.WINDOW =         WINDOW;
+opts.TIMINGS =        TIMINGS;
+opts.TIMER =          TIMER;
+opts.STRUCTURE =      STRUCTURE;
+opts.STATES =         STATES;
+opts.COMMUNICATORS =  COMMUNICATORS;
+opts.ROIS =           ROIS;
+opts.STIMULI =        STIMULI;
+opts.REWARDS =        REWARDS;
+opts.TRACKER =        TRACKER;
 
 end
