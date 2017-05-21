@@ -37,9 +37,9 @@ INTERFACE.stop_key = KbName( 'escape' );
 INTERFACE.is_master_arduino = true;
 INTERFACE.is_master_monkey = true;
 
-opt_fields = fieldnames( opts );
-for i = 1:numel(opt_fields)
-  INTERFACE.(opt_fields{i}) = opts.(opt_fields{i});
+int_opt_fields = fieldnames( opts.INTERFACE );
+for i = 1:numel(int_opt_fields)
+  INTERFACE.(int_opt_fields{i}) = opts.INTERFACE.(int_opt_fields{i});
 end
 
 % - META - %
@@ -157,7 +157,7 @@ if ( INTERFACE.is_master_monkey )
   others_address = '0.0.0.0';
   tcp_comm_constructor = @brains.server.Server;
 else
-  others_address = '127.0.0.1';
+  others_address = '172.28.141.64';
   tcp_comm_constructor = @brains.server.Client;
 end
 tcp_port = 55e3;

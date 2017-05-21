@@ -64,7 +64,7 @@ function handle_button(source, event)
   switch ( func )
     case 'start'
       func = str2func( 'brains.task.start' );
-      args = { config.INTERFACE };
+      args = { config };
     case 'calibrate'
       func = str2func( 'brains.start_calibration' );
       args = {};
