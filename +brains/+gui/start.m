@@ -1,7 +1,6 @@
 function varargout = start(varargin)
 
 config = brains.config.load();
-interface_fs = fieldnames( config.INTERFACE );
 
 F = figure;
 W = 200;
@@ -13,7 +12,26 @@ set( F, 'resize', 'off' );
 set( F, 'menubar', 'none' );
 set( F, 'toolbar', 'none' );
 
+% - Text field
+txt_fields = { 'server_address', 'client_address' };
+for i = 1:numel(txt_fields)
+  txt_field = txt_fields{i};
+  position = [ X, Y, W, L ];
+  uicontrol( F, 'Style', 'text', 'String', txt_field, 'Position', position );
+  Y = Y + L;
+  position = [ X+5, Y+5, W-10, L-10 ];
+  uicontrol( F ...
+    , 'Style', 'edit' ...
+    , 'String', config.COMMUNICATORS.(txt_field) ...
+    , 'Tag', txt_field ...
+    , 'Position', position ...
+    , 'Callback', @handle_textfield ...
+  );
+  Y = Y + L;
+end
+
 % - Check boxes
+interface_fs = fieldnames( config.INTERFACE );
 for i = 1:numel(interface_fs)
   check_name = interface_fs{i};
   position = [ X, Y, W, L ];
@@ -41,7 +59,7 @@ for i = 1:numel(funcs)
   Y = Y + L;
 end
 
-N = numel(interface_fs) + numel(funcs);
+N = numel(interface_fs) + numel(funcs) + numel(txt_fields)*2;
 H = L*N;
 sz = get( 0, 'screensize' );
 sz = sz( 3:4 );
@@ -76,6 +94,15 @@ function handle_button(source, event)
   end
   brains.config.save( config );
   func( args{:} );
+end
+
+function handle_textfield(source, event)
+  
+  address_kind = source.Tag;
+  address = source.String;
+  assert( numel(strsplit(address, '.')) == 4, ['The address must' ...
+    , 'contain 4 period-separated values.'] );
+  config.COMMUNICATORS.(address_kind) = address;  
 end
 
 end

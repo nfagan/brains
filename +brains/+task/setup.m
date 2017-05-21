@@ -37,9 +37,11 @@ INTERFACE.stop_key = KbName( 'escape' );
 INTERFACE.is_master_arduino = true;
 INTERFACE.is_master_monkey = true;
 
-int_opt_fields = fieldnames( opts.INTERFACE );
-for i = 1:numel(int_opt_fields)
-  INTERFACE.(int_opt_fields{i}) = opts.INTERFACE.(int_opt_fields{i});
+if ( isfield(opts, 'INTERFACE') )
+  int_opt_fields = fieldnames( opts.INTERFACE );
+  for i = 1:numel(int_opt_fields)
+    INTERFACE.(int_opt_fields{i}) = opts.INTERFACE.(int_opt_fields{i});
+  end
 end
 
 % - META - %
@@ -154,12 +156,21 @@ else COMMUNICATORS.serial_comm = [];
 end
 
 if ( INTERFACE.is_master_monkey )
-  others_address = '0.0.0.0';
+  if ( isfield(opts, 'COMMUNICATORS') )
+    others_address = opts.COMMUNICATORS.server_address;
+  else
+    others_address = '0.0.0.0';
+  end
   tcp_comm_constructor = @brains.server.Server;
 else
-  others_address = '172.28.141.64';
+  if ( isfield(opts, 'COMMUNICATORS') )
+    others_address = opts.COMMUNICATORS.client_address;
+  else
+    others_address = '127.0.0.1';
+  end
   tcp_comm_constructor = @brains.server.Client;
 end
+
 tcp_port = 55e3;
 tcp_comm = tcp_comm_constructor( others_address, tcp_port );
 tcp_comm.bypass = ~INTERFACE.require_synch;
