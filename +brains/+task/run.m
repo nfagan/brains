@@ -13,6 +13,7 @@ STATES =        opts.STATES;
 TRACKER =       opts.TRACKER;
 STIMULI =       opts.STIMULI;
 STRUCTURE =     opts.STRUCTURE;
+INTERFACE =     opts.INTERFACE;
 tcp_comm =      opts.COMMUNICATORS.tcp_comm;
 serial_comm =   opts.COMMUNICATORS.serial_comm;
 
@@ -136,7 +137,7 @@ while ( true )
       log_progress = true;
       first_entry = false;
     end
-    if ( STRUCTURE.is_master_monkey )
+    if ( INTERFACE.is_master_monkey )
       switch ( STRUCTURE.rule_cue_type )
         case 'gaze'
          gaze_cue.draw_frame();
@@ -179,7 +180,7 @@ while ( true )
       first_entry = false;
     end
     TRACKER.update_coordinates();
-    is_master = STRUCTURE.is_master_monkey;
+    is_master = INTERFACE.is_master_monkey;
     is_slave = ~is_master;
     if ( is_slave )
       incorrect_target.update_targets();
@@ -242,7 +243,7 @@ while ( true )
       response_target2 = STIMULI.response_target2;
       response_target1.reset_targets();
       response_target2.reset_targets();
-      if ( STRUCTURE.is_master_monkey )
+      if ( INTERFACE.is_master_monkey )
         STRUCTURE.m2_chose = tcp_comm.await_choice();
         fprintf( '\nmaster: Received choice value %d\n', STRUCTURE.m2_chose );
       end
@@ -250,7 +251,7 @@ while ( true )
       first_entry = false;
     end
     TRACKER.update_coordinates();
-    if ( STRUCTURE.is_master_monkey )
+    if ( INTERFACE.is_master_monkey )
       response_target1.update_targets();
       response_target2.update_targets();
       response_target1.draw();
@@ -285,7 +286,7 @@ while ( true )
       end
     end
     if ( TIMER.duration_met('use_rule') )
-      if ( STRUCTURE.is_master_monkey && isempty(STRUCTURE.m1_chose) )
+      if ( INTERFACE.is_master_monkey && isempty(STRUCTURE.m1_chose) )
         tcp_comm.send_when_ready( 'choice', 0 );
       end
       %   MARK: goto: evaluate_choice
@@ -303,7 +304,7 @@ while ( true )
       tcp_comm.await_matching_state( STATES.current );
       PROGRESS.evaluate_choice = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'evaluate_choice' );
-      if ( STRUCTURE.is_master_monkey )
+      if ( INTERFACE.is_master_monkey )
         if ( isequal(STRUCTURE.m1_chose, STRUCTURE.m2_chose) )
           opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
         end
