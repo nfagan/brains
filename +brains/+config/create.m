@@ -17,6 +17,7 @@ IO.data_folder =    fullfile( IO.repo_folder, 'brains', 'data' );
 IO.stimuli_path =   fullfile( IO.repo_folder, 'brains', 'stimuli' );
 
 % - INTERFACE - %
+KbName( 'UnifyKeyNames' );
 INTERFACE.save_data = false;
 INTERFACE.allow_overwrite = true;
 INTERFACE.use_eyelink = false;
