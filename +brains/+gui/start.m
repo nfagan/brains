@@ -202,10 +202,8 @@ for i = 1:numel(funcs)
   y = y + l;
 end
 
-Y = Y + L;
-
 % - COMPLETE
-set( F, 'position', [.5, .5, .5, .8] );
+set( F, 'position', [.25, 0, .5, .75] );
 
 if ( nargout == 1 )
   varargout{1} = F;
