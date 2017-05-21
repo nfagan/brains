@@ -7,7 +7,7 @@ function start_master()
 % brains.task.start( opts );
 
 config = brains.config.load();
-config.STRUCTURE.is_master_monkey = true;
+config.INTERFACE.is_master_monkey = true;
 config.INTERFACE.is_master_arduino = true;
 brains.config.save( config );
 brains.task.start();

@@ -7,7 +7,7 @@ function start_slave()
 % brains.task.start( opts );
 
 config = brains.config.load();
-config.STRUCTURE.is_master_monkey = false;
+config.INTERFACE.is_master_monkey = false;
 config.INTERFACE.is_master_arduino = false;
 brains.config.save( config );
 brains.task.start();
