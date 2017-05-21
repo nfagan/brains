@@ -15,13 +15,12 @@ PsychDefaultSetup( 1 );
 ListenChar();
 
 % - IO - %
-% IO.repo_folder = 'C:\Repositories';
-IO.repo_folder = '/Volumes/My Passport/NICK/Chang Lab 2016/repositories/brains';
-IO.edf_file = 'tstx.edf';
-IO.data_file = 'tstx.mat';
-IO.edf_folder = fullfile( IO.repo_folder, 'brains', 'data' );
-IO.data_folder = fullfile( IO.repo_folder, 'brains', 'data' );
-IO.stimuli_path = fullfile( IO.repo_folder, 'brains', 'stimuli', 'm2' );
+IO.repo_folder =    get_repo_dir();
+IO.edf_file =       'tstx.edf';
+IO.data_file =      'tstx.mat';
+IO.edf_folder =     fullfile( IO.repo_folder, 'brains', 'data' );
+IO.data_folder =    fullfile( IO.repo_folder, 'brains', 'data' );
+IO.stimuli_path =   fullfile( IO.repo_folder, 'brains', 'stimuli', 'm2' );
 
 addpath( genpath(fullfile(IO.repo_folder, 'ptb_helpers')) );
 addpath( genpath(fullfile(IO.repo_folder, 'arduino', 'communicator')) );
@@ -53,7 +52,7 @@ META.etc = '';
 SCREEN.index = 0;
 SCREEN.background_color = [ 0 0 0 ];
 % SCREEN.rect = [ 0 0, 1024*3, 768 ];
-SCREEN.rect = [];
+% SCREEN.rect = [];
 
 sz = get( 0, 'screensize' );
 if ( INTERFACE.is_master_monkey )
@@ -203,8 +202,8 @@ STIMULI.gaze_cue_incorrect.put( 'center-right' );
 %   set up gaze targets
 STIMULI.gaze_cue_correct.make_target( TRACKER, fixations.gaze_cue_correct );
 STIMULI.gaze_cue_incorrect.make_target( TRACKER, fixations.gaze_cue_incorrect );
-STIMULI.gaze_cue_correct.targets{1}.padding = 100;
-STIMULI.gaze_cue_incorrect.targets{1}.padding = 100;
+STIMULI.gaze_cue_correct.targets{1}.padding = 0;
+STIMULI.gaze_cue_incorrect.targets{1}.padding = 0;
 
 STIMULI.response_target1 = Rectangle( WINDOW.index, WINDOW.rect, [250, 250] );
 STIMULI.response_target1.color = [17, 41, 178];
@@ -241,7 +240,24 @@ opts.TRACKER =        TRACKER;
 
 end
 
-% bounds1 = STIMULI.gaze_cue_correct.targets{1}.bounds;
-% bounds2 = STIMULI.gaze_cue_incorrect.targets{1}.bounds;
-% STIMULI.gaze_cue_correct.targets{1}.bounds = [bounds1(1)-100, bounds1(2)-100, bounds1(3)+100, bounds1(4)+100];
-% STIMULI.gaze_cue_incorrect.targets{1}.bounds = [bounds2(1)-100, bounds2(2)-100, bounds2(3)+100, bounds2(4)+100];
+function repo_dir = get_repo_dir()
+
+%   GET_REPO_DIR -- Get the repositories directory in which the brains
+%     package resides.
+%
+%     OUT:
+%       - `repo_dir` (char)
+
+if ( ispc() )
+  slash = '\';
+else slash = '/';
+end
+
+file_parts = strsplit( which('brains.task.setup'), slash );
+brains_ind = strcmp( file_parts, 'brains' );
+assert( any(brains_ind), 'Expected this function to reside in %s' ...
+  , strjoin({'brains', '+brains', '+task'}, slash) );
+repo_ind = find(brains_ind) - 1;
+repo_dir = strjoin( file_parts(1:repo_ind), slash );
+
+end
