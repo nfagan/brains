@@ -110,8 +110,8 @@ SERIAL.ports.M2 = 'COM3';
 SERIAL.baud_rate = 115200;
 
 % - TCP - %
-TCP.server_address = '0.0.0.0';
-TCP.client_address = '127.0.0.1';
+TCP.server_address = '172.23.7.165';
+TCP.client_address = '172.23.0.183';
 TCP.port = 55000;
 
 % - ROIS - %
