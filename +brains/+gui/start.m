@@ -24,7 +24,7 @@ X = (1 - W) / 2;
 L = (1 / N) - Y/2;
 
 set( F, 'visible', 'off' );
-set( F, 'resize', 'off' );
+set( F, 'resize', 'on' );
 set( F, 'menubar', 'none' );
 set( F, 'toolbar', 'none' );
 set( F, 'units', 'normalized' );
