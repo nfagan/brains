@@ -3,10 +3,14 @@ function varargout = start(varargin)
 %   START -- Create the Brains GUI.
 %
 %     IN:
-%       - `varargin` (/any/)
+%       - `varargin` (/any/) |OPTIONAL| -- Optionally pass in a
+%         figure handle in which to create the GUI. If unspecified, a new
+%         figure window will be created.
 %     OUT:
 %       - `varargout` (cell) -- Handle to the GUI figure, and optionally
 %         the config file.
+
+narginchk( 0, 1 );
 
 config = brains.config.load();
 
@@ -122,23 +126,29 @@ Y = Y + L;
 % - STIMULI - %
 panels.stimuli = uipanel( F ...
   , 'Title', 'Stimuli' ...
-  , 'Position', [ X, Y, W/2, L ] ...
+  , 'Position', [ X, Y, W/3, L ] ...
 );
 % - pop ups
 stimuli_fs = fieldnames( config.STIMULI );
 handle_stimuli_popup();
 
-% Y = Y + L;
-
 % - TASK TIMES
 panels.time_in = uipanel( F ...
   , 'Title', 'Time in states' ...
-  , 'Position', [ X+W/2, Y, W/2, L ] ...
+  , 'Position', [ X+W/3, Y, W/3, L ] ...
 );
-
 text_pos = struct( 'x', 0, 'y', 0, 'w', .5 );
 field_pos = struct( 'x', .5, 'y', 0, 'w', .5 );
 text_field_creator( panels.time_in, 'TIMINGS', {'time_in'}, text_pos, field_pos );
+
+% - CALIBRATION
+panels.calibrate = uipanel( F ...
+  , 'Title', 'Calibration' ...
+  , 'Position', [ X+(W/3)*2, Y, W/3, L ] ...
+);
+text_pos = struct( 'x', 0, 'y', 0, 'w', .5 );
+field_pos = struct( 'x', .5, 'y', 0, 'w', .5 );
+text_field_creator( panels.calibrate, 'CALIBRATION', {}, text_pos, field_pos );
 
 Y = Y + L;
 
@@ -187,17 +197,22 @@ end
 
 set( F, 'visible', 'on' );
 
-%   EVENT HANDLERS
+%{
+    EVENT HANDLERS
+%}
 
 function handle_checkbox(source, event)
+  
+  %   HANDLE_CHECKBOX -- Handle checkbox clicks.
 
-chk_name = source.String;
-config.INTERFACE.(chk_name) = ~config.INTERFACE.(chk_name);
-brains.config.save( config );
-
+  chk_name = source.String;
+  config.INTERFACE.(chk_name) = ~config.INTERFACE.(chk_name);
+  brains.config.save( config );
 end
 
 function handle_button(source, event)
+  
+  %   HANDLE_BUTTON -- Handle button clicks.
   
   func = source.String;
   switch ( func )
@@ -226,9 +241,9 @@ function handle_button(source, event)
   end
 end
 
-% - TEXT FIELDS - %
-
 function handle_textfields(source, event)
+  
+  %   HANDLE_TEXTFIELDS -- Respond to new data in a text-field.
   
   val = source.String;
   is_numeric = source.UserData.is_numeric;
@@ -326,6 +341,9 @@ function handle_stimuli_popup(source, event)
   end
   function handle_stimuli_textfield(source, event)
     
+    %   HANDLE_STIMULI_TEXTFIELD -- Special subroutine for handling changes
+    %     to stimuli text changes.
+    
     prop_name = source.UserData.prop;
     prop_val_ = source.String;
     orig_class = source.UserData.class;
@@ -372,63 +390,63 @@ end
 
 function text_field_creator( parent, basefield, subfields, text_pos, field_pos )
   
-%   TEXT_FIELD_CREATOR -- Create a text-field set.
-%
-%     EX: //
-%
-%     F = figure();
-%     config = brains.config.load();
-%     basefield = 'IO';
-%     subfields = {}; % none
-%     text_pos  = struct( 'x', 0, 'y', 0, 'w', .5 );
-%     field_pos = struct( 'x', .5, 'y', 0, 'w', .5 );
-%
-%     text_field_creator( F, basefield, subfields, text_post, field_pos );
-%
-%     IN:
-%       - `parent` (graphics object) -- Handle to a panel object.
-%       - `basefield` (char) -- Field of `config` from which to draw.
-%       - `subfields` (cell array) -- Subfields of basefield.
-  
-config_path = strjoin( [{'config'}, {basefield}, subfields], '.' );
-fs = get_gui_fields( eval(config_path) );
+  %   TEXT_FIELD_CREATOR -- Create a text-field set.
+  %
+  %     EX: //
+  %
+  %     F = figure();
+  %     config = brains.config.load();
+  %     basefield = 'IO';
+  %     subfields = {}; % none
+  %     text_pos  = struct( 'x', 0, 'y', 0, 'w', .5 );
+  %     field_pos = struct( 'x', .5, 'y', 0, 'w', .5 );
+  %
+  %     text_field_creator( F, basefield, subfields, text_post, field_pos );
+  %
+  %     IN:
+  %       - `parent` (graphics object) -- Handle to a panel object.
+  %       - `basefield` (char) -- Field of `config` from which to draw.
+  %       - `subfields` (cell array) -- Subfields of basefield.
 
-tx = text_pos.x;
-tw = text_pos.w;
+  config_path = strjoin( [{'config'}, {basefield}, subfields], '.' );
+  fs = get_gui_fields( eval(config_path) );
 
-fx = field_pos.x;
-fw = field_pos.w;
+  tx = text_pos.x;
+  tw = text_pos.w;
 
-y_ = 0;
-l_ = 1 / numel(fs);
+  fx = field_pos.x;
+  fw = field_pos.w;
 
-for ii = 1:numel( fs )
-  field = fs{ii};
-  position_ = [ tx, y_, tw, l_ ];
-  uicontrol( parent ...
-    , 'Style', 'text' ...
-    , 'String', field ...
-    , 'Units', 'normalized' ...
-    , 'Position', position_ ...
-  );    
-  position_ = [ fx, y_, fw, l_ ];
-  val = eval( sprintf('%s.(''%s'')', config_path, field) );
-  is_num = isnumeric( val );
-  if ( is_num ), val = num2str( val ); end
-  uicontrol( parent ...
-    , 'Style', 'edit' ...
-    , 'String', val ...
-    , 'UserData', struct( ...
-          'config_field', basefield ...
-        , 'subfields', { [subfields, {field}] } ...
-        , 'is_numeric', is_num ...
-        ) ...
-    , 'Units', 'normalized' ...
-    , 'Position', position_ ...
-    , 'Callback', @handle_textfields ...
-  );
-  y_ = y_ + l_;
-end
+  y_ = 0;
+  l_ = 1 / numel(fs);
+
+  for ii = 1:numel( fs )
+    field = fs{ii};
+    position_ = [ tx, y_, tw, l_ ];
+    uicontrol( parent ...
+      , 'Style', 'text' ...
+      , 'String', field ...
+      , 'Units', 'normalized' ...
+      , 'Position', position_ ...
+    );    
+    position_ = [ fx, y_, fw, l_ ];
+    val = eval( sprintf('%s.(''%s'')', config_path, field) );
+    is_num = isnumeric( val );
+    if ( is_num ), val = num2str( val ); end
+    uicontrol( parent ...
+      , 'Style', 'edit' ...
+      , 'String', val ...
+      , 'UserData', struct( ...
+            'config_field', basefield ...
+          , 'subfields', { [subfields, {field}] } ...
+          , 'is_numeric', is_num ...
+          ) ...
+      , 'Units', 'normalized' ...
+      , 'Position', position_ ...
+      , 'Callback', @handle_textfields ...
+    );
+    y_ = y_ + l_;
+  end
 
 end
 

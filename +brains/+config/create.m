@@ -46,6 +46,12 @@ SCREEN.background_color = [ 0 0 0 ];
 SCREEN.rect.M1 = [ 0 0 800 600 ];
 SCREEN.rect.M2 = [ 0 0 800 600 ];
 
+% - CALIBRATION - %
+CALIBRATION.full_rect =     [ 0, 0, 3072, 768 ];
+CALIBRATION.cal_rect =      [ 1024, 0, 2048, 768 ];
+CALIBRATION.n_points =      5;
+CALIBRATION.target_size =   50;
+
 % - STRUCTURE - %
 STRUCTURE.rule_cue_type = 'gaze';
 
@@ -82,7 +88,7 @@ TIMINGS.synch_timeout = 10;
 
 % - COMMUNICATORS - %
 
-% - Serial
+% - Serial - %
 SERIAL.messages.shared = { ...
   struct('message', 'SYNCHRONIZE', 'char', 'S'), ...
   struct('message', 'PRINT_GAZE', 'char', 'P'), ...
@@ -94,12 +100,16 @@ SERIAL.messages.shared = { ...
 SERIAL.messages.M1 = { ...
     struct('message', 'REWARD1', 'char', 'A'), ...
     struct('message', 'REWARD2', 'char', 'B'), ...
-  };
+};
+SERIAL.messages.M2 = { ...
+    struct('message', 'REWARD1', 'char', 'M'), ...
+    struct('message', 'REWARD2', 'char', 'N'), ...
+};
 SERIAL.ports.M1 = 'COM4';
 SERIAL.ports.M2 = 'COM3';
 SERIAL.baud_rate = 115200;
 
-% - TCP
+% - TCP - %
 TCP.server_address = '0.0.0.0';
 TCP.client_address = '127.0.0.1';
 TCP.port = 55000;
@@ -199,6 +209,7 @@ opts.IO =             IO;
 opts.INTERFACE =      INTERFACE;
 opts.META =           META;
 opts.SCREEN =         SCREEN;
+opts.CALIBRATION =    CALIBRATION;
 opts.TIMINGS =        TIMINGS;
 opts.STRUCTURE =      STRUCTURE;
 opts.STATES =         STATES;

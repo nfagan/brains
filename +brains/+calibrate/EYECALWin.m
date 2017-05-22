@@ -6,22 +6,39 @@ import brains.calibrate.sharedWorkspace;
 import brains.calibrate.escapeHandler;
 import brains.calibrate.sleepWithKbCheck;
 
-addpath( genpath('C:\Repositories\arduino\communicator') );
-messages = struct( 'message', 'REWARD1', 'char', 'A' );
-port = 'COM3';
-baud_rate = 115200;
-comm = Communicator( {messages}, port, baud_rate );
-WaitSecs( 1 );
-comm.send_reward_size( 'A', 200 );
+config = brains.config.load();
+
+addpath( genpath(fullfile(config.IO.repo_folder, 'arduino')) );
+
+IS_M1 = config.INTERFACE.IS_M1;
+if ( IS_M1 )
+  M_str = 'M1';
+else
+  M_str = 'M2';
+end
+messages = config.SERIAL.messages.(M_str);
+port = config.SERIAL.ports.(M_str);
+baud_rate = config.SERIAL.baud_rate;
+
+if ( config.INTERFACE.use_arduino )
+  comm = Communicator( messages, port, baud_rate );
+  WaitSecs( 1 );
+  comm.send_reward_size( 'A', 200 );
+end
+
+fullRect = config.CALIBRATION.full_rect;
+calRect = config.CALIBRATION.cal_rect;
+targShape = config.CALIBRATION.target_size;
+targShape = [ -targShape, -targShape; targShape, targShape ];
 
 % addpath( fullfile(fileparts(which(mfilename)), 'images') );
-img_path = 'C:\Repositories\brains\+brains\+calibrate\images';
+img_path = fullfile( fileparts(which('brains.calibrate.EYECALWin')), 'images' );
 Pictures=1; %Enter 1 to show Monkey Pictures, Enter 0 for original squares
 NumMonkeys=5; %Number of monkeys to show per trial/fixation point
 
 JuiceAmount_cal = 200; %amount
 RewardTrial = 'j';  %if null, use 'j' to reward them manually [200 ms] (could be more effective)
-nCalPts = 5; % Default to 5-point calibration:
+nCalPts = config.CALIBRATION.n_points; % Default to 5-point calibration:
 dummymode = 0; % Abort if false input
 % Define some basic constants:
 const.monkeyScreen = 0;
@@ -46,9 +63,9 @@ end
 % fullRect = [0, 0, newX, wRect(4)];
 % disp( fullRect );
 % sca;
-fullRect = [0 0 1024*3 768];
-% fullRect = [ 1024, 0, 2048, 768 ];
-calRect = [ 1024, 0, 2048, 768 ];
+% fullRect = [0 0 1024*3 768];
+% % fullRect = [ 1024, 0, 2048, 768 ];
+% calRect = [ 1024, 0, 2048, 768 ];
 
 [window, wRect] = Screen('OpenWindow', const.monkeyScreen, const.bgColor, fullRect );%#ok<*NASGU>
 
@@ -82,8 +99,10 @@ keyHandlers(1).key = 'ESCAPE'; % Terminate the task
 keyHandlers(1).func = @escapeHandler;  % keyHandlers(1).func = @(x,y,z)(<cmd>) or
 keyHandlers(1).wake = true;            % keyHandlers(1).func = @Name Of Function
 keyHandlers(2).key = 'j';
-keyHandlers(3).key = 'r';
-keyHandlers(3).func = @() comm.send('REWARD1');
+if ( config.INTERFACE.use_arduino )
+  keyHandlers(3).key = 'r';
+  keyHandlers(3).func = @() comm.send('REWARD1');
+end
 %keyHandlers(2).func = @()(fprintf(serialthing,'%s','2'));  % or keyHandlers(2).func = {@J1, 100}; ... using empty func, (), is slightly fater
 
 % Screen('CopyWindow',blankScreen,window,wRect,wRect); % Sync with the screen
@@ -147,7 +166,7 @@ while sharedWorkspace('EYECALWin','keepGoing') %global workspace saves values ou
             imgfile{10}='m10.jpg';
             imgfile = cellfun( @(x) fullfile(img_path, x), imgfile, 'un', false );
             d=1; %multiplier
-            targShape  = [-50 -50; 50  50].*d;
+%             targShape  = [-50 -50; 50  50].*d;
             %targShape  = [-100 -100; 100  100].*d;
             %             targShape  = [-52 -52; 52  52];
             [dummy, targX, targY] = Eyelink('TargetCheck');
@@ -179,7 +198,9 @@ while sharedWorkspace('EYECALWin','keepGoing') %global workspace saves values ou
     
     [key_pressed, ~, ~] = KbCheck();
     if ( key_pressed )
+      if ( config.INTERFACE.use_arduino )
         comm.send( 'REWARD1' );
+      end
     end
     % if RewardTrial % Reward
 
