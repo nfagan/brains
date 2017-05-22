@@ -17,7 +17,7 @@ if ( nargin == 0 )
 else assert( strcmp(flag, '-default'), 'Unrecognized flag ''%s''', flag );
 end
 savepath = fileparts( which('brains.config.load') );
-if ( ~isempty(flag) )
+if ( isempty(flag) )
   filename = fullfile( savepath, 'config.mat' );
 else
   filename = fullfile( savepath, 'default.mat' );
