@@ -10,7 +10,13 @@ function varargout = start(varargin)
 
 config = brains.config.load();
 
-F = figure;
+if ( nargin == 1 )
+  F = varargin{1};
+  set_position = false;
+else
+  F = figure;
+  set_position = true;
+end
 N = 3;    %   n panels
 W = .9;
 Y = 0.05;
@@ -163,7 +169,9 @@ field_pos = struct( 'x', .6, 'y', 0, 'w', .4 );
 text_field_creator( panels.run, 'META', {}, text_pos, field_pos );
 
 % - COMPLETE
-set( F, 'position', [.25, 0, .75, .8] );
+if ( set_position )
+  set( F, 'position', [.25, 0, .75, .8] );
+end
 
 if ( nargout == 1 )
   varargout{1} = F;
@@ -200,14 +208,14 @@ function handle_button(source, event)
     case 'reset to default'
       config = brains.config.load( '-default' );
       brains.config.save( config );
-      delete( F );
-      brains.gui.start();
+      clf( F );
+      brains.gui.start( F );
     case 'make default'
       brains.config.save( config, '-default' );
     case 'hard reset'
       brains.config.create();
-      delete( F );
-      brains.gui.start();
+      clf( F );
+      brains.gui.start( F );
     otherwise
       error( 'Unrecognized identifier ''%s''', source.String );
   end
