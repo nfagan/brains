@@ -17,6 +17,11 @@ else
   F = figure;
   set_position = true;
 end
+F_W = .75;
+F_L = .8;
+F_X = (1-F_W)/2;
+F_Y = (1-F_L)/2;
+
 N = 3;    %   n panels
 W = .9;
 Y = 0.05;
@@ -170,7 +175,7 @@ text_field_creator( panels.run, 'META', {}, text_pos, field_pos );
 
 % - COMPLETE
 if ( set_position )
-  set( F, 'position', [.25, 0, .75, .8] );
+  set( F, 'position', [F_X, F_Y, F_W, F_L] );
 end
 
 if ( nargout == 1 )
