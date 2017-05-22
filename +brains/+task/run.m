@@ -23,6 +23,10 @@ STATES.current = STATES.new_trial;
 DATA = struct();
 PROGRESS = struct();
 TRIAL_NUMBER = 0;
+FRAMES.stp = 1;
+FRAMES.mean = NaN;
+FRAMES.min = Inf;
+FRAMES.max = -Inf;
 
 %   main loop
 while ( true )
@@ -137,7 +141,7 @@ while ( true )
       log_progress = true;
       first_entry = false;
     end
-    if ( INTERFACE.is_master_monkey )
+    if ( INTERFACE.IS_M1 )
       switch ( STRUCTURE.rule_cue_type )
         case 'gaze'
          gaze_cue.draw_frame();
@@ -180,9 +184,8 @@ while ( true )
       first_entry = false;
     end
     TRACKER.update_coordinates();
-    is_master = INTERFACE.is_master_monkey;
-    is_slave = ~is_master;
-    if ( is_slave )
+    is_m2 = ~INTERFACE.IS_M1;
+    if ( is_m2 )
       incorrect_target.update_targets();
       correct_target.update_targets();
       incorrect_target.draw();
@@ -221,7 +224,7 @@ while ( true )
     end
     if ( TIMER.duration_met('post_rule_cue') )
       %   MARK: goto: USE_RULE
-      if ( is_slave && isempty(STRUCTURE.m2_chose) )
+      if ( is_m2 && isempty(STRUCTURE.m2_chose) )
         tcp_comm.send_when_ready( 'choice', 0 );
       end
       STATES.current = STATES.use_rule;
@@ -243,7 +246,7 @@ while ( true )
       response_target2 = STIMULI.response_target2;
       response_target1.reset_targets();
       response_target2.reset_targets();
-      if ( INTERFACE.is_master_monkey )
+      if ( INTERFACE.IS_M1 )
         STRUCTURE.m2_chose = tcp_comm.await_choice();
         fprintf( '\nmaster: Received choice value %d\n', STRUCTURE.m2_chose );
       end
@@ -251,7 +254,7 @@ while ( true )
       first_entry = false;
     end
     TRACKER.update_coordinates();
-    if ( INTERFACE.is_master_monkey )
+    if ( INTERFACE.IS_M1 )
       response_target1.update_targets();
       response_target2.update_targets();
       response_target1.draw();
@@ -286,7 +289,7 @@ while ( true )
       end
     end
     if ( TIMER.duration_met('use_rule') )
-      if ( INTERFACE.is_master_monkey && isempty(STRUCTURE.m1_chose) )
+      if ( INTERFACE.IS_M1 && isempty(STRUCTURE.m1_chose) )
         tcp_comm.send_when_ready( 'choice', 0 );
       end
       %   MARK: goto: evaluate_choice
@@ -304,7 +307,7 @@ while ( true )
       tcp_comm.await_matching_state( STATES.current );
       PROGRESS.evaluate_choice = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'evaluate_choice' );
-      if ( INTERFACE.is_master_monkey )
+      if ( INTERFACE.IS_M1 )
         if ( isequal(STRUCTURE.m1_chose, STRUCTURE.m2_chose) )
           opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
         end
@@ -337,6 +340,27 @@ while ( true )
     end
   end
   
+  % - Determine frame times.
+  if ( INTERFACE.DEBUG )
+    if ( FRAMES.stp > 1 )
+      FRAMES.current = TIMER.get_time( 'task' );
+      FRAMES.delta = FRAMES.current - FRAMES.last;
+      FRAMES.last = FRAMES.current;
+      FRAMES.min = min( [FRAMES.min, FRAMES.delta] );
+      FRAMES.max = max( [FRAMES.max, FRAMES.delta] );
+      if ( FRAMES.stp == 2 )
+        FRAMES.mean = FRAMES.delta;
+      else
+        N1 = FRAMES.stp - 1;
+        N2 = FRAMES.stp - 2;
+        FRAMES.mean = (FRAMES.mean*N2 + FRAMES.delta) / N1;
+      end
+    else
+      FRAMES.last = TIMER.get_time( 'task' );
+    end
+    FRAMES.stp = FRAMES.stp + 1;
+  end
+  
   % - Update tcp_comm
   tcp_comm.update();
   tcp_comm.send_when_ready( 'gaze', TRACKER.coordinates );
@@ -366,6 +390,7 @@ if ( opts.INTERFACE.save_data )
   data = struct();
   data.DATA = DATA;
   data.opts = opts;
+  data.opts.FRAMES = FRAMES;
   save( fullfile(IO.data_folder, IO.data_file), 'data' );
 end
 

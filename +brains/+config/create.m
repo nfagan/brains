@@ -19,7 +19,7 @@ IO.gui_fields.include = { 'data_file', 'edf_file' };
 
 % - INTERFACE - %
 KbName( 'UnifyKeyNames' );
-INTERFACE.save_data =       true;
+INTERFACE.save_data = true;
 INTERFACE.allow_overwrite = false;
 INTERFACE.use_eyelink = true;
 INTERFACE.use_arduino = true;
@@ -27,13 +27,15 @@ INTERFACE.require_synch = true;
 INTERFACE.rwd_key = KbName( 'r' );
 INTERFACE.stop_key = KbName( 'escape' );
 INTERFACE.is_master_arduino = true;
-INTERFACE.is_master_monkey = true;
+INTERFACE.IS_M1 = true;
+INTERFACE.DEBUG = false;
 INTERFACE.gui_fields.exclude = { 'rwd_key', 'stop_key' };
 
 % - META - %
 META.M1 = '';
 META.M2 = '';
 META.date = '';
+META.session = '';
 META.notes = '';
 
 % - SCREEN - %
@@ -45,7 +47,6 @@ SCREEN.rect.M1 = [ 0 0 800 600 ];
 SCREEN.rect.M2 = [ 0 0 800 600 ];
 
 % - STRUCTURE - %
-STRUCTURE.is_master_monkey = INTERFACE.is_master_monkey;
 STRUCTURE.rule_cue_type = 'gaze';
 
 % - STATES - %

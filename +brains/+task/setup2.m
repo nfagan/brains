@@ -34,7 +34,7 @@ end
 PsychDefaultSetup( 1 );
 ListenChar();
 
-IS_M1 = INTERFACE.is_master_monkey;
+IS_M1 = INTERFACE.IS_M1;
 if ( IS_M1 )
   M_str = 'M1';
 else
@@ -123,6 +123,6 @@ opts.COMMUNICATORS =  COMMUNICATORS;
 opts.TRACKER =        TRACKER;
 opts.TIMER =          TIMER;
 opts.ROIS =           ROIS;
-opts.STIMULI=         STIMULI;
+opts.STIMULI =        STIMULI;
 
 end
