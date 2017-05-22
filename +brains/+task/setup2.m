@@ -76,10 +76,10 @@ end
 % - TCP - %
 if ( IS_M1 )
   tcp_comm_constructor = @brains.server.Server;
-  address = TCP.server_address;
+  address = TCP.client_address;
 else
   tcp_comm_constructor = @brains.server.Client;
-  address = TCP.client_address;
+  address = TCP.server_address;
 end
 
 tcp_port = TCP.port;
