@@ -1,18 +1,28 @@
 function varargout = start(varargin)
 
+%   START -- Create the Brains GUI.
+%
+%     IN:
+%       - `varargin` (/any/)
+%     OUT:
+%       - `varargout` (cell) -- Handle to the GUI figure, and optionally
+%         the config file.
+
 config = brains.config.load();
 
 F = figure;
-N = 4;    %   n panels
+N = 3;    %   n panels
 W = .9;
-L = 1 / N;
+Y = 0.05;
 X = (1 - W) / 2;
-Y = 0;
+L = (1 / N) - Y/2;
 
+set( F, 'visible', 'off' );
 set( F, 'resize', 'off' );
 set( F, 'menubar', 'none' );
 set( F, 'toolbar', 'none' );
 set( F, 'units', 'normalized' );
+set( F, 'name', 'Brains GUI' );
 
 % - INTERFACE - %
 panels.interface = uipanel( F ...
@@ -21,9 +31,7 @@ panels.interface = uipanel( F ...
 );
 
 % - Check boxes
-interface_fs = fieldnames( config.INTERFACE );
-excludes = [ config.INTERFACE.gui_fields.exclude, {'gui_fields'} ];
-interface_fs = exclude_values( interface_fs, excludes ); 
+interface_fs = get_gui_fields( config.INTERFACE );
 
 w = .5;
 l = 1 / numel(interface_fs);
@@ -43,137 +51,83 @@ for i = 1:numel(interface_fs)
   );
   y = y + l;
 end
-% - Port specifiers
+
+% - IO
+panels.io = uipanel( panels.interface ...
+  , 'Title', 'IO' ...
+  , 'Position', [ .25, 0, .25, .5 ] ...
+);
+text_pos =  struct( 'x', 0, 'y',  0, 'w', .5 );
+field_pos = struct( 'x', .5, 'y', 0, 'w', .5 );
+text_field_creator( panels.io, 'IO', {}, text_pos, field_pos );
+
+% - SCREEN
+panels.screen = uipanel( panels.interface ...
+  , 'Title', 'Screen/Window' ...
+  , 'Position', [ .25, .5, .25, .5 ] ...
+);
+text_pos =  struct( 'x', 0, 'y',  0, 'w', .5 );
+field_pos = struct( 'x', .5, 'y', 0, 'w', .5 );
+text_field_creator( panels.screen, 'SCREEN', {'rect'}, text_pos, field_pos );
+
+% - TCP/IP Port specifiers
 panels.tcp_comm = uipanel( panels.interface ...
   , 'Title', 'TCP/IP' ...
-  , 'Position', [ .5, .5, .5, .5 ] ...
+  , 'Position', [ .5, .5, .25, .5 ] ...
 );
-tcp_fs = fieldnames( config.TCP );
-
-w = .5;
-l = 1 / numel(tcp_fs);
-x = 0;
-y = 0;
-
-for i = 1:numel( tcp_fs )
-  tcp_name = tcp_fs{i};
-  if ( isequal(tcp_name, 'port') )
-    is_num = true; 
-  else
-    is_num = false;
-  end
-  position = [ x, y, w, l ];
-  uicontrol( panels.tcp_comm ...
-    , 'Style', 'text' ...
-    , 'String', tcp_name ...
-    , 'Units', 'normalized' ...
-    , 'Position', position ...
-  );    
-  position = [ x+w, y, w, l ];
-  uicontrol( panels.tcp_comm ...
-    , 'Style', 'edit' ...
-    , 'String', config.TCP.(tcp_name) ...
-    , 'UserData', struct( ...
-          'config_field', 'TCP' ...
-        , 'subfields', {{tcp_name}} ...
-        , 'is_numeric', is_num ...
-      ) ...
-    , 'Units', 'normalized' ...
-    , 'Position', position ...
-    , 'Callback', @handle_textfields ...
-  );
-  y = y + l;
-end
+text_pos =  struct( 'x', 0, 'y',  0, 'w', .5 );
+field_pos = struct( 'x', .5, 'y', 0, 'w', .5 );
+text_field_creator( panels.tcp_comm, 'TCP', {}, text_pos, field_pos );
 
 % - Serial port specifiers
 panels.serial = uipanel( panels.interface ...
   , 'Title', 'Serial' ...
-  , 'Position', [ .5, 0, .5, .5 ] ...
+  , 'Position', [ .5, 0, .25, .5 ] ...
 );
-serial_fs = fieldnames( config.SERIAL.ports );
+text_pos =  struct( 'x', 0, 'y',  0, 'w', .5 );
+field_pos = struct( 'x', .5, 'y', 0, 'w', .5 );
+text_field_creator( panels.serial, 'SERIAL', {'ports'}, text_pos, field_pos );
 
-w = .5;
-l = 1 / numel(serial_fs);
-x = 0;
-y = 0;
+% - Rewards - %
+panels.reward = uipanel( panels.interface ...
+  , 'Title', 'Reward' ...
+  , 'Position', [ .75, 0, .25, .25 ] ...
+);
+text_pos =  struct( 'x', 0,   'y', 0, 'w', .5 );
+field_pos = struct( 'x', .5,  'y', 0, 'w', .5 );
+text_field_creator( panels.reward, 'REWARDS', {}, text_pos, field_pos );
 
-for i = 1:numel( serial_fs )
-  serial_name = serial_fs{i};
-  position = [ x, y, w, l ];
-  uicontrol( panels.serial ...
-    , 'Style', 'text' ...
-    , 'String', serial_name...
-    , 'Units', 'normalized' ...
-    , 'Position', position ...
-  );    
-  position = [ x+w, y, w, l ];
-  uicontrol( panels.serial ...
-    , 'Style', 'edit' ...
-    , 'String', config.SERIAL.ports.(serial_name) ...
-    , 'UserData', struct( ...
-          'config_field', 'SERIAL' ...
-        , 'subfields', {{'ports', serial_name}} ...
-        , 'is_numeric', false ...
-        ) ...
-    , 'Units', 'normalized' ...
-    , 'Position', position ...
-    , 'Callback', @handle_textfields ...
-  );
-  y = y + l;
-end
+% - ROIS - %
+panels.rois = uipanel( panels.interface ...
+  , 'Title', 'ROIS' ...
+  , 'Position', [ .75, .25, .25, .75 ] ...
+);
+text_pos =  struct( 'x', 0,   'y', 0, 'w', .5 );
+field_pos = struct( 'x', .5,  'y', 0, 'w', .5 );
+text_field_creator( panels.rois, 'ROIS', {}, text_pos, field_pos );
 
 Y = Y + L;
 
 % - STIMULI - %
 panels.stimuli = uipanel( F ...
   , 'Title', 'Stimuli' ...
-  , 'Position', [ X, Y, W, L ] ...
+  , 'Position', [ X, Y, W/2, L ] ...
 );
-
 % - pop ups
 stimuli_fs = fieldnames( config.STIMULI );
 handle_stimuli_popup();
 
-Y = Y + L;
+% Y = Y + L;
 
 % - TASK TIMES
-
 panels.time_in = uipanel( F ...
   , 'Title', 'Time in states' ...
-  , 'Position', [ X, Y, W, L ] ...
+  , 'Position', [ X+W/2, Y, W/2, L ] ...
 );
 
-time_fs = fieldnames( config.TIMINGS.time_in );
-
-w = .5;
-l = 1 / numel(time_fs);
-x = 0;
-y = 0;
-
-for i = 1:numel( time_fs )
-  time_name = time_fs{i};
-  position = [ x, y, w, l ];
-  uicontrol( panels.time_in ...
-    , 'Style', 'text' ...
-    , 'String', time_name...
-    , 'Units', 'normalized' ...
-    , 'Position', position ...
-  );    
-  position = [ x+w, y, w, l ];
-  uicontrol( panels.time_in ...
-    , 'Style', 'edit' ...
-    , 'String', config.TIMINGS.time_in.(time_name) ...
-    , 'UserData', struct( ...
-          'config_field', 'TIMINGS' ...
-        , 'subfields', {{'time_in', time_name}} ...
-        , 'is_numeric', true ...
-        ) ...
-    , 'Units', 'normalized' ...
-    , 'Position', position ...
-    , 'Callback', @handle_textfields ...
-  );
-  y = y + l;
-end
+text_pos = struct( 'x', 0, 'y', 0, 'w', .5 );
+field_pos = struct( 'x', .5, 'y', 0, 'w', .5 );
+text_field_creator( panels.time_in, 'TIMINGS', {'time_in'}, text_pos, field_pos );
 
 Y = Y + L;
 
@@ -183,8 +137,9 @@ panels.run = uipanel( F ...
   , 'Position', [ X, Y, W, L ] ...
 );
 
-funcs = { 'reset to default', 'clean-up', 'calibrate', 'start' };
-w = 1;
+funcs = { 'hard reset', 'reset to default', 'make default' ...
+  , 'clean-up', 'calibrate', 'start' };
+w = .5;
 l = 1 / numel(funcs);
 x = 0;
 y = 0;
@@ -202,8 +157,13 @@ for i = 1:numel(funcs)
   y = y + l;
 end
 
+% - Meta
+text_pos = struct( 'x', .5, 'y', 0, 'w', .1 );
+field_pos = struct( 'x', .6, 'y', 0, 'w', .4 );
+text_field_creator( panels.run, 'META', {}, text_pos, field_pos );
+
 % - COMPLETE
-set( F, 'position', [.25, 0, .5, .75] );
+set( F, 'position', [.25, 0, .75, .8] );
 
 if ( nargout == 1 )
   varargout{1} = F;
@@ -211,6 +171,8 @@ elseif ( nargout == 2 )
   varargout{1} = F;
   varargout{2} = config;
 end
+
+set( F, 'visible', 'on' );
 
 %   EVENT HANDLERS
 
@@ -227,27 +189,32 @@ function handle_button(source, event)
   func = source.String;
   switch ( func )
     case 'start'
-      func = str2func( 'brains.task.start' );
-      args = {};
+      brains.config.save( config );
+      brains.task.start();
     case 'calibrate'
-      func = str2func( 'brains.start_calibration' );
-      args = {};
+      brains.config.save( config );
+      brains.start_calibration();
     case 'clean-up'
-      func = str2func( 'brains.task.cleanup' );
-      args = {};
+      brains.config.save( config );
+      brains.task.cleanup();
     case 'reset to default'
+      config = brains.config.load( '-default' );
+      brains.config.save( config );
+      delete( F );
+      brains.gui.start();
+    case 'make default'
+      brains.config.save( config, '-default' );
+    case 'hard reset'
       brains.config.create();
       delete( F );
       brains.gui.start();
-      return;
     otherwise
       error( 'Unrecognized identifier ''%s''', source.String );
   end
-  brains.config.save( config );
-  func( args{:} );
 end
 
-% - COMMUNICATORS - % 
+% - TEXT FIELDS - %
+
 function handle_textfields(source, event)
   
   val = source.String;
@@ -257,7 +224,8 @@ function handle_textfields(source, event)
   all_fields = [ {'config'}, {field}, subfields ];
   identifier = strjoin( all_fields, '.' );
   if ( is_numeric )
-    eval( sprintf( '%s = %s;', identifier, val ) );  
+    eval( sprintf( '%s = [%s];', identifier, val ) );
+    source.String = num2str( eval(sprintf('[%s]', val)) );
   else
     eval( sprintf( '%s = ''%s'';', identifier, val ) );  
   end
@@ -267,6 +235,9 @@ end
 % - STIMULI - %
 
 function handle_stimuli_popup(source, event)
+  
+  %   HANDLE_STIMULI_POP -- Create or update the stimuli drop-down selector
+  %     + text-field interface.
   
   if ( nargin > 0  )
     panel_children = panels.stimuli.Children;
@@ -356,9 +327,127 @@ function handle_stimuli_popup(source, event)
       end
     end
     
+    need_update = false;
+    
+    if ( isequal(prop_name, 'class') )
+      original_val = config.STIMULI.(stim_name_).(prop_name);
+      if ( ~isequal(original_val, prop_val_) )
+        need_update = true;
+        switch ( prop_val_ )
+          case 'Rectangle'
+            config.STIMULI.(stim_name_) = ...
+              rmfield( config.STIMULI.(stim_name_), 'image_file' );
+          case 'Image'
+            config.STIMULI.(stim_name_).image_file = '';
+          otherwise
+            error( 'Unrecognized class value ''%s''', prop_val_ );
+        end
+      end
+    end
+    
     config.STIMULI.(stim_name_).(prop_name) = prop_val_;
     brains.config.save( config );
+    
+    if ( need_update )
+      parent_ind = arrayfun( @(x) strcmp(x.Tag, 'stim_selector') ...
+        , source.Parent.Children );
+      parent = source.Parent.Children( parent_ind );
+      handle_stimuli_popup( parent, [] );
+    end
   end
+end
+
+function text_field_creator( parent, basefield, subfields, text_pos, field_pos )
+  
+%   TEXT_FIELD_CREATOR -- Create a text-field set.
+%
+%     EX: //
+%
+%     F = figure();
+%     config = brains.config.load();
+%     basefield = 'IO';
+%     subfields = {}; % none
+%     text_pos  = struct( 'x', 0, 'y', 0, 'w', .5 );
+%     field_pos = struct( 'x', .5, 'y', 0, 'w', .5 );
+%
+%     text_field_creator( F, basefield, subfields, text_post, field_pos );
+%
+%     IN:
+%       - `parent` (graphics object) -- Handle to a panel object.
+%       - `basefield` (char) -- Field of `config` from which to draw.
+%       - `subfields` (cell array) -- Subfields of basefield.
+  
+config_path = strjoin( [{'config'}, {basefield}, subfields], '.' );
+fs = get_gui_fields( eval(config_path) );
+
+tx = text_pos.x;
+tw = text_pos.w;
+
+fx = field_pos.x;
+fw = field_pos.w;
+
+y_ = 0;
+l_ = 1 / numel(fs);
+
+for ii = 1:numel( fs )
+  field = fs{ii};
+  position_ = [ tx, y_, tw, l_ ];
+  uicontrol( parent ...
+    , 'Style', 'text' ...
+    , 'String', field ...
+    , 'Units', 'normalized' ...
+    , 'Position', position_ ...
+  );    
+  position_ = [ fx, y_, fw, l_ ];
+  val = eval( sprintf('%s.(''%s'')', config_path, field) );
+  is_num = isnumeric( val );
+  if ( is_num ), val = num2str( val ); end
+  uicontrol( parent ...
+    , 'Style', 'edit' ...
+    , 'String', val ...
+    , 'UserData', struct( ...
+          'config_field', basefield ...
+        , 'subfields', { [subfields, {field}] } ...
+        , 'is_numeric', is_num ...
+        ) ...
+    , 'Units', 'normalized' ...
+    , 'Position', position_ ...
+    , 'Callback', @handle_textfields ...
+  );
+  y_ = y_ + l_;
+end
+
+end
+
+end
+
+function fs = get_gui_fields( S )
+
+%   GET_GUI_FIELDS -- Get the fields of S that should be fields in a GUI
+%     panel.
+%
+%     If S does not have a 'gui_fields' field, fs is the fieldnames of S.
+%     If S has a 'gui_fields' field whose value is a struct with an
+%     'include' field, fs is S.gui_fields.include;
+%     If S has a 'gui_fields' field whose value is a struct with an
+%     'exclude' field, fs is the fields of S that are not present in
+%     S.gui_fields.exclude (and not 'gui_fields')
+%
+%     IN:
+%       - `S` (struct)
+%     OUT:
+%       - `fs` (cell array of strings)
+
+fs = fieldnames( S );
+if ( ~any(strcmp(fs, 'gui_fields')) ), return; end;
+if ( ~isfield(S.gui_fields, 'include') )
+  if ( ~isfield(S.gui_fields, 'exclude') )
+    return;
+  end
+  excludes = [ S.gui_fields.exclude, {'gui_fields'} ];
+  fs = exclude_values( fs, excludes );
+else
+  fs = S.gui_fields.include;
 end
 
 end

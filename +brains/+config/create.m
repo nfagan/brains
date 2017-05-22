@@ -15,14 +15,15 @@ IO.data_file =      'tstx.mat';
 IO.edf_folder =     fullfile( IO.repo_folder, 'brains', 'data' );
 IO.data_folder =    fullfile( IO.repo_folder, 'brains', 'data' );
 IO.stimuli_path =   fullfile( IO.repo_folder, 'brains', 'stimuli' );
+IO.gui_fields.include = { 'data_file', 'edf_file' };
 
 % - INTERFACE - %
 KbName( 'UnifyKeyNames' );
-INTERFACE.save_data = false;
-INTERFACE.allow_overwrite = true;
-INTERFACE.use_eyelink = false;
-INTERFACE.use_arduino = false;
-INTERFACE.require_synch = false;
+INTERFACE.save_data =       true;
+INTERFACE.allow_overwrite = false;
+INTERFACE.use_eyelink = true;
+INTERFACE.use_arduino = true;
+INTERFACE.require_synch = true;
 INTERFACE.rwd_key = KbName( 'r' );
 INTERFACE.stop_key = KbName( 'escape' );
 INTERFACE.is_master_arduino = true;
@@ -30,19 +31,18 @@ INTERFACE.is_master_monkey = true;
 INTERFACE.gui_fields.exclude = { 'rwd_key', 'stop_key' };
 
 % - META - %
-META.m1 = '';
-META.m2 = '';
+META.M1 = '';
+META.M2 = '';
 META.date = '';
-META.etc = '';
+META.notes = '';
 
 % - SCREEN - %
 sz = get( 0, 'screensize' );
 SCREEN.full_size = sz;
 SCREEN.index = 0;
 SCREEN.background_color = [ 0 0 0 ];
-SCREEN.rect.M1 = [ 0, 0, sz(3)/2, sz(4)/2 ];
-SCREEN.rect.M2 = [ 0, 0, sz(3)/2, sz(4)/2 ];
-% SCREEN.rect = [ 0 0, 1024*3, 768 ];
+SCREEN.rect.M1 = [ 0 0 800 600 ];
+SCREEN.rect.M2 = [ 0 0 800 600 ];
 
 % - STRUCTURE - %
 STRUCTURE.is_master_monkey = INTERFACE.is_master_monkey;
@@ -104,11 +104,13 @@ TCP.client_address = '127.0.0.1';
 TCP.port = 55000;
 
 % - ROIS - %
-ROIS.eyes = [ 0, 0, 500, 500 ];
-ROIS.mouth = [ 0, 0, 500, 500 ];
+ROIS.M1_eyes =  [ 0, 0, 500, 500 ];
+ROIS.M1_mouth = [ 0, 0, 500, 500 ];
+ROIS.M2_eyes =  [ 0, 0, 500, 500 ];
+ROIS.M2_mouth = [ 0, 0, 500, 500 ];
 
 % - STIMULI - %
-non_editable_properties = { 'class' };
+non_editable_properties = {{ 'placement', 'has_target' }};
 STIMULI.fixation = struct( ...
     'class',            'Rectangle' ...
   , 'size',             [ 150, 150 ] ...
@@ -188,6 +190,7 @@ STIMULI.response_target2 = struct( ...
 REWARDS.main = 250; % ms
 REWARDS.pulse_frequency = .5;
 REWARDS.last_reward_size = []; % ms
+REWARDS.gui_fields.include = { 'main' };
 
 %   export as one struct
 opts = struct();
@@ -205,6 +208,7 @@ opts.STIMULI =        STIMULI;
 opts.REWARDS =        REWARDS;
 
 brains.config.save( opts );
+brains.config.save( opts, '-default' );
 
 end
 
@@ -229,43 +233,3 @@ repo_ind = find(brains_ind) - 1;
 repo_dir = strjoin( file_parts(1:repo_ind), slash );
 
 end
-
-% SCREEN.rect = [];
-
-% sz = get( 0, 'screensize' );
-% if ( INTERFACE.is_master_monkey )
-%   SCREEN.rect = [ 0, 0, sz(3)/2, sz(4) ];
-%   SCREEN.rect = [ 0, 0, sz(3)/2, sz(4)/2 ];
-% else
-%   SCREEN.rect = [ 0, 0, sz(3)/2, sz(4)/2 ];
-%   SCREEN.rect = [ 0, sz(4)/2, sz(3)/2, sz(4) ];
-%   SCREEN.rect = [ sz(3)/2, 0, sz(3), sz(4) ];
-% end
-
-
-% STIMULI.fixation = Rectangle( WINDOW.index, WINDOW.rect, [150, 150] );
-% STIMULI.fixation.color = [96, 110, 132];
-% STIMULI.fixation.put( 'center' );
-% %   set up gaze targets
-% STIMULI.fixation.make_target( TRACKER, fixations.fixation );
-% 
-% STIMULI.rule_cue_gaze = Rectangle( WINDOW.index, WINDOW.rect, [250, 250] );
-% STIMULI.rule_cue_gaze.color = [151, 17, 178];
-% STIMULI.rule_cue_gaze.put( 'center' );
-% 
-% STIMULI.rule_cue_laser = Rectangle( WINDOW.index, WINDOW.rect, [250, 250] );
-% STIMULI.rule_cue_laser.color = [178, 17, 57];
-% STIMULI.rule_cue_laser.put( 'center' );
-% 
-% STIMULI.gaze_cue_correct = Image( WINDOW.index, WINDOW.rect, [300, 300], image_files{1} );
-% STIMULI.gaze_cue_correct.color = [50, 150, 57];
-% STIMULI.gaze_cue_correct.put( 'center-left' );
-% 
-% STIMULI.gaze_cue_incorrect = Image( WINDOW.index, WINDOW.rect, [300, 300], image_files{2} );
-% STIMULI.gaze_cue_incorrect.color = [178, 17, 20];
-% STIMULI.gaze_cue_incorrect.put( 'center-right' );
-% %   set up gaze targets
-% STIMULI.gaze_cue_correct.make_target( TRACKER, fixations.gaze_cue_correct );
-% STIMULI.gaze_cue_incorrect.make_target( TRACKER, fixations.gaze_cue_incorrect );
-% STIMULI.gaze_cue_correct.targets{1}.padding = 0;
-% STIMULI.gaze_cue_incorrect.targets{1}.padding = 0;

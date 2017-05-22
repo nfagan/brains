@@ -6,7 +6,8 @@ function opts = setup2()
 %     appropriate); creates stimuli; starts task timers; etc.
 %
 %     OUT:
-%       - `opts` (struct) -- 
+%       - `opts` (struct) -- Options struct modified to include open
+%         windows, EyeTracker, constructed stimuli, etc.
 
 import brains.util.assert__file_does_not_exist;
 
@@ -25,7 +26,7 @@ ROIS =      opts.ROIS;
 addpath( genpath(fullfile(IO.repo_folder, 'ptb_helpers')) );
 addpath( genpath(fullfile(IO.repo_folder, 'arduino', 'communicator')) );
 
-if ( ~INTERFACE.allow_overwrite )
+if ( INTERFACE.save_data && ~INTERFACE.allow_overwrite )
   assert__file_does_not_exist( fullfile(IO.data_folder, IO.data_file) );
   assert__file_does_not_exist( fullfile(IO.data_folder, IO.edf_file) );
 end

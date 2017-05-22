@@ -1,13 +1,29 @@
-function save( opts )
+function save( opts, flag )
 
 %   SAVE -- Save the config file.
 %
+%     Optionally pass in '-default' as a second argument to save the config
+%     as the default config.
+%
 %     IN:
 %       - `opts` (struct) -- Options struct / config file.
+%       - `flag` (char) |OPTIONAL|
 
+if ( nargin == 1 )
+  flag = ''; 
+else
+  assert( strcmp(flag, '-default'), 'Unrecognized flag ''%s''', flag );
+end
 savepath = fileparts( which('brains.config.save') );
-filename = fullfile( savepath, 'config.mat' );
+if ( ~isempty(flag) )
+  file = 'default.mat';
+  msg = 'Default config file saved';
+else
+  file = 'config.mat';
+  msg = 'Config file saved';
+end
+filename = fullfile( savepath, file );
 save( filename, 'opts' );
-disp( 'Config file saved' );
+disp( msg );
 
 end
