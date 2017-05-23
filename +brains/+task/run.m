@@ -196,7 +196,7 @@ while ( true )
         log_progress = false;
       end
       if ( correct_target.duration_met() )
-        fprintf( '\nslave: made choice %d\n', correct_is );
+        fprintf( '\nM2: made choice %d\n', correct_is );
         %   MARK: goto: USE_RULE
         STRUCTURE.m2_chose = correct_is;
         opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
@@ -210,7 +210,7 @@ while ( true )
         end
       end
       if ( incorrect_target.duration_met() )
-        fprintf( '\nslave: made choice %d\n', incorrect_is );
+        fprintf( '\nM2: made choice %d\n', incorrect_is );
         STRUCTURE.m2_chose = incorrect_is;
         tcp_comm.send_when_ready( 'choice', incorrect_is );
         if ( ~opts.INTERFACE.require_synch )
@@ -248,7 +248,7 @@ while ( true )
       response_target2.reset_targets();
       if ( INTERFACE.IS_M1 )
         STRUCTURE.m2_chose = tcp_comm.await_choice();
-        fprintf( '\nmaster: Received choice value %d\n', STRUCTURE.m2_chose );
+        fprintf( '\nM1: Received choice value %d\n', STRUCTURE.m2_chose );
       else
         tcp_comm.consume( 'choice' );
       end
@@ -263,7 +263,7 @@ while ( true )
       response_target2.draw();
       Screen( 'Flip', opts.WINDOW.index );
       if ( response_target1.duration_met() )
-        fprintf( '\nmaster: made choice %d\n', 1 );
+        fprintf( '\nM1: made choice %d\n', 1 );
         STRUCTURE.m1_chose = 1;
         %   MARK: goto: evaluate_choice
         STATES.current = STATES.evaluate_choice;
@@ -272,7 +272,7 @@ while ( true )
         first_entry = true;
       end
       if ( response_target2.duration_met() )
-        fprintf( '\nmaster: made choice %d\n', 2 );
+        fprintf( '\nM1: made choice %d\n', 2 );
         STRUCTURE.m1_chose = 2;
         %   MARK: goto: evaluate_choice
         STATES.current = STATES.evaluate_choice;
@@ -283,7 +283,7 @@ while ( true )
     else
       received_m1_choice = tcp_comm.consume( 'choice' );
       if ( ~isnan(received_m1_choice) )
-        fprintf( '\nslave: Received choice value: %d\n', received_m1_choice );
+        fprintf( '\nM2: Received choice value: %d\n', received_m1_choice );
         %   MARK: goto: evaluate_choice
         STATES.current = STATES.evaluate_choice;
         tcp_comm.send_when_ready( 'state', STATES.current );
@@ -293,6 +293,10 @@ while ( true )
     if ( TIMER.duration_met('use_rule') )
       if ( INTERFACE.IS_M1 && isempty(STRUCTURE.m1_chose) )
         tcp_comm.send_when_ready( 'choice', 0 );
+      end
+      if ( ~INTERFACE.IS_M1 && isnan(received_m1_choice) )
+        fprintf( '\nM2: Received choice value: %d\n', received_m1_choice );
+        received_m1_choice = await_choice();
       end
       %   MARK: goto: evaluate_choice
       STATES.current = STATES.evaluate_choice;
