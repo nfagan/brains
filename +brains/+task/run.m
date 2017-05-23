@@ -249,6 +249,8 @@ while ( true )
       if ( INTERFACE.IS_M1 )
         STRUCTURE.m2_chose = tcp_comm.await_choice();
         fprintf( '\nmaster: Received choice value %d\n', STRUCTURE.m2_chose );
+      else
+        tcp_comm.consume( 'choice' );
       end
       STRUCTURE.m1_chose = [];
       first_entry = false;
