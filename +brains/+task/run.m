@@ -295,8 +295,8 @@ while ( true )
         tcp_comm.send_when_ready( 'choice', 0 );
       end
       if ( ~INTERFACE.IS_M1 && isnan(received_m1_choice) )
-        fprintf( '\nM2: Received choice value: %d\n', received_m1_choice );
         received_m1_choice = tcp_comm.await_choice();
+        fprintf( '\nM2: Received choice value: %d\n', received_m1_choice );
       end
       %   MARK: goto: evaluate_choice
       STATES.current = STATES.evaluate_choice;
