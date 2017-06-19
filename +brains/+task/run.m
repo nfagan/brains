@@ -66,6 +66,8 @@ while ( true )
       incorrect_is = 2;
       correct_is = 1;
     end
+    correct_laser = incorrect_is;
+    incorrect_laser = correct_is;
     %   reset choice parameters
     STRUCTURE.m1_chose = [];
     STRUCTURE.m2_chose = [];
@@ -110,7 +112,8 @@ while ( true )
       end
       fix_met = 1;
       if ( other_fix_met )
-        opts = debounce_arduino( opts, @reward, 1, 150 );
+%         opts = debounce_arduino( opts, @reward, 1, 150 );
+        serial_comm.reward( 1, 150 );
         %   MARK: goto: rule cue
         STATES.current = STATES.rule_cue;
         tcp_comm.send_when_ready( 'state', STATES.current );
@@ -181,6 +184,7 @@ while ( true )
       correct_target.reset_targets();
       last_pulse = NaN;
       log_progress = true;
+      lit_led = false;
       first_entry = false;
     end
     TRACKER.update_coordinates();
@@ -199,9 +203,12 @@ while ( true )
         fprintf( '\nM2: made choice %d\n', correct_is );
         %   MARK: goto: USE_RULE
         STRUCTURE.m2_chose = correct_is;
-        opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
-        opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
-        opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
+%         opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
+%         opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
+%         opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
+        serial_comm.reward( 1, opts.REWARDS.main );
+        serial_comm.reward( 1, opts.REWARDS.main );
+        serial_comm.reward( 1, opts.REWARDS.main );
         tcp_comm.send_when_ready( 'choice', correct_is );
         if ( ~opts.INTERFACE.require_synch )
           %   MARK: goto: USE_RULE
@@ -221,6 +228,11 @@ while ( true )
       end
     else
       Screen( 'Flip', opts.WINDOW.index );
+      %   TODO: make this `correct_laser`
+      if ( ~lit_led )
+        serial_comm.LED( 1, 1000 );
+        lit_led = true;
+      end
     end
     if ( TIMER.duration_met('post_rule_cue') )
       %   MARK: goto: USE_RULE
@@ -315,7 +327,8 @@ while ( true )
       TIMER.reset_timers( 'evaluate_choice' );
       if ( INTERFACE.IS_M1 )
         if ( isequal(STRUCTURE.m1_chose, STRUCTURE.m2_chose) )
-          opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
+%           opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
+          serial_comm.reward( 1, opts.REWARDS.main );
         end
       end
       first_entry = false;
@@ -371,6 +384,13 @@ while ( true )
   tcp_comm.update();
   tcp_comm.send_when_ready( 'gaze', TRACKER.coordinates );
   
+  % - Update rewards
+  
+  if ( TIMER.duration_met('debounce_arduino_messages') )
+    serial_comm.update();
+    TIMER.reset_timers( 'debounce_arduino_messages' );
+  end
+  
   % - Quit if error in EyeLink
   success = TRACKER.check_recording();
   if ( success ~= 0 ), break; end;
@@ -382,7 +402,8 @@ while ( true )
     if ( key_code(opts.INTERFACE.stop_key) ), break; end;
     %   Deliver reward if reward key is pressed
     if ( key_code(opts.INTERFACE.rwd_key) )
-      opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
+%       opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
+      serial_comm.reward( 1, opts.REWARDS.main );
     end
   end
   

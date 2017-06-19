@@ -64,14 +64,19 @@ TIMER = Timer();
 TIMER.register( time_in );
 
 % - Serial - %
-if ( INTERFACE.use_arduino )
-  messages = [ SERIAL.messages.shared, SERIAL.messages.(M_str) ];
-  serial_port = SERIAL.ports.(M_str);
-  baud_rate = SERIAL.baud_rate;
-  serial_comm = Communicator( messages, serial_port, baud_rate );
+messages = [ SERIAL.messages.shared, SERIAL.messages.(M_str) ];
+serial_port = SERIAL.ports.(M_str);
+reward_channels = SERIAL.reward_channels.(M_str);
+if ( IS_M1 )
+  serial_role = 'master';
 else
-  serial_comm = [];
+  serial_role = 'slave';
 end
+serial_comm_ = brains.arduino.BrainsSerialManagerPaired( ...
+  serial_port, messages, reward_channels, serial_role );
+
+serial_comm_.bypass = ~INTERFACE.use_arduino;
+serial_comm_.start();
 
 % - TCP - %
 if ( IS_M1 )
@@ -87,7 +92,7 @@ tcp_comm = tcp_comm_constructor( address, tcp_port );
 tcp_comm.bypass = ~INTERFACE.require_synch;
 tcp_comm.start();
 
-COMMUNICATORS.serial_comm = serial_comm;
+COMMUNICATORS.serial_comm = serial_comm_;
 COMMUNICATORS.tcp_comm = tcp_comm;
 
 % - ROIS - %
