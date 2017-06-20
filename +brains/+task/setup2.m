@@ -117,6 +117,10 @@ for i = 1:numel(stim_fs)
     padding = stim.target_padding;
     stim_.make_target( TRACKER, duration );
     stim_.targets{1}.padding = padding;
+    %   update X target bounds to account for non-fullscreen window.
+    target_bounds = stim_.targets{1}.bounds;
+    x_offset = scr_rect(1);
+    stim_.targets{1}.bounds([1, 3]) = target_bounds([1, 3]) + x_offset;
   end
   STIMULI.(stim_fs{i}) = stim_;
 end

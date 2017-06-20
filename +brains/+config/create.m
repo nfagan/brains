@@ -43,8 +43,8 @@ sz = get( 0, 'screensize' );
 SCREEN.full_size = sz;
 SCREEN.index = 0;
 SCREEN.background_color = [ 0 0 0 ];
-SCREEN.rect.M1 = [ 0 0 800 600 ];
-SCREEN.rect.M2 = [ 0 0 800 600 ];
+SCREEN.rect.M1 = [ 1680 0 4752 768 ];
+SCREEN.rect.M2 = [ 1680 0 4752 768 ];
 
 % - CALIBRATION - %
 CALIBRATION.full_rect =     [ 0, 0, 3072, 768 ];

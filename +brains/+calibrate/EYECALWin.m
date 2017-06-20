@@ -1,7 +1,5 @@
 function EYECALWin()   % modified from eyecal_gka
 
-Screen('Preference', 'SkipSyncTests', 0);
-
 import brains.calibrate.sharedWorkspace;
 import brains.calibrate.escapeHandler;
 import brains.calibrate.sleepWithKbCheck;
@@ -16,15 +14,18 @@ if ( IS_M1 )
 else
   M_str = 'M2';
 end
-messages = config.SERIAL.messages.(M_str);
 port = config.SERIAL.ports.(M_str);
-baud_rate = config.SERIAL.baud_rate;
-
-if ( config.INTERFACE.use_arduino )
-  comm = Communicator( messages, port, baud_rate );
-  WaitSecs( 1 );
-  comm.send_reward_size( 'A', 200 );
+rwd_channels = config.SERIAL.reward_channels.(M_str);
+if ( config.INTERFACE.is_master_arduino )
+  role = 'master';
+else
+  role = 'slave';
 end
+
+comm = ...
+  brains.arduino.BrainsSerialManagerPaired( port, struct(), rwd_channels, role );
+
+comm.bypass = ~config.INTERFACE.use_arduino;
 
 fullRect = config.CALIBRATION.full_rect;
 calRect = config.CALIBRATION.cal_rect;
@@ -101,7 +102,7 @@ keyHandlers(1).wake = true;            % keyHandlers(1).func = @Name Of Function
 keyHandlers(2).key = 'j';
 if ( config.INTERFACE.use_arduino )
   keyHandlers(3).key = 'r';
-  keyHandlers(3).func = @() comm.send('REWARD1');
+  keyHandlers(3).func = @() comm.reward(1, 200);
 end
 %keyHandlers(2).func = @()(fprintf(serialthing,'%s','2'));  % or keyHandlers(2).func = {@J1, 100}; ... using empty func, (), is slightly fater
 
@@ -196,12 +197,6 @@ while sharedWorkspace('EYECALWin','keepGoing') %global workspace saves values ou
         break;
     end       
     
-    [key_pressed, ~, ~] = KbCheck();
-    if ( key_pressed )
-      if ( config.INTERFACE.use_arduino )
-        comm.send( 'REWARD1' );
-      end
-    end
     % if RewardTrial % Reward
 
       %   fprintf(serialthing,'%s','2');
