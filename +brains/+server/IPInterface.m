@@ -332,6 +332,29 @@ classdef IPInterface < handle
       obj.consume( 'state' );
     end
     
+    function data = await_data(obj, kind)
+      
+      %   AWAIT_DATA -- Await the receipt of new data.
+      %
+      %     IN:
+      %       - `kind` (char) -- The kind of data to wait for.
+      %
+      %     OUT:
+      %       - `choice` (double) -- M2's choice.
+      
+      if ( obj.bypass ), data = obj.defaults.DATA.(kind); return; end;
+      timeout_amt = obj.TIMEOUTS.awaits;
+      timeout_check = tic;
+      while ( isnan(obj.DATA.(kind)) )
+        if ( toc(timeout_check) > timeout_amt )
+          error( '%s receipt timed-out (%0.1f seconds ellapsed).' ...
+            , kind, timeout_amt );
+        end
+        obj.update();
+      end
+      data = obj.consume( kind );
+    end
+    
     function choice = await_choice(obj)
       
       %   AWAIT_CHOICE -- Await the receipt of M2's choice.

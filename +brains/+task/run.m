@@ -112,7 +112,6 @@ while ( true )
       end
       fix_met = 1;
       if ( other_fix_met )
-%         opts = debounce_arduino( opts, @reward, 1, 150 );
         serial_comm.reward( 1, 150 );
         %   MARK: goto: rule cue
         STATES.current = STATES.rule_cue;
@@ -203,9 +202,6 @@ while ( true )
         fprintf( '\nM2: made choice %d\n', correct_is );
         %   MARK: goto: USE_RULE
         STRUCTURE.m2_chose = correct_is;
-%         opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
-%         opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
-%         opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
 %         serial_comm.reward( 1, opts.REWARDS.main );
 %         serial_comm.reward( 1, opts.REWARDS.main );
 %         serial_comm.reward( 1, opts.REWARDS.main );
@@ -327,7 +323,6 @@ while ( true )
       TIMER.reset_timers( 'evaluate_choice' );
       if ( INTERFACE.IS_M1 )
         if ( isequal(STRUCTURE.m1_chose, STRUCTURE.m2_chose) )
-%           opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
           serial_comm.reward( 1, opts.REWARDS.main );
         end
       end
@@ -402,7 +397,6 @@ while ( true )
     if ( key_code(opts.INTERFACE.stop_key) ), break; end;
     %   Deliver reward if reward key is pressed
     if ( key_code(opts.INTERFACE.rwd_key) )
-%       opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
       serial_comm.reward( 1, opts.REWARDS.main );
     end
   end
