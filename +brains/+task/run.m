@@ -225,8 +225,8 @@ while ( true )
     else
       Screen( 'Flip', opts.WINDOW.index );
       %   TODO: make this `correct_laser`
-      if ( ~lit_led )
-        serial_comm.LED( 1, 1000 );
+      if ( strcmp(STRUCTURE.rule_cue_type, 'laser') && ~lit_led )
+        serial_comm.LED( correct_laser, 1000 );
         lit_led = true;
       end
     end
