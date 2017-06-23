@@ -340,7 +340,7 @@ classdef IPInterface < handle
       %       - `kind` (char) -- The kind of data to wait for.
       %
       %     OUT:
-      %       - `choice` (double) -- M2's choice.
+      %       - `data` (double) -- The received data.
       
       if ( obj.bypass ), data = obj.defaults.DATA.(kind); return; end;
       timeout_amt = obj.TIMEOUTS.awaits;

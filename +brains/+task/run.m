@@ -66,8 +66,19 @@ while ( true )
       incorrect_is = 2;
       correct_is = 1;
     end
-    correct_laser = incorrect_is;
-    incorrect_laser = correct_is;
+    %   make the laser cue appear on the side opposite of the gaze target.
+    if ( ~INTERFACE.IS_M1 )
+      laser_location = incorrect_is;
+      tcp_comm.send_when_ready( 'choice', laser_location );
+    else
+      laser_location = tcp_comm.await_data( 'choice' );
+      %   make sure we received a valid `laser_location`, unless
+      %   require_synch is false.
+      if ( isnan(laser_location) )
+        assert( ~INTERFACE.require_synch, 'Received NaN for laser_location.' );
+        laser_location = 1;
+      end
+    end
     %   reset choice parameters
     STRUCTURE.m1_chose = [];
     STRUCTURE.m2_chose = [];
@@ -201,10 +212,16 @@ while ( true )
       if ( correct_target.duration_met() )
         fprintf( '\nM2: made choice %d\n', correct_is );
         %   MARK: goto: USE_RULE
+        if ( isnan(last_pulse) )
+          should_reward = true;
+        else
+          should_reward = toc( last_pulse ) > .3;
+        end
+        if ( should_reward )
+          serial_comm.reward( 1, opts.REWARDS.main );
+          last_pulse = tic;
+        end
         STRUCTURE.m2_chose = correct_is;
-%         serial_comm.reward( 1, opts.REWARDS.main );
-%         serial_comm.reward( 1, opts.REWARDS.main );
-%         serial_comm.reward( 1, opts.REWARDS.main );
         tcp_comm.send_when_ready( 'choice', correct_is );
         if ( ~opts.INTERFACE.require_synch )
           %   MARK: goto: USE_RULE
@@ -224,9 +241,8 @@ while ( true )
       end
     else
       Screen( 'Flip', opts.WINDOW.index );
-      %   TODO: make this `correct_laser`
       if ( ~lit_led )
-        serial_comm.LED( correct_laser, 1000 );
+        serial_comm.LED( laser_location, 1000 );
         lit_led = true;
       end
     end
@@ -379,8 +395,7 @@ while ( true )
   tcp_comm.update();
   tcp_comm.send_when_ready( 'gaze', TRACKER.coordinates );
   
-  % - Update rewards
-  
+  % - Update rewards  
   if ( TIMER.duration_met('debounce_arduino_messages') )
     serial_comm.update();
     TIMER.reset_timers( 'debounce_arduino_messages' );

@@ -89,7 +89,6 @@ TIMINGS.synch_timeout = 10;
 % - COMMUNICATORS - %
 
 % - Serial - %
-% SERIAL.messages.shared = struct( 'message', {'LEDA', 'LEDB'}, 'char', {'Y', 'U'} );
 SERIAL.messages.shared = struct();
 SERIAL.messages.M1 = struct();
 SERIAL.messages.M2 = struct();
