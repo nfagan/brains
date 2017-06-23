@@ -206,9 +206,9 @@ while ( true )
 %         opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
 %         opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
 %         opts = debounce_arduino( opts, @reward, 1, opts.REWARDS.main );
-        serial_comm.reward( 1, opts.REWARDS.main );
-        serial_comm.reward( 1, opts.REWARDS.main );
-        serial_comm.reward( 1, opts.REWARDS.main );
+%         serial_comm.reward( 1, opts.REWARDS.main );
+%         serial_comm.reward( 1, opts.REWARDS.main );
+%         serial_comm.reward( 1, opts.REWARDS.main );
         tcp_comm.send_when_ready( 'choice', correct_is );
         if ( ~opts.INTERFACE.require_synch )
           %   MARK: goto: USE_RULE
