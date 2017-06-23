@@ -100,8 +100,8 @@ SERIAL.reward_channels.M2 = 'A';
 SERIAL.baud_rate = 115200;
 
 % - TCP - %
-TCP.server_address = '172.23.7.165';
-TCP.client_address = '172.23.0.183';
+TCP.server_address = '169.254.139.190';
+TCP.client_address = '169.254.90.200';
 TCP.port = 55000;
 
 % - ROIS - %
