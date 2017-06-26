@@ -34,8 +34,8 @@ end
 PsychDefaultSetup( 1 );
 ListenChar();
 
-IS_M1 = INTERFACE.IS_M1;
-if ( IS_M1 )
+IS_MASTER = INTERFACE.is_master_arduino;
+if ( IS_MASTER )
   M_str = 'M1';
 else
   M_str = 'M2';
@@ -67,7 +67,7 @@ TIMER.register( time_in );
 messages = [ SERIAL.messages.shared, SERIAL.messages.(M_str) ];
 serial_port = SERIAL.ports.(M_str);
 reward_channels = SERIAL.reward_channels.(M_str);
-if ( IS_M1 )
+if ( IS_MASTER )
   serial_role = 'master';
 else
   serial_role = 'slave';
@@ -79,7 +79,7 @@ serial_comm_.bypass = ~INTERFACE.use_arduino;
 serial_comm_.start();
 
 % - TCP - %
-if ( IS_M1 )
+if ( IS_MASTER )
   tcp_comm_constructor = @brains.server.Server;
   address = TCP.client_address;
 else

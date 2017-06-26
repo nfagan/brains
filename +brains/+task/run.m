@@ -118,15 +118,17 @@ while ( true )
     if ( fix_targ.duration_met() )
       disp( 'Met fixation' );
       PROGRESS.fixation_acquired = TIMER.get_time( 'task' );
-      if ( opts.INTERFACE.require_synch )
+      if ( INTERFACE.require_synch )
         other_fix_met = tcp_comm.consume( 'fix_met' ) == 1;
       else other_fix_met = 1;
       end
       fix_met = 1;
       if ( other_fix_met )
-        if ( INTERFACE.IS_M1 )
+        if ( INTERFACE.require_synch && INTERFACE.IS_M1 )
           serial_comm.reward( 1, REWARDS.bridge );
           serial_comm.reward( 2, REWARDS.bridge );
+        else
+          serial_comm.reward( 1, REWARDS.bridge );
         end
         %   MARK: goto: rule cue
         STATES.current = STATES.rule_cue;
@@ -227,7 +229,7 @@ while ( true )
         end
         STRUCTURE.m2_chose = correct_is;
         tcp_comm.send_when_ready( 'choice', correct_is );
-        if ( ~opts.INTERFACE.require_synch )
+        if ( ~INTERFACE.require_synch )
           %   MARK: goto: USE_RULE
           STATES.current = STATES.use_rule;
           first_entry = true;
@@ -237,7 +239,7 @@ while ( true )
         fprintf( '\nM2: made choice %d\n', incorrect_is );
         STRUCTURE.m2_chose = incorrect_is;
         tcp_comm.send_when_ready( 'choice', incorrect_is );
-        if ( ~opts.INTERFACE.require_synch )
+        if ( ~INTERFACE.require_synch )
           %   MARK: goto: USE_RULE
           STATES.current = STATES.use_rule;
           first_entry = true;
@@ -413,9 +415,9 @@ while ( true )
   [key_pressed, ~, key_code] = KbCheck();
   if ( key_pressed )
     % - Quit if stop_key is pressed
-    if ( key_code(opts.INTERFACE.stop_key) ), break; end;
+    if ( key_code(INTERFACE.stop_key) ), break; end;
     %   Deliver reward if reward key is pressed
-    if ( key_code(opts.INTERFACE.rwd_key) )
+    if ( key_code(INTERFACE.rwd_key) )
       serial_comm.reward( 1, REWARDS.main );
     end
   end
@@ -426,7 +428,7 @@ end
 
 TRACKER.shutdown();
 
-if ( opts.INTERFACE.save_data )
+if ( INTERFACE.save_data )
   data = struct();
   data.DATA = DATA;
   data.opts = opts;
