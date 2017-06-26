@@ -248,7 +248,7 @@ while ( true )
     else
       Screen( 'Flip', opts.WINDOW.index );
       if ( ~lit_led )
-        serial_comm.LED( laser_location, 1000 );
+        serial_comm.LED( laser_location, 4000 );
         lit_led = true;
       end
     end
