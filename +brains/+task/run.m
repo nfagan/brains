@@ -123,7 +123,10 @@ while ( true )
       end
       fix_met = 1;
       if ( other_fix_met )
-        serial_comm.reward( 1, 150 );
+        if ( INTERFACE.IS_M1 )
+          serial_comm.reward( 1, 150 );
+          serial_comm.reward( 2, 150 );
+        end
         %   MARK: goto: rule cue
         STATES.current = STATES.rule_cue;
         tcp_comm.send_when_ready( 'state', STATES.current );
