@@ -123,7 +123,7 @@ while ( true )
       end
       fix_met = 1;
       if ( other_fix_met )
-%         serial_comm.reward( 1, 150 );
+        serial_comm.reward( 1, 150 );
         %   MARK: goto: rule cue
         STATES.current = STATES.rule_cue;
         tcp_comm.send_when_ready( 'state', STATES.current );
@@ -147,7 +147,6 @@ while ( true )
       Screen( 'Flip', opts.WINDOW.index );
       disp( 'Entered rule cue' );
       tcp_comm.await_matching_state( STATES.current );
-      serial_comm.reward( 1, 150 );
       PROGRESS.rule_cue = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'rule_cue' );
       gaze_cue = STIMULI.rule_cue_gaze;
@@ -394,7 +393,7 @@ while ( true )
   
   % - Update tcp_comm
   tcp_comm.update();
-%   tcp_comm.send_when_ready( 'gaze', TRACKER.coordinates );
+  tcp_comm.send_when_ready( 'gaze', TRACKER.coordinates );
   
   % - Update rewards  
   if ( TIMER.duration_met('debounce_arduino_messages') )
