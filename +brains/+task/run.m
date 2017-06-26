@@ -393,7 +393,7 @@ while ( true )
   
   % - Update tcp_comm
   tcp_comm.update();
-  tcp_comm.send_when_ready( 'gaze', TRACKER.coordinates );
+%   tcp_comm.send_when_ready( 'gaze', TRACKER.coordinates );
   
   % - Update rewards  
   if ( TIMER.duration_met('debounce_arduino_messages') )
