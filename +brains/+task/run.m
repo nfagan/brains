@@ -14,6 +14,7 @@ TRACKER =       opts.TRACKER;
 STIMULI =       opts.STIMULI;
 STRUCTURE =     opts.STRUCTURE;
 INTERFACE =     opts.INTERFACE;
+REWARDS =       opts.REWARDS;
 tcp_comm =      opts.COMMUNICATORS.tcp_comm;
 serial_comm =   opts.COMMUNICATORS.serial_comm;
 
@@ -124,8 +125,8 @@ while ( true )
       fix_met = 1;
       if ( other_fix_met )
         if ( INTERFACE.IS_M1 )
-          serial_comm.reward( 1, 150 );
-          serial_comm.reward( 2, 150 );
+          serial_comm.reward( 1, REWARDS.bridge );
+          serial_comm.reward( 2, REWARDS.bridge );
         end
         %   MARK: goto: rule cue
         STATES.current = STATES.rule_cue;
@@ -218,10 +219,10 @@ while ( true )
         if ( isnan(last_pulse) )
           should_reward = true;
         else
-          should_reward = toc( last_pulse ) > .3;
+          should_reward = toc( last_pulse ) > REWARDS.pulse_frequency;
         end
         if ( should_reward )
-          serial_comm.reward( 1, opts.REWARDS.main );
+          serial_comm.reward( 1, REWARDS.main );
           last_pulse = tic;
         end
         STRUCTURE.m2_chose = correct_is;
@@ -342,7 +343,7 @@ while ( true )
       TIMER.reset_timers( 'evaluate_choice' );
       if ( INTERFACE.IS_M1 )
         if ( isequal(STRUCTURE.m1_chose, STRUCTURE.m2_chose) )
-          serial_comm.reward( 1, opts.REWARDS.main );
+          serial_comm.reward( 1, REWARDS.main );
         end
       end
       first_entry = false;
@@ -415,7 +416,7 @@ while ( true )
     if ( key_code(opts.INTERFACE.stop_key) ), break; end;
     %   Deliver reward if reward key is pressed
     if ( key_code(opts.INTERFACE.rwd_key) )
-      serial_comm.reward( 1, opts.REWARDS.main );
+      serial_comm.reward( 1, REWARDS.main );
     end
   end
   

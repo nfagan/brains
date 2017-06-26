@@ -188,9 +188,10 @@ STIMULI.response_target2 = struct( ...
 
 % - REWARDS - %
 REWARDS.main = 250; % ms
+REWARDS.bridge = 150;
 REWARDS.pulse_frequency = .5;
 REWARDS.last_reward_size = []; % ms
-REWARDS.gui_fields.include = { 'main' };
+REWARDS.gui_fields.include = { 'main', 'bridge', 'pulse_frequency' };
 
 %   export as one struct
 opts = struct();
