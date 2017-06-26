@@ -127,7 +127,7 @@ while ( true )
         if ( INTERFACE.require_synch && INTERFACE.IS_M1 )
           serial_comm.reward( 1, REWARDS.bridge );
           serial_comm.reward( 2, REWARDS.bridge );
-        else
+        elseif ( ~INTERFACE.require_synch )
           serial_comm.reward( 1, REWARDS.bridge );
         end
         %   MARK: goto: rule cue
