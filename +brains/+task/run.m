@@ -363,9 +363,12 @@ while ( true )
       TIMER.reset_timers( 'evaluate_choice' );
       matching_choices = isequal( STRUCTURE.m1_chose, STRUCTURE.m2_chose );
       matching_laser = isequal( STRUCTURE.m1_chose, laser_location );
-      if ( matching_choices && strcmp(STRUCTURE.rule_cue_type, 'gaze') )
-        serial_comm.reward( 1, REWARDS.main );
-      elseif ( matching_laser && strcmp(STRUCTURE.rule_cue_type, 'laser') )
+      %   if trialtype is 'gaze', and choices match
+      if ( strcmp(STRUCTURE.rule_cue_type, 'gaze') && matching_choices )
+        if ( STRUCTURE.m1_chose ~= 0 )
+          serial_comm.reward( 1, REWARDS.main );
+        end
+      elseif ( strcmp(STRUCTURE.rule_cue_type, 'laser') && matching_laser )
         serial_comm.reward( 1, REWARDS.main );
       end
       first_entry = false;
