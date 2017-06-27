@@ -295,7 +295,7 @@ while ( true )
       response_target1.reset_targets();
       response_target2.reset_targets();
       if ( INTERFACE.IS_M1 )
-        STRUCTURE.m2_chose = tcp_comm.await_choice();
+        STRUCTURE.m2_chose = tcp_comm.await_data( 'choice' );
         fprintf( '\nM1: Received choice value %d\n', STRUCTURE.m2_chose );
       else
         tcp_comm.consume( 'choice' );
@@ -343,7 +343,7 @@ while ( true )
         tcp_comm.send_when_ready( 'choice', 0 );
       end
       if ( ~INTERFACE.IS_M1 && isnan(received_m1_choice) )
-        received_m1_choice = tcp_comm.await_choice();
+        received_m1_choice = tcp_comm.await_data( 'choice' );
         fprintf( '\nM2: Received choice value: %d\n', received_m1_choice );
       end
       %   MARK: goto: evaluate_choice
@@ -363,11 +363,12 @@ while ( true )
       TIMER.reset_timers( 'evaluate_choice' );
       matching_choices = isequal( STRUCTURE.m1_chose, STRUCTURE.m2_chose );
       matching_laser = isequal( STRUCTURE.m1_chose, laser_location );
-      %   if trialtype is 'gaze', and choices match
+      %   if trialtype is 'gaze', and choices match ...
       if ( strcmp(STRUCTURE.rule_cue_type, 'gaze') && matching_choices )
         if ( STRUCTURE.m1_chose ~= 0 )
           serial_comm.reward( 1, REWARDS.main );
         end
+      %   if trialtype is 'laser', and m1's choice matches laser_location
       elseif ( strcmp(STRUCTURE.rule_cue_type, 'laser') && matching_laser )
         serial_comm.reward( 1, REWARDS.main );
       end
