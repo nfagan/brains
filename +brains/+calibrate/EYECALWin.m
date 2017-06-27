@@ -31,6 +31,7 @@ fullRect = config.CALIBRATION.full_rect;
 calRect = config.CALIBRATION.cal_rect;
 targShape = config.CALIBRATION.target_size;
 targShape = [ -targShape, -targShape; targShape, targShape ];
+adjust_x = fullRect(1) + 1024;
 
 % addpath( fullfile(fileparts(which(mfilename)), 'images') );
 img_path = fullfile( fileparts(which('brains.calibrate.EYECALWin')), 'images' );
@@ -73,6 +74,7 @@ end
 % blankScreen = Screen('OpenOffscreenWindow', const.monkeyScreen, const.bgColor, [], 32);
 const.screenCenter = round([mean(wRect([1 3])) mean(wRect([2 4]))]);
 startEyelinkCal(calRect, nCalPts); % Open communications with Eyelink and put it into calibration mode
+
 
 % Set up keys and functions to handle keypresses during the calibration
 % task:
@@ -173,6 +175,8 @@ while sharedWorkspace('EYECALWin','keepGoing') %global workspace saves values ou
             [dummy, targX, targY] = Eyelink('TargetCheck');
             targRect = shiftPoints(targShape, [targX targY])';
             targRect = targRect(:)';
+            targRect([1, 3]) = targRect([1, 3]) - adjust_x;
+            disp( targRect );
             for b=1:NumMonkeys, %Number of monkeys to show per trial               
             imload=imread(imgfile{a(b)},'jpg');
             Screen('PutImage',window,imload,targRect);
