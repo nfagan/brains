@@ -245,12 +245,12 @@ while ( true )
           first_entry = true;
         end
       end
-    else
-      Screen( 'Flip', opts.WINDOW.index );
       if ( ~lit_led )
-        serial_comm.LED( laser_location, 4000 );
+        serial_comm.LED( laser_location, opts.TIMINGS.LED );
         lit_led = true;
       end
+    else
+      Screen( 'Flip', opts.WINDOW.index );
     end
     if ( TIMER.duration_met('post_rule_cue') )
       %   MARK: goto: USE_RULE

@@ -85,6 +85,7 @@ time_in.debounce_arduino_messages = .01;
 TIMINGS.fixations = fixations;
 TIMINGS.time_in = time_in;
 TIMINGS.synch_timeout = 10;
+TIMINGS.LED = 4e3;
 
 % - COMMUNICATORS - %
 
