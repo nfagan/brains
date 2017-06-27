@@ -13,11 +13,12 @@ classdef IPInterface < handle
     bypass = false;
     DATA;
     CHARS = struct( ...
-          'can_send',   '*',  'can_receive', '%' ...
-        , 'gaze_s',     'X',  'gaze_r', 'x' ...
-        , 'state_s',    'S',  'state_r', 's' ...
-        , 'choice_s',   'C',  'choice_r', 'c' ...
-        , 'fix_met_s',  'F',  'fix_met_r', 'f' ...
+          'can_send',     '*',  'can_receive', '%' ...
+        , 'gaze_s',       'X',  'gaze_r', 'x' ...
+        , 'state_s',      'S',  'state_r', 's' ...
+        , 'choice_s',     'C',  'choice_r', 'c' ...
+        , 'fix_met_s',    'F',  'fix_met_r', 'f' ...
+        , 'trial_type_s', 'T',  'trial_type_r', 't' ...
     );
     TIMEOUTS = struct( 'send_ready', 5, 'awaits', 5, 'connect', 5 );
     DEBUG = false;
@@ -46,6 +47,7 @@ classdef IPInterface < handle
       obj.defaults.DATA.state = NaN;
       obj.defaults.DATA.choice = NaN;
       obj.defaults.DATA.fix_met = NaN;
+      obj.defaults.DATA.trial_type = NaN;
       obj.default();
     end
     
@@ -116,6 +118,8 @@ classdef IPInterface < handle
           id = obj.CHARS.choice_s;
         case 'fix_met'
           id = obj.CHARS.fix_met_s;
+        case 'trial_type'
+          id = obj.CHARS.trial_type_s;
         otherwise
           error( 'Unrecognized data-kind ''%s''', kind );
       end
@@ -195,6 +199,10 @@ classdef IPInterface < handle
           obj.assert__received_n_values( response, obj.PACKET_SIZE ...
             , 'the acknowledgement' );
           obj.can_send = true;
+        
+        % - incoming trial type
+        case chars.trial_type_s
+          handle_data_send( 'trial_type', response(2) );
           
         % - incoming gaze data
         case chars.gaze_s

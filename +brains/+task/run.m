@@ -50,10 +50,28 @@ while ( true )
     %   reset event times
     PROGRESS = structfun( @(x) NaN, PROGRESS, 'un', false );
     %   determine rule cue type
-    if ( rand() > .5 )
-      STRUCTURE.rule_cue_type = 'gaze';
+    if ( INTERFACE.IS_M1 )
+      if ( rand() > .5 )
+        STRUCTURE.rule_cue_type = 'gaze';
+        trial_type_num = 1;
+      else
+        STRUCTURE.rule_cue_type = 'laser';
+        trial_type_num = 2;
+      end
+      tcp_comm.send_when_ready( 'trial_type', trial_type_num );
     else
-      STRUCTURE.rule_cue_type = 'laser';
+      trial_type_num = tcp_comm.await_data( 'trial_type' );
+      %   make sure we received a valid `laser_location`, unless
+      %   require_synch is false.
+      if ( isnan(trial_type_num) )
+        assert( ~INTERFACE.require_synch, 'Received NaN for trial_type.' );
+        trial_type_num = 1;
+      end
+      if ( trial_type_num == 1 )
+        STRUCTURE.rule_cue_type = 'gaze';
+      else
+        STRUCTURE.rule_cue_type = 'laser';
+      end
     end
     %   get correct target location for m2
     if ( rand() > .5 )
@@ -343,10 +361,12 @@ while ( true )
       tcp_comm.await_matching_state( STATES.current );
       PROGRESS.evaluate_choice = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'evaluate_choice' );
-      if ( INTERFACE.IS_M1 )
-        if ( isequal(STRUCTURE.m1_chose, STRUCTURE.m2_chose) )
-          serial_comm.reward( 1, REWARDS.main );
-        end
+      matching_choices = isequal( STRUCTURE.m1_chose, STRUCTURE.m2_chose );
+      matching_laser = isequal( STRUCTURE.m1_chose, laser_location );
+      if ( matching_choices && strcmp(STRUCTURE.rule_cue_type, 'gaze') )
+        serial_comm.reward( 1, REWARDS.main );
+      elseif ( matching_laser && strcmp(STRUCTURE.rule_cue_type, 'laser') )
+        serial_comm.reward( 1, REWARDS.main );
       end
       first_entry = false;
     end
