@@ -31,7 +31,7 @@ fullRect = config.CALIBRATION.full_rect;
 calRect = config.CALIBRATION.cal_rect;
 targShape = config.CALIBRATION.target_size;
 targShape = [ -targShape, -targShape; targShape, targShape ];
-adjust_x = fullRect(1) + 1024;
+adjust_x = fullRect(1);
 
 % addpath( fullfile(fileparts(which(mfilename)), 'images') );
 img_path = fullfile( fileparts(which('brains.calibrate.EYECALWin')), 'images' );
