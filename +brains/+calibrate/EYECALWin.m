@@ -164,7 +164,7 @@ while sharedWorkspace('EYECALWin','keepGoing') %global workspace saves values ou
             [dummy, targX, targY] = Eyelink('TargetCheck');
             targRect = shiftPoints(targShape, [targX targY])';
             targRect = targRect(:)';
-%             targRect([1, 3]) = targRect([1, 3]) - adjust_x;
+            targRect([1, 3]) = targRect([1, 3]) - adjust_x;
             disp( targRect );
             for b=1:NumMonkeys, %Number of monkeys to show per trial               
             imload=imread(imgfile{a(b)},'jpg');
