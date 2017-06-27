@@ -365,11 +365,13 @@ while ( true )
       TIMER.reset_timers( 'evaluate_choice' );
       m1_chose = STRUCTURE.m1_chose;
       m2_chose = STRUCTURE.m2_chose;
+      fprintf( '\nM1 chose: %d', m1_chose );
+      fprintf( '\nM2 chose: %d', m1_chose );
       both_made_choices = m1_chose ~= 0 && m2_chose ~= 0;
       %   a left choice (1) for m1 is a right choice (2) for m2. So, e.g,
       %   for a laser trial, if the correct laser location is 2, the
       %   correct choice for m1 is 1.
-      matching_choices = both_made_choices &&  abs( m1_chose-m2_chose ) == 1;
+      matching_choices = both_made_choices && abs( m1_chose-m2_chose ) == 1;
       matching_laser = both_made_choices && abs( m1_chose-laser_location ) == 1;
       if ( INTERFACE.IS_M1 )
         %   if trialtype is 'gaze', and choices match ...
