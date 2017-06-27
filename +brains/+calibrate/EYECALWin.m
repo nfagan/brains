@@ -58,17 +58,6 @@ if Eyelink('IsConnected')~=1 && ~dummymode %Verify connection to Eyelink
     return;
 end
 
-%KbControlSWC('Start'); % Set up KbQueue* for key presses
-%HideCursor;
-% [window, wRect] = Screen('OpenWindow', const.monkeyScreen, const.bgColor, [], 32);%#ok<*NASGU>
-% newX = wRect(3)*const.nScreens;
-% fullRect = [0, 0, newX, wRect(4)];
-% disp( fullRect );
-% sca;
-% fullRect = [0 0 1024*3 768];
-% % fullRect = [ 1024, 0, 2048, 768 ];
-% calRect = [ 1024, 0, 2048, 768 ];
-
 [window, wRect] = Screen('OpenWindow', const.monkeyScreen, const.bgColor, fullRect );%#ok<*NASGU>
 
 % blankScreen = Screen('OpenOffscreenWindow', const.monkeyScreen, const.bgColor, [], 32);
@@ -175,7 +164,7 @@ while sharedWorkspace('EYECALWin','keepGoing') %global workspace saves values ou
             [dummy, targX, targY] = Eyelink('TargetCheck');
             targRect = shiftPoints(targShape, [targX targY])';
             targRect = targRect(:)';
-            targRect([1, 3]) = targRect([1, 3]) - adjust_x;
+%             targRect([1, 3]) = targRect([1, 3]) - adjust_x;
             disp( targRect );
             for b=1:NumMonkeys, %Number of monkeys to show per trial               
             imload=imread(imgfile{a(b)},'jpg');

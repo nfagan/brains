@@ -119,7 +119,11 @@ for i = 1:numel(stim_fs)
     stim_.targets{1}.padding = padding;
     %   update X target bounds to account for non-fullscreen window.
     target_bounds = stim_.targets{1}.bounds;
-    x_offset = scr_rect(1);
+    if ( ~INTERFACE.use_eyelink )
+      x_offset = scr_rect(1);
+    else
+      x_offset = 0;
+    end
     stim_.targets{1}.bounds([1, 3]) = target_bounds([1, 3]) + x_offset;
   end
   STIMULI.(stim_fs{i}) = stim_;
