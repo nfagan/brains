@@ -4,7 +4,7 @@ sca;
 brains.arduino.close_ports();
 ListenChar( 0 );
 try
-  if ( Eyelink('CheckRecording') == 0 )
+  if ( Eyelink('IsConnected') && Eyelink('CheckRecording') == 0 )
     Eyelink( 'StopRecording' );
   end
 catch err

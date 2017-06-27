@@ -98,6 +98,8 @@ while ( true )
         laser_location = 1;
       end
     end
+    disp( 'Trialtype is:' );
+    disp( STRUCTURE.rule_cue_type );
     %   reset choice parameters
     STRUCTURE.m1_chose = [];
     STRUCTURE.m2_chose = [];
@@ -361,16 +363,26 @@ while ( true )
       tcp_comm.await_matching_state( STATES.current );
       PROGRESS.evaluate_choice = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'evaluate_choice' );
-      matching_choices = isequal( STRUCTURE.m1_chose, STRUCTURE.m2_chose );
-      matching_laser = isequal( STRUCTURE.m1_chose, laser_location );
-      %   if trialtype is 'gaze', and choices match ...
-      if ( strcmp(STRUCTURE.rule_cue_type, 'gaze') && matching_choices )
-        if ( STRUCTURE.m1_chose ~= 0 )
+      m1_chose = STRUCTURE.m1_chose;
+      m2_chose = STRUCTURE.m2_chose;
+      both_made_choices = m1_chose ~= 0 && m2_chose ~= 0;
+      %   a left choice (1) for m1 is a right choice (2) for m2. So, e.g,
+      %   for a laser trial, if the correct laser location is 2, the
+      %   correct choice for m1 is 1.
+      matching_choices = both_made_choices &&  abs( m1_chose-m2_chose ) == 1;
+      matching_laser = both_made_choices && abs( m1_chose-laser_location ) == 1;
+      if ( INTERFACE.IS_M1 )
+        %   if trialtype is 'gaze', and choices match ...
+        if ( strcmp(STRUCTURE.rule_cue_type, 'gaze') && matching_choices )
           serial_comm.reward( 1, REWARDS.main );
+          serial_comm.reward( 2, REWARDS.main );
+        %   if trialtype is 'laser', and m1's choice matches laser_location
+        elseif ( strcmp(STRUCTURE.rule_cue_type, 'laser') && matching_laser )
+          serial_comm.reward( 1, REWARDS.main );
+          serial_comm.reward( 2, REWARDS.main );
+        else
+          disp( 'M1 was not correct' );
         end
-      %   if trialtype is 'laser', and m1's choice matches laser_location
-      elseif ( strcmp(STRUCTURE.rule_cue_type, 'laser') && matching_laser )
-        serial_comm.reward( 1, REWARDS.main );
       end
       first_entry = false;
     end
