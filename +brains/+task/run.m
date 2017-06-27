@@ -334,6 +334,7 @@ while ( true )
       received_m1_choice = tcp_comm.consume( 'choice' );
       if ( ~isnan(received_m1_choice) )
         fprintf( '\nM2: Received choice value: %d\n', received_m1_choice );
+        STRUCTURE.m1_chose = received_m1_choice;
         %   MARK: goto: evaluate_choice
         STATES.current = STATES.evaluate_choice;
         tcp_comm.send_when_ready( 'state', STATES.current );
@@ -343,9 +344,11 @@ while ( true )
     if ( TIMER.duration_met('use_rule') )
       if ( INTERFACE.IS_M1 && isempty(STRUCTURE.m1_chose) )
         tcp_comm.send_when_ready( 'choice', 0 );
+        STRUCTURE.m1_chose = 0;
       end
       if ( ~INTERFACE.IS_M1 && isnan(received_m1_choice) )
         received_m1_choice = tcp_comm.await_data( 'choice' );
+        STRUCTURE.m1_chose = received_m1_choice
         fprintf( '\nM2: Received choice value: %d\n', received_m1_choice );
       end
       %   MARK: goto: evaluate_choice
