@@ -276,6 +276,7 @@ while ( true )
       %   MARK: goto: USE_RULE
       if ( is_m2 && isempty(STRUCTURE.m2_chose) )
         tcp_comm.send_when_ready( 'choice', 0 );
+        STRUCTURE.m2_chose = 0;
       end
       STATES.current = STATES.use_rule;
       tcp_comm.send_when_ready( 'state', STATES.current );
@@ -348,7 +349,7 @@ while ( true )
       end
       if ( ~INTERFACE.IS_M1 && isnan(received_m1_choice) )
         received_m1_choice = tcp_comm.await_data( 'choice' );
-        STRUCTURE.m1_chose = received_m1_choice
+        STRUCTURE.m1_chose = received_m1_choice;
         fprintf( '\nM2: Received choice value: %d\n', received_m1_choice );
       end
       %   MARK: goto: evaluate_choice
@@ -369,7 +370,7 @@ while ( true )
       m1_chose = STRUCTURE.m1_chose;
       m2_chose = STRUCTURE.m2_chose;
       fprintf( '\nM1 chose: %d', m1_chose );
-      fprintf( '\nM2 chose: %d', m1_chose );
+      fprintf( '\nM2 chose: %d', m2_chose );
       both_made_choices = m1_chose ~= 0 && m2_chose ~= 0;
       %   a left choice (1) for m1 is a right choice (2) for m2. So, e.g,
       %   for a laser trial, if the correct laser location is 2, the
