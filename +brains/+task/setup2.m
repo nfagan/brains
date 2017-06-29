@@ -118,13 +118,15 @@ for i = 1:numel(stim_fs)
     stim_.make_target( TRACKER, duration );
     stim_.targets{1}.padding = padding;
     %   update X target bounds to account for non-fullscreen window.
-    target_bounds = stim_.targets{1}.bounds;
     if ( ~INTERFACE.use_eyelink )
       x_offset = scr_rect(1);
+      y_offset = 0;
     else
-      x_offset = 0;
+      x_offset = stim.target_offset(1);
+      y_offset = stim.target_offset(2);
     end
-    stim_.targets{1}.bounds([1, 3]) = target_bounds([1, 3]) + x_offset;
+    stim_.targets{1}.x_offset = x_offset;
+    stim_.targets{1}.y_offset = y_offset;
   end
   STIMULI.(stim_fs{i}) = stim_;
 end

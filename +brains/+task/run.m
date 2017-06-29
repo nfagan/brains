@@ -120,6 +120,9 @@ while ( true )
       fix_targ = STIMULI.fixation;
       fix_targ.reset_targets();
       fix_targ.blink( 0 );
+      if ( TRIAL_NUMBER == 1 )
+        fix_targ.vertices([2, 4]) = fix_targ.vertices([2, 4]) - 0;
+      end
       log_progress = true;
       fix_met = 0;
       tcp_comm.send_when_ready( 'fix_met', fix_met );
