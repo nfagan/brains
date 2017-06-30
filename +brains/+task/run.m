@@ -123,7 +123,7 @@ while ( true )
       fix_targ.reset_targets();
       fix_targ.blink( 0 );
       if ( TRIAL_NUMBER == 1 )
-        fix_targ.vertices([2, 4]) = fix_targ.vertices([2, 4]) - 300;
+        fix_targ.vertices([2, 4]) = fix_targ.vertices([2, 4]) - 0;
       end
       log_progress = true;
       fix_met = 0;
@@ -332,6 +332,7 @@ while ( true )
   if ( STATES.current == STATES.fixation_delay )
     if ( first_entry )
       Screen( 'Flip', opts.WINDOW.index );
+      disp( 'Entered fixation_delay' );
       tcp_comm.await_matching_state( STATES.current );
       PROGRESS.fixation_delay = TIMER.get_time( 'task' );
       %   TOOD: set pre-fixation time
@@ -340,9 +341,16 @@ while ( true )
       TIMER.set_durations( 'fixation_delay', fixation_delay_time );
       TIMER.reset_timers( 'fixation_delay' );
       fix_targ.reset_targets();
+      did_show = false;
+      first_entry = false;
     end
     TRACKER.update_coordinates();
-    fix_targ.update();
+    fix_targ.update_targets();
+    if ( ~did_show )
+      fix_targ.draw();
+      Screen( 'Flip', opts.WINDOW.index );
+      did_show = true;
+    end
     elapsed_time = TIMER.get_time( 'fixation_delay' );
     if ( ~fix_targ.in_bounds() && elapsed_time > pre_fixation_time )
       tcp_comm.send_when_ready( 'error', 4 );
@@ -386,6 +394,7 @@ while ( true )
         tcp_comm.consume( 'choice' );
       end
       STRUCTURE.m1_chose = [];
+      did_show = false;
       made_error = false;
       first_entry = false;
     end
@@ -394,9 +403,12 @@ while ( true )
     if ( INTERFACE.IS_M1 )
       response_target1.update_targets();
       response_target2.update_targets();
-      response_target1.draw();
-      response_target2.draw();
-      Screen( 'Flip', opts.WINDOW.index );
+      if ( ~did_show )
+        response_target1.draw();
+        response_target2.draw();
+        Screen( 'Flip', opts.WINDOW.index );
+        did_show = true;
+      end
       if ( response_target1.duration_met() )
         fprintf( '\nM1: made choice %d\n', 1 );
         STRUCTURE.m1_chose = 1;
@@ -416,6 +428,11 @@ while ( true )
         first_entry = true;
       end
     else
+      if ( ~did_show )
+        fix_targ.draw();
+        Screen( 'Flip', opts.WINDOW.index );
+        did_show = true;
+      end
       if ( ~fix_targ.in_bounds() )
         made_error = true;
         tcp_comm.send_when_ready( 'error', 5 );
@@ -439,7 +456,7 @@ while ( true )
       STATES.current = STATES.new_trial;
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
-    elseif ( TIMER.duration_met('use_rule') )
+    elseif ( TIMER.duration_met('response') )
       if ( INTERFACE.IS_M1 && isempty(STRUCTURE.m1_chose) )
         tcp_comm.send_when_ready( 'choice', 0 );
         STRUCTURE.m1_chose = 0;
