@@ -346,8 +346,8 @@ while ( true )
       Screen( 'Flip', opts.WINDOW.index );
       disp( 'Entered fixation_delay' );
       tcp_comm.await_matching_state( STATES.current );
+      tcp_comm.consume( 'fix_met' );
       PROGRESS.fixation_delay = TIMER.get_time( 'task' );
-      %   TODO: set fixation_delay_time;
       TIMER.set_durations( 'fixation_delay', Inf );
       TIMER.reset_timers( {'fixation_delay', 'pre_fixation_delay'} );
       fix_targ.reset_targets();
