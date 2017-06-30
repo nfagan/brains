@@ -605,6 +605,14 @@ while ( true )
   tcp_comm.update();
   tcp_comm.send_when_ready( 'gaze', TRACKER.coordinates );
   
+  % - If an error occurred, return to the new trial.
+  if ( ~isnan(tcp_comm.consume('error')) )
+    %   MARK: goto: new_trial
+    STATES.current = STATES.new_trial;
+    tcp_comm.send_when_ready( 'state', STATES.current );
+    first_entry = true;
+  end
+  
   % - Update rewards  
   if ( TIMER.duration_met('debounce_arduino_messages') )
     serial_comm.update();
