@@ -383,13 +383,6 @@ while ( true )
     else
       other_is_fixating = 1;
     end
-    if ( tcp_comm.consume('error') == 4 )
-      made_error = true;
-      %   MARK: goto: new_trial
-      STATES.current = STATES.new_trial;
-      tcp_comm.send_when_ready( 'state', STATES.current );
-      first_entry = true;
-    end
     if ( other_is_fixating && is_fixating )
       if ( ~did_begin_timer )
         disp( fixation_delay_time );
@@ -398,6 +391,13 @@ while ( true )
         did_begin_timer = true;
       end
     end
+    if ( tcp_comm.consume('error') == 4 )
+      made_error = true;
+      %   MARK: goto: new_trial
+      STATES.current = STATES.new_trial;
+      tcp_comm.send_when_ready( 'state', STATES.current );
+      first_entry = true;
+    end
     if ( TIMER.duration_met('fixation_delay') && ~made_error )
       %   MARK: goto: response
       STATES.current = STATES.response;
@@ -405,6 +405,7 @@ while ( true )
       first_entry = true;
     end
     if ( TIMER.duration_met('pre_fixation_delay') && ~did_look )
+      tcp_comm.send_when_ready( 'error', 4 );
       %   MARK: goto: new_trial
       STATES.current = STATES.new_trial;
       tcp_comm.send_when_ready( 'state', STATES.current );
