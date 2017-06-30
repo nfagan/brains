@@ -385,7 +385,6 @@ while ( true )
     end
     if ( other_is_fixating && is_fixating )
       if ( ~did_begin_timer )
-        disp( fixation_delay_time );
         TIMER.set_durations( 'fixation_delay', fixation_delay_time );
         TIMER.reset_timers( 'fixation_delay' );
         did_begin_timer = true;
