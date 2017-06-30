@@ -55,7 +55,7 @@ while ( true )
         STRUCTURE.rule_cue_type = 'gaze';
         trial_type_num = 1;
       else
-        STRUCTURE.rule_cue_type = 'laser';
+        STRUCTURE.rule_cue_type = 'led';
         trial_type_num = 2;
       end
       tcp_comm.send_when_ready( 'trial_type', trial_type_num );
@@ -70,7 +70,7 @@ while ( true )
       if ( trial_type_num == 1 )
         STRUCTURE.rule_cue_type = 'gaze';
       else
-        STRUCTURE.rule_cue_type = 'laser';
+        STRUCTURE.rule_cue_type = 'led';
       end
     end
     %   get correct target location for m2
@@ -87,19 +87,21 @@ while ( true )
     end
     %   make the laser cue appear on the side opposite of the gaze target.
     if ( ~INTERFACE.IS_M1 )
-      laser_location = incorrect_is;
-      tcp_comm.send_when_ready( 'choice', laser_location );
+      led_location = incorrect_is;
+      tcp_comm.send_when_ready( 'choice', led_location );
     else
-      laser_location = tcp_comm.await_data( 'choice' );
+      led_location = tcp_comm.await_data( 'choice' );
       %   make sure we received a valid `laser_location`, unless
       %   require_synch is false.
-      if ( isnan(laser_location) )
+      if ( isnan(led_location) )
         assert( ~INTERFACE.require_synch, 'Received NaN for laser_location.' );
-        laser_location = 1;
+        led_location = 1;
       end
     end
     disp( 'Trialtype is:' );
     disp( STRUCTURE.rule_cue_type );
+    %   set fixation delay time
+    fixation_delay_time = .6;
     %   reset choice parameters
     STRUCTURE.m1_chose = [];
     STRUCTURE.m2_chose = [];
@@ -173,67 +175,92 @@ while ( true )
   %   STATE RULE_CUE
   if ( STATES.current == STATES.rule_cue )
     if ( first_entry )
-      Screen( 'Flip', opts.WINDOW.index );
       disp( 'Entered rule cue' );
       tcp_comm.await_matching_state( STATES.current );
       PROGRESS.rule_cue = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'rule_cue' );
-      gaze_cue = STIMULI.rule_cue_gaze;
-      laser_cue = STIMULI.rule_cue_laser;
-      log_progress = true;
-      first_entry = false;
-    end
-    if ( INTERFACE.IS_M1 )
       switch ( STRUCTURE.rule_cue_type )
         case 'gaze'
-         gaze_cue.draw_frame();
-        case 'laser'
-          laser_cue.draw_frame();
+          rule_cue = STIMULI.rule_cue_gaze;
+        case 'led'
+          rule_cue = STIMULI.rule_cue_led;
         otherwise
-          error( 'Unrecognized rule_cue_type ''%s''', STRUCTURE.rule_cue_type );
+          error( 'Unrecognized rule cue ''%s''', STRUCTURE.rule_cue_type );
       end
+      log_progress = true;
+      did_show = false;
+      first_entry = false;
     end
-    Screen( 'Flip', opts.WINDOW.index );
+    if ( ~did_show )
+      rule_cue.draw_frame();
+      Screen( 'Flip', opts.WINDOW.index );
+      did_show = true;
+    end
+    TRACKER.update_coordinates();
+    rule_cue.update_targets();
+    %   if fixation to the rule cue is broken, abort the trial and return
+    %   to the new trial state.
+    if ( ~rule_cue.in_bounds() )
+      %   MARK: goto: new_trial
+      tcp_comm.send_when_ready( 'error', 2 );
+      STATES.current = STATES.new_trial;
+      tcp_comm.send_when_ready( 'state', STATES.current );
+      first_entry = true;
+    end
+    if ( tcp_comm.consume('error') == 2 )
+      %   MARK: goto: new_trial
+      STATES.current = STATES.new_trial;
+      tcp_comm.send_when_ready( 'state', STATES.current );
+      first_entry = true;
+    end
     if ( log_progress )
       PROGRESS.rule_cue_onset = TIMER.get_time( 'task' );
       log_progress = false;
     end
     if ( TIMER.duration_met('rule_cue') )
-      %   MARK: goto: post_rule_cue
-      STATES.current = STATES.post_rule_cue;
+      %   MARK: goto: cue_display
+      STATES.current = STATES.cue_display;
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
     end
   end
   
-  %   STATE POST_RULE_CUE
-  if ( STATES.current == STATES.post_rule_cue ) 
+  %   STATE CUE_DISPLAY
+  if ( STATES.current == STATES.cue_display ) 
     if ( first_entry )
       Screen( 'Flip', opts.WINDOW.index );
-      disp( 'Entered post rule cue' );
+      disp( 'Entered cue_display' );
       PROGRESS.rule_cue_offset = TIMER.get_time( 'task' );
       tcp_comm.await_matching_state( STATES.current );
       PROGRESS.post_rule_cue = TIMER.get_time( 'task' );
-      TIMER.reset_timers( 'post_rule_cue' );
-      correct_target = STIMULI.gaze_cue_correct;
-      incorrect_target = STIMULI.gaze_cue_incorrect;
-      incorrect_target.put( incorrect_location );
-      correct_target.put( correct_location );
-      incorrect_target.reset_targets();
-      correct_target.reset_targets();
+      TIMER.reset_timers( 'cue_display' );
+      is_gaze_trial = strcmp( STRUCTURE.rule_cue_type, 'gaze' );
+      is_m2 = ~INTERFACE.IS_M1;
+      if ( is_gaze_trial )
+        correct_target = STIMULI.gaze_cue_correct;
+        incorrect_target = STIMULI.gaze_cue_incorrect;
+        incorrect_target.put( incorrect_location );
+        correct_target.put( correct_location );
+        incorrect_target.reset_targets();
+        correct_target.reset_targets();
+      end
       last_pulse = NaN;
       log_progress = true;
       lit_led = false;
+      did_show = false;
       first_entry = false;
     end
     TRACKER.update_coordinates();
-    is_m2 = ~INTERFACE.IS_M1;
-    if ( is_m2 )
+    fix_targ.update_targets();
+    if ( is_m2 && is_gaze_trial )
       incorrect_target.update_targets();
       correct_target.update_targets();
-      incorrect_target.draw();
-      correct_target.draw();
-      Screen( 'Flip', opts.WINDOW.index );
+      if ( ~did_show )
+        incorrect_target.draw();
+        correct_target.draw();
+        Screen( 'Flip', opts.WINDOW.index );
+        did_show = true;
+      end
       if ( log_progress )
         PROGRESS.m2_target_onset = TIMER.get_time( 'task' );
         log_progress = false;
@@ -253,8 +280,8 @@ while ( true )
         STRUCTURE.m2_chose = correct_is;
         tcp_comm.send_when_ready( 'choice', correct_is );
         if ( ~INTERFACE.require_synch )
-          %   MARK: goto: USE_RULE
-          STATES.current = STATES.use_rule;
+          %   MARK: goto: FIXATION_DELAY
+          STATES.current = STATES.fixation_delay;
           first_entry = true;
         end
       end
@@ -263,43 +290,95 @@ while ( true )
         STRUCTURE.m2_chose = incorrect_is;
         tcp_comm.send_when_ready( 'choice', incorrect_is );
         if ( ~INTERFACE.require_synch )
-          %   MARK: goto: USE_RULE
-          STATES.current = STATES.use_rule;
+          %   MARK: goto: FIXATION_DELAY
+          STATES.current = STATES.fixation_delay;
           first_entry = true;
         end
       end
+    elseif ( is_m2 && ~is_gaze_trial )
       if ( ~lit_led )
-        serial_comm.LED( laser_location, opts.TIMINGS.LED );
+        serial_comm.LED( led_location, opts.TIMINGS.LED );
         lit_led = true;
+      end
+      if ( ~fix_targ.in_bounds() )
+        %   MARK: goto: new_trial
+        tcp_comm.send_when_ready( 'error', 3 );
+        STATES.current = STATES.new_trial;
+        tcp_comm.send_when_ready( 'state', STATES.current );
+        first_entry = true;
       end
     else
       Screen( 'Flip', opts.WINDOW.index );
     end
-    if ( TIMER.duration_met('post_rule_cue') )
-      %   MARK: goto: USE_RULE
+    if ( tcp_comm.consume('error') == 3 )
+      %   MARK: goto: new_trial
+      STATES.current = STATES.new_trial;
+      tcp_comm.send_when_ready( 'state', STATES.current );
+      first_entry = true;
+    end
+    if ( TIMER.duration_met('cue_display') )
+      %   MARK: goto: fixation_delay
       if ( is_m2 && isempty(STRUCTURE.m2_chose) )
         tcp_comm.send_when_ready( 'choice', 0 );
         STRUCTURE.m2_chose = 0;
       end
-      STATES.current = STATES.use_rule;
+      STATES.current = STATES.fixation_delay;
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
     end
   end
   
-  %   STATE USE_RULE
-  if ( STATES.current == STATES.use_rule )
+  %   STATE FIXATION_DELAY  
+  if ( STATES.current == STATES.fixation_delay )
     if ( first_entry )
       Screen( 'Flip', opts.WINDOW.index );
-      disp( 'Entered use rule cue' );
+      tcp_comm.await_matching_state( STATES.current );
+      PROGRESS.fixation_delay = TIMER.get_time( 'task' );
+      %   TOOD: set pre-fixation time
+      pre_fixation_time = .05;
+      %   TODO: set fixation_delay_time;
+      TIMER.set_durations( 'fixation_delay', fixation_delay_time );
+      TIMER.reset_timers( 'fixation_delay' );
+      fix_targ.reset_targets();
+    end
+    TRACKER.update_coordinates();
+    fix_targ.update();
+    elapsed_time = TIMER.get_time( 'fixation_delay' );
+    if ( ~fix_targ.in_bounds() && elapsed_time > pre_fixation_time )
+      tcp_comm.send_when_ready( 'error', 4 );
+      %   MARK: goto: new_trial
+      STATES.current = STATES.new_trial;
+      tcp_comm.send_when_ready( 'state', STATES.current );
+      first_entry = true;
+    end
+    if ( tcp_comm.consume('error') == 4 )
+      %   MARK: goto: new_trial
+      STATES.current = STATES.new_trial;
+      tcp_comm.send_when_ready( 'state', STATES.current );
+      first_entry = true;
+    end
+    if ( TIMER.duration_met('fixation_delay') )
+      %   MARK: goto: response
+      STATES.current = STATES.response;
+      tcp_comm.send_when_ready( 'state', STATES.current );
+      first_entry = true;
+    end
+  end
+  
+  %   STATE RESPONSE
+  if ( STATES.current == STATES.response )
+    if ( first_entry )
+      Screen( 'Flip', opts.WINDOW.index );
+      disp( 'Entered response' );
       PROGRESS.m2_target_offset = TIMER.get_time( 'task' );
       tcp_comm.await_matching_state( STATES.current );
-      PROGRESS.use_rule = TIMER.get_time( 'task' );
-      TIMER.reset_timers( 'use_rule' );
+      PROGRESS.response = TIMER.get_time( 'task' );
+      TIMER.reset_timers( 'response' );
       response_target1 = STIMULI.response_target1;
       response_target2 = STIMULI.response_target2;
       response_target1.reset_targets();
       response_target2.reset_targets();
+      fix_targ.reset_targets();
       if ( INTERFACE.IS_M1 )
         STRUCTURE.m2_chose = tcp_comm.await_data( 'choice' );
         fprintf( '\nM1: Received choice value %d\n', STRUCTURE.m2_chose );
@@ -307,9 +386,11 @@ while ( true )
         tcp_comm.consume( 'choice' );
       end
       STRUCTURE.m1_chose = [];
+      made_error = false;
       first_entry = false;
     end
     TRACKER.update_coordinates();
+    fix_targ.update_targets();
     if ( INTERFACE.IS_M1 )
       response_target1.update_targets();
       response_target2.update_targets();
@@ -335,8 +416,16 @@ while ( true )
         first_entry = true;
       end
     else
+      if ( ~fix_targ.in_bounds() )
+        made_error = true;
+        tcp_comm.send_when_ready( 'error', 5 );
+        %   MARK: goto: new_trial;
+        STATES.current = STATES.new_trial;
+        tcp_comm.send_when_ready( 'state', STATES.current );
+        first_entry = true;
+      end
       received_m1_choice = tcp_comm.consume( 'choice' );
-      if ( ~isnan(received_m1_choice) )
+      if ( ~isnan(received_m1_choice) && ~made_error )
         fprintf( '\nM2: Received choice value: %d\n', received_m1_choice );
         STRUCTURE.m1_chose = received_m1_choice;
         %   MARK: goto: evaluate_choice
@@ -345,7 +434,12 @@ while ( true )
         first_entry = true;
       end
     end
-    if ( TIMER.duration_met('use_rule') )
+    if ( tcp_comm.consume('error') == 5 )
+      %   MARK: goto: new_trial;
+      STATES.current = STATES.new_trial;
+      tcp_comm.send_when_ready( 'state', STATES.current );
+      first_entry = true;
+    elseif ( TIMER.duration_met('use_rule') )
       if ( INTERFACE.IS_M1 && isempty(STRUCTURE.m1_chose) )
         tcp_comm.send_when_ready( 'choice', 0 );
         STRUCTURE.m1_chose = 0;
@@ -379,7 +473,7 @@ while ( true )
       %   for a laser trial, if the correct laser location is 2, the
       %   correct choice for m1 is 1.
       matching_choices = both_made_choices && abs( m1_chose-m2_chose ) == 1;
-      matching_laser = both_made_choices && abs( m1_chose-laser_location ) == 1;
+      matching_laser = both_made_choices && abs( m1_chose-led_location ) == 1;
       if ( INTERFACE.IS_M1 )
         %   if trialtype is 'gaze', and choices match ...
         if ( strcmp(STRUCTURE.rule_cue_type, 'gaze') && matching_choices )
