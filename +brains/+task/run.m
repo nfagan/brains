@@ -280,7 +280,6 @@ while ( true )
       end
       if ( correct_target.duration_met() )
         fprintf( '\nM2: made choice %d\n', correct_is );
-        %   MARK: goto: USE_RULE
         if ( isnan(last_pulse) )
           should_reward = true;
         else
@@ -356,6 +355,7 @@ while ( true )
       did_look = false;
       is_fixating = 0;
       did_begin_timer = false;
+      made_error = false;
       first_entry = false;
     end
     TRACKER.update_coordinates();
@@ -369,6 +369,7 @@ while ( true )
       is_fixating = 1;
       did_look = true;
     elseif ( did_look )
+      made_error = true;
       tcp_comm.send_when_ready( 'error', 4 );
        %   MARK: goto: new_trial
       STATES.current = STATES.new_trial;
@@ -383,6 +384,7 @@ while ( true )
       other_is_fixating = 1;
     end
     if ( tcp_comm.consume('error') == 4 )
+      made_error = true;
       %   MARK: goto: new_trial
       STATES.current = STATES.new_trial;
       tcp_comm.send_when_ready( 'state', STATES.current );
@@ -396,7 +398,7 @@ while ( true )
         did_begin_timer = true;
       end
     end
-    if ( TIMER.duration_met('fixation_delay') )
+    if ( TIMER.duration_met('fixation_delay') && ~made_error )
       %   MARK: goto: response
       STATES.current = STATES.response;
       tcp_comm.send_when_ready( 'state', STATES.current );
