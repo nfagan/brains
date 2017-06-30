@@ -221,7 +221,7 @@ function handle_button(source, event)
       brains.task.start();
     case 'calibrate'
       brains.config.save( config );
-      brains.start_calibration();
+      brains.calibrate.EyeCal();
     case 'clean-up'
       brains.config.save( config );
       brains.task.cleanup();

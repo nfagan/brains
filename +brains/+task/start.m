@@ -1,8 +1,7 @@
-function err = start(opts)
+function err = start()
 
 try
-%   opts = brains.task.setup( opts );
-  opts = brains.task.setup2();
+  opts = brains.task.setup();
 catch err
   brains.task.cleanup();
   brains.util.print_error_stack( err );

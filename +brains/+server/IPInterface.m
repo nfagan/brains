@@ -20,6 +20,7 @@ classdef IPInterface < handle
         , 'fix_met_s',    'F',  'fix_met_r', 'f' ...
         , 'trial_type_s', 'T',  'trial_type_r', 't' ...
         , 'error_s',      'E',  'error_r', 'e' ...
+        , 'delay_s',      'D',  'delay_4', 'd' ...
     );
     TIMEOUTS = struct( 'send_ready', 5, 'awaits', 5, 'connect', 5 );
     DEBUG = false;
@@ -50,6 +51,7 @@ classdef IPInterface < handle
       obj.defaults.DATA.fix_met = NaN;
       obj.defaults.DATA.trial_type = NaN;
       obj.defaults.DATA.error = NaN;
+      obj.defaults.DATA.delay = NaN;
       obj.default();
     end
     
@@ -124,6 +126,8 @@ classdef IPInterface < handle
           id = obj.CHARS.trial_type_s;
         case 'error'
           id = obj.CHARS.error_s;
+        case 'delay'
+          id = obj.CHARS.delay_s;
         otherwise
           error( 'Unrecognized data-kind ''%s''', kind );
       end
@@ -204,6 +208,10 @@ classdef IPInterface < handle
             , 'the acknowledgement' );
           obj.can_send = true;
         
+        % - incoming error state
+        case chars.delay_s
+          handle_data_send( 'delay', response(2) );
+          
         % - incoming error state
         case chars.error_s
           handle_data_send( 'error', response(2) );

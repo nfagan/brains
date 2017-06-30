@@ -15,6 +15,7 @@ STIMULI =       opts.STIMULI;
 STRUCTURE =     opts.STRUCTURE;
 INTERFACE =     opts.INTERFACE;
 REWARDS =       opts.REWARDS;
+TIMINGS =       opts.TIMINGS;
 tcp_comm =      opts.COMMUNICATORS.tcp_comm;
 serial_comm =   opts.COMMUNICATORS.serial_comm;
 
@@ -101,7 +102,18 @@ while ( true )
     disp( 'Trialtype is:' );
     disp( STRUCTURE.rule_cue_type );
     %   set fixation delay time
-    fixation_delay_time = .6;
+    if ( INTERFACE.IS_M1 )
+      fix_delays = TIMINGS.delays.fixation_delay;
+      ind = randperm( numel(fix_delays) );
+      fixation_delay_time = fix_delays( ind(1) );
+      tcp_comm.send_when_ready( 'delay', fixation_delay_time );
+    else
+      fixation_delay_time = tcp_comm.await_data( 'delay' );
+      if ( isnan(fixation_delay_time) )
+        assert( ~INTERFACE.require_synch, 'Received NaN for fixation_delay.' );
+        fixation_delay_time = TIMINGS.delays.fixation_delay(1);
+      end
+    end
     %   reset choice parameters
     STRUCTURE.m1_chose = [];
     STRUCTURE.m2_chose = [];
@@ -122,6 +134,7 @@ while ( true )
       fix_targ = STIMULI.fixation;
       fix_targ.reset_targets();
       fix_targ.blink( 0 );
+      %   SHIFT FIXATION SQUARE UP
       if ( TRIAL_NUMBER == 1 )
         fix_targ.vertices([2, 4]) = fix_targ.vertices([2, 4]) - 0;
       end
@@ -335,13 +348,14 @@ while ( true )
       disp( 'Entered fixation_delay' );
       tcp_comm.await_matching_state( STATES.current );
       PROGRESS.fixation_delay = TIMER.get_time( 'task' );
-      %   TOOD: set pre-fixation time
-      pre_fixation_time = .05;
       %   TODO: set fixation_delay_time;
-      TIMER.set_durations( 'fixation_delay', fixation_delay_time );
-      TIMER.reset_timers( 'fixation_delay' );
+      TIMER.set_durations( 'fixation_delay', Inf );
+      TIMER.reset_timers( {'fixation_delay', 'pre_fixation_delay'} );
       fix_targ.reset_targets();
       did_show = false;
+      did_look = false;
+      is_fixating = 0;
+      did_begin_timer = false;
       first_entry = false;
     end
     TRACKER.update_coordinates();
@@ -351,13 +365,22 @@ while ( true )
       Screen( 'Flip', opts.WINDOW.index );
       did_show = true;
     end
-    elapsed_time = TIMER.get_time( 'fixation_delay' );
-    if ( ~fix_targ.in_bounds() && elapsed_time > pre_fixation_time )
+    if ( fix_targ.in_bounds() )
+      is_fixating = 1;
+      did_look = true;
+    elseif ( did_look )
       tcp_comm.send_when_ready( 'error', 4 );
-      %   MARK: goto: new_trial
+       %   MARK: goto: new_trial
       STATES.current = STATES.new_trial;
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
+    end
+    tcp_comm.send_when_ready( 'fix_met', is_fixating );
+    if ( INTERFACE.require_synch )
+      other_is_fixating = tcp_comm.consume( 'fix_met' );
+      other_is_fixating = ~isnan( other_is_fixating ) && other_is_fixating > 0;
+    else
+      other_is_fixating = 1;
     end
     if ( tcp_comm.consume('error') == 4 )
       %   MARK: goto: new_trial
@@ -365,9 +388,23 @@ while ( true )
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
     end
+    if ( other_is_fixating && is_fixating )
+      if ( ~did_begin_timer )
+        disp( fixation_delay_time );
+        TIMER.set_durations( 'fixation_delay', fixation_delay_time );
+        TIMER.reset_timers( 'fixation_delay' );
+        did_begin_timer = true;
+      end
+    end
     if ( TIMER.duration_met('fixation_delay') )
       %   MARK: goto: response
       STATES.current = STATES.response;
+      tcp_comm.send_when_ready( 'state', STATES.current );
+      first_entry = true;
+    end
+    if ( TIMER.duration_met('pre_fixation_delay') && ~did_look )
+      %   MARK: goto: new_trial
+      STATES.current = STATES.new_trial;
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
     end
