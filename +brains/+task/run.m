@@ -312,6 +312,11 @@ while ( true )
         serial_comm.LED( led_location, opts.TIMINGS.LED );
         lit_led = true;
       end
+      if ( ~did_show )
+        fix_targ.draw();
+        Screen( 'Flip', opts.WINDOW.index );
+        did_show = true;
+      end
       if ( ~fix_targ.in_bounds() )
         %   MARK: goto: new_trial
         tcp_comm.send_when_ready( 'error', 3 );
