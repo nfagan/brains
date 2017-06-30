@@ -217,11 +217,9 @@ function handle_button(source, event)
   func = source.String;
   switch ( func )
     case 'start'
-      clear all;
       brains.config.save( config );
       brains.task.start();
     case 'calibrate'
-      clear all;
       brains.config.save( config );
       brains.start_calibration();
     case 'clean-up'

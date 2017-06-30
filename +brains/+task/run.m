@@ -121,7 +121,7 @@ while ( true )
       fix_targ.reset_targets();
       fix_targ.blink( 0 );
       if ( TRIAL_NUMBER == 1 )
-        fix_targ.vertices([2, 4]) = fix_targ.vertices([2, 4]) - 0;
+        fix_targ.vertices([2, 4]) = fix_targ.vertices([2, 4]) - 300;
       end
       log_progress = true;
       fix_met = 0;
@@ -440,6 +440,10 @@ while ( true )
       FRAMES.last = TIMER.get_time( 'task' );
     end
     FRAMES.stp = FRAMES.stp + 1;
+  end
+  
+  if ( INTERFACE.DEBUG )
+    disp( TRACKER.coordinates );
   end
   
   % - Update tcp_comm
