@@ -214,15 +214,15 @@ while ( true )
     %   if fixation to the rule cue is broken, abort the trial and return
     %   to the new trial state.
     if ( ~rule_cue.in_bounds() )
-      %   MARK: goto: new_trial
+      %   MARK: goto: error
       tcp_comm.send_when_ready( 'error', 2 );
-      STATES.current = STATES.new_trial;
+      STATES.current = STATES.error;
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
     end
     if ( tcp_comm.consume('error') == 2 )
-      %   MARK: goto: new_trial
-      STATES.current = STATES.new_trial;
+      %   MARK: goto: error
+      STATES.current = STATES.error;
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
     end
@@ -318,9 +318,9 @@ while ( true )
         did_show = true;
       end
       if ( ~fix_targ.in_bounds() )
-        %   MARK: goto: new_trial
+        %   MARK: goto: error
         tcp_comm.send_when_ready( 'error', 3 );
-        STATES.current = STATES.new_trial;
+        STATES.current = STATES.error;
         tcp_comm.send_when_ready( 'state', STATES.current );
         first_entry = true;
       end
@@ -328,8 +328,8 @@ while ( true )
       Screen( 'Flip', opts.WINDOW.index );
     end
     if ( tcp_comm.consume('error') == 3 )
-      %   MARK: goto: new_trial
-      STATES.current = STATES.new_trial;
+      %   MARK: goto: error
+      STATES.current = STATES.error;
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
     end
@@ -376,8 +376,8 @@ while ( true )
     elseif ( did_look )
       made_error = true;
       tcp_comm.send_when_ready( 'error', 4 );
-       %   MARK: goto: new_trial
-      STATES.current = STATES.new_trial;
+       %   MARK: goto: error
+      STATES.current = STATES.error;
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
     end
@@ -397,8 +397,8 @@ while ( true )
     end
     if ( tcp_comm.consume('error') == 4 )
       made_error = true;
-      %   MARK: goto: new_trial
-      STATES.current = STATES.new_trial;
+      %   MARK: goto: error
+      STATES.current = STATES.error;
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
     end
@@ -410,8 +410,8 @@ while ( true )
     end
     if ( TIMER.duration_met('pre_fixation_delay') && ~did_look )
       tcp_comm.send_when_ready( 'error', 4 );
-      %   MARK: goto: new_trial
-      STATES.current = STATES.new_trial;
+      %   MARK: goto: error
+      STATES.current = STATES.error;
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
     end
@@ -480,8 +480,8 @@ while ( true )
       if ( ~fix_targ.in_bounds() )
         made_error = true;
         tcp_comm.send_when_ready( 'error', 5 );
-        %   MARK: goto: new_trial;
-        STATES.current = STATES.new_trial;
+        %   MARK: goto: error;
+        STATES.current = STATES.error;
         tcp_comm.send_when_ready( 'state', STATES.current );
         first_entry = true;
       end
@@ -496,8 +496,8 @@ while ( true )
       end
     end
     if ( tcp_comm.consume('error') == 5 )
-      %   MARK: goto: new_trial;
-      STATES.current = STATES.new_trial;
+      %   MARK: goto: error;
+      STATES.current = STATES.error;
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
     elseif ( TIMER.duration_met('response') )
@@ -576,6 +576,31 @@ while ( true )
     end
   end
   
+  %   STATE ERROR
+  if ( STATES.current == STATES.error )
+    if ( first_entry )
+      disp( 'Entered error' );
+      Screen( 'Flip', opts.WINDOW.index );
+      tcp_comm.await_matching_state( STATES.current );
+      PROGRESS.error = TIMER.get_time( 'task' );
+      TIMER.reset_timers( 'error' );
+      err_cue = STIMULI.error_cue;
+      did_show = false;
+      first_entry = false;
+    end
+    if ( ~did_show )
+      err_cue.draw();
+      Screen( 'Flip', opts.WINDOW.index );
+      did_show = true;
+    end
+    if ( TIMER.duration_met('error') )
+      %   MARK: goto: new_trial
+      STATES.current = STATES.new_trial;
+      tcp_comm.send_when_ready( 'state', STATES.current );
+      first_entry = true;
+    end
+  end
+  
   % - Determine frame times.
   if ( INTERFACE.DEBUG )
     if ( FRAMES.stp > 1 )
@@ -607,8 +632,8 @@ while ( true )
   
   % - If an error occurred, return to the new trial.
   if ( ~isnan(tcp_comm.consume('error')) )
-    %   MARK: goto: new_trial
-    STATES.current = STATES.new_trial;
+    %   MARK: goto: error
+    STATES.current = STATES.error;
     tcp_comm.send_when_ready( 'state', STATES.current );
     first_entry = true;
   end
