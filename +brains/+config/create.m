@@ -98,8 +98,8 @@ SERIAL.messages.M1 = struct();
 SERIAL.messages.M2 = struct();
 SERIAL.ports.M1 = 'COM4';
 SERIAL.ports.M2 = 'COM3';
-SERIAL.reward_channels.M1 = 'A';
-SERIAL.reward_channels.M2 = 'B';
+SERIAL.reward_channels.M1 = { 'A', 'B' };
+SERIAL.reward_channels.M2 = { 'B', 'A' };
 SERIAL.baud_rate = 115200;
 
 % - TCP - %
