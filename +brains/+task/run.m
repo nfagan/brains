@@ -96,7 +96,7 @@ while ( true )
       incorrect_is = 2;
       correct_is = 1;
     end
-    %   make the laser cue appear on the side opposite of the gaze target.
+    %   make the led cue appear on the side opposite of the gaze target.
     if ( ~INTERFACE.IS_M1 )
       led_location = incorrect_is;
       tcp_comm.send_when_ready( 'choice', led_location );
@@ -549,7 +549,7 @@ while ( true )
       fprintf( '\nM2 chose: %d', m2_chose );
       both_made_choices = m1_chose ~= 0 && m2_chose ~= 0;
       %   a left choice (1) for m1 is a right choice (2) for m2. So, e.g,
-      %   for a laser trial, if the correct laser location is 2, the
+      %   for a led trial, if the correct led location is 2, the
       %   correct choice for m1 is 1.
       matching_choices = both_made_choices && abs( m1_chose-m2_chose ) == 1;
       matching_laser = both_made_choices && abs( m1_chose-led_location ) == 1;
@@ -558,8 +558,8 @@ while ( true )
         if ( strcmp(STRUCTURE.rule_cue_type, 'gaze') && matching_choices )
           serial_comm.reward( 1, REWARDS.main );
           serial_comm.reward( 2, REWARDS.main );
-        %   if trialtype is 'laser', and m1's choice matches laser_location
-        elseif ( strcmp(STRUCTURE.rule_cue_type, 'laser') && matching_laser )
+        %   if trialtype is 'led', and m1's choice matches laser_location
+        elseif ( strcmp(STRUCTURE.rule_cue_type, 'led') && matching_laser )
           serial_comm.reward( 1, REWARDS.main );
           serial_comm.reward( 2, REWARDS.main );
         else
