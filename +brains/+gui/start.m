@@ -168,7 +168,7 @@ panels.run = uipanel( F ...
 );
 
 funcs = { 'hard reset', 'reset to default', 'make default' ...
-  , 'clean-up', 'calibrate', 'start' };
+  , 'clean-up', 'calibrate', 'start fixation', 'start' };
 w = .5;
 l = 1 / numel(funcs);
 x = 0;
@@ -228,6 +228,9 @@ function handle_button(source, event)
     case 'start'
       brains.config.save( config );
       brains.task.start();
+    case 'start fixation'
+      brains.config.save( config );
+      brains.task.start( 'fixation' );
     case 'calibrate'
       brains.config.save( config );
       brains.calibrate.EyeCal();

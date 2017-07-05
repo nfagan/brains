@@ -55,7 +55,7 @@ while ( true )
     %   reset event times
     PROGRESS = structfun( @(x) NaN, PROGRESS, 'un', false );
     %   determine rule cue type
-    if ( INTERFACE.IS_M1 )
+    if ( INTERFACE.IS_M1 || ~INTERFACE.require_synch )
       if ( STRUCTURE.trials_per_block == 0 )
         if ( rand() > .5 )
           trial_type_num = 1;
@@ -97,7 +97,7 @@ while ( true )
       correct_is = 1;
     end
     %   make the led cue appear on the side opposite of the gaze target.
-    if ( ~INTERFACE.IS_M1 )
+    if ( ~INTERFACE.IS_M1 || ~INTERFACE.require_synch )
       led_location = incorrect_is;
       tcp_comm.send_when_ready( 'choice', led_location );
     else
@@ -210,12 +210,31 @@ while ( true )
         otherwise
           error( 'Unrecognized rule cue ''%s''', STRUCTURE.rule_cue_type );
       end
+      %   draw the peripheral targets
+      wrect = opts.WINDOW.rect;
+      frame_width = wrect(3)/3;
+      frame_height = wrect(4);
+      periph_targ_names = { 'frame_cue_left', 'frame_cue_right' };
+      periph_targ_place = { 'top-left', 'top-right' };
+      frame_cues = struct();
+      frame_cues.frame_cue_left = STIMULI.frame_cue_left;
+      frame_cues.frame_cue_right = STIMULI.frame_cue_right;
+      for ii = 1:numel(periph_targ_names)
+        targ_name = periph_targ_names{ii};
+        frame_cues.(targ_name).width = frame_width;
+        frame_cues.(targ_name).len = frame_height;
+        frame_cues.(targ_name).vertices = [ 0, 0, frame_width, frame_height ];
+        frame_cues.(targ_name).put( periph_targ_place{ii} );
+        frame_cues.(targ_name).scale( .95 );
+        frame_cues.(targ_name).color = rule_cue.color;
+      end
       log_progress = true;
       did_show = false;
       first_entry = false;
     end
     if ( ~did_show )
-      rule_cue.draw_frame();
+      rule_cue.draw();
+      structfun( @(x) x.draw_frame(), frame_cues );
       Screen( 'Flip', opts.WINDOW.index );
       did_show = true;
     end
@@ -308,7 +327,7 @@ while ( true )
       end
       if ( incorrect_target.duration_met() )
         fprintf( '\nM2: made choice %d\n', incorrect_is );
-        chosen_target = correct_target;
+        chosen_target = incorrect_target;
         STRUCTURE.m2_chose = incorrect_is;
         tcp_comm.send_when_ready( 'choice', incorrect_is );
       end
