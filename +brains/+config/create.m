@@ -57,6 +57,7 @@ STRUCTURE.rule_cue_type = 'gaze';
 STRUCTURE.rule_cue_types = { 'gaze', 'led' };
 STRUCTURE.trial_type_nums = [ 1, 2 ];
 STRUCTURE.trials_per_block = 1;
+STRUCTURE.gui_fields.exclude = { 'rule_cue_types' };
 
 % - STATES - %
 state_sequence = { 'new_trial', 'fixation', 'rule_cue', 'cue_display' ...
