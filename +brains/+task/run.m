@@ -268,9 +268,11 @@ while ( true )
         correct_target.reset_targets();
       end
       chosen_target = [];
+      STRUCTURE.m2_chose = [];
       last_pulse = NaN;
       log_progress = true;
       lit_led = false;
+      made_cue_error = false;
       did_show = false;
       first_entry = false;
     end
@@ -303,27 +305,18 @@ while ( true )
         chosen_target = correct_target;
         STRUCTURE.m2_chose = correct_is;
         tcp_comm.send_when_ready( 'choice', correct_is );
-        if ( ~INTERFACE.require_synch )
-          %   MARK: goto: FIXATION_DELAY
-          STATES.current = STATES.fixation_delay;
-          first_entry = true;
-        end
       end
       if ( incorrect_target.duration_met() )
         fprintf( '\nM2: made choice %d\n', incorrect_is );
         chosen_target = correct_target;
         STRUCTURE.m2_chose = incorrect_is;
         tcp_comm.send_when_ready( 'choice', incorrect_is );
-        if ( ~INTERFACE.require_synch )
-          %   MARK: goto: FIXATION_DELAY
-          STATES.current = STATES.fixation_delay;
-          first_entry = true;
-        end
       end
       %   once the made a choice, if they look away from the target ...
-      if ( isa(chosen_target, 'Target') )
+      if ( ~isa(chosen_target, 'double') )
         if ( ~chosen_target.in_bounds() )
           %   MARK: goto: error
+          made_cue_error = true;
           tcp_comm.send_when_ready( 'error', 3 );
           STATES.current = STATES.error;
           tcp_comm.send_when_ready( 'state', STATES.current );
@@ -362,9 +355,11 @@ while ( true )
         tcp_comm.send_when_ready( 'choice', 0 );
         STRUCTURE.m2_chose = 0;
       end
-      STATES.current = STATES.fixation_delay;
-      tcp_comm.send_when_ready( 'state', STATES.current );
-      first_entry = true;
+      if ( ~made_cue_error )
+        STATES.current = STATES.fixation_delay;
+        tcp_comm.send_when_ready( 'state', STATES.current );
+        first_entry = true;
+      end
     end
   end
   
