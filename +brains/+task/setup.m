@@ -112,6 +112,9 @@ for i = 1:numel(stim_fs)
   end
   stim_.color = stim.color;
   stim_.put( stim.placement );
+  if ( isfield(stim, 'pen_width') )
+    stim_.pen_width = stim.pen_width;
+  end
   if ( stim.has_target )
     duration = stim.target_duration;
     padding = stim.target_padding;
