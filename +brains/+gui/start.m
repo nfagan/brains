@@ -226,12 +226,15 @@ function handle_button(source, event)
   func = source.String;
   switch ( func )
     case 'start'
+      clear mex;
       brains.config.save( config );
       brains.task.start();
     case 'start fixation'
+      clear mex;
       brains.config.save( config );
       brains.task.start( 'fixation' );
     case 'calibrate'
+      clear mex;
       brains.config.save( config );
       brains.calibrate.EyeCal();
     case 'clean-up'
