@@ -25,10 +25,13 @@ STATES.current = STATES.new_trial;
 DATA = struct();
 PROGRESS = struct();
 TRIAL_NUMBER = 0;
+trial_in_block = 0;
 FRAMES.stp = 1;
 FRAMES.mean = NaN;
 FRAMES.min = Inf;
 FRAMES.max = -Inf;
+
+trial_type_num = STRUCTURE.trial_type_nums(1);
 
 %   main loop
 while ( true )
@@ -48,17 +51,28 @@ while ( true )
       DATA(tn).events = PROGRESS;
     end
     TRIAL_NUMBER = TRIAL_NUMBER + 1;
+    trial_in_block = trial_in_block + 1;
     %   reset event times
     PROGRESS = structfun( @(x) NaN, PROGRESS, 'un', false );
     %   determine rule cue type
     if ( INTERFACE.IS_M1 )
-      if ( rand() > .5 )
-        STRUCTURE.rule_cue_type = 'gaze';
-        trial_type_num = 1;
+      if ( STRUCTURE.trials_per_block == 0 )
+        if ( rand() > .5 )
+          trial_type_num = 1;
+        else
+          trial_type_num = 2;
+        end
+        %   -1 for gaze, -2 for led
+      elseif ( sign(STRUCTURE.trials_per_block) == -1 )
+        trial_type_num = -STRUCTURE.trials_per_block;
       else
-        STRUCTURE.rule_cue_type = 'led';
-        trial_type_num = 2;
+        if ( trial_in_block == STRUCTURE.trials_per_block )
+          trial_in_block = 0;
+          STRUCTURE.trial_type_nums = fliplr( STRUCTURE.trial_type_nums );
+          trial_type_num = STRUCTURE.trial_type_nums(1);
+        end
       end
+      STRUCTURE.rule_cue_type = STRUCTURE.rule_cue_types{trial_type_num};
       tcp_comm.send_when_ready( 'trial_type', trial_type_num );
     else
       trial_type_num = tcp_comm.await_data( 'trial_type' );
@@ -68,11 +82,7 @@ while ( true )
         assert( ~INTERFACE.require_synch, 'Received NaN for trial_type.' );
         trial_type_num = 1;
       end
-      if ( trial_type_num == 1 )
-        STRUCTURE.rule_cue_type = 'gaze';
-      else
-        STRUCTURE.rule_cue_type = 'led';
-      end
+      STRUCTURE.rule_cue_type = STRUCTURE.rule_cue_types{trial_type_num};
     end
     %   get correct target location for m2
     if ( rand() > .5 )
@@ -257,6 +267,7 @@ while ( true )
         incorrect_target.reset_targets();
         correct_target.reset_targets();
       end
+      chosen_target = [];
       last_pulse = NaN;
       log_progress = true;
       lit_led = false;
@@ -289,6 +300,7 @@ while ( true )
           serial_comm.reward( 1, REWARDS.main );
           last_pulse = tic;
         end
+        chosen_target = correct_target;
         STRUCTURE.m2_chose = correct_is;
         tcp_comm.send_when_ready( 'choice', correct_is );
         if ( ~INTERFACE.require_synch )
@@ -299,11 +311,22 @@ while ( true )
       end
       if ( incorrect_target.duration_met() )
         fprintf( '\nM2: made choice %d\n', incorrect_is );
+        chosen_target = correct_target;
         STRUCTURE.m2_chose = incorrect_is;
         tcp_comm.send_when_ready( 'choice', incorrect_is );
         if ( ~INTERFACE.require_synch )
           %   MARK: goto: FIXATION_DELAY
           STATES.current = STATES.fixation_delay;
+          first_entry = true;
+        end
+      end
+      %   once the made a choice, if they look away from the target ...
+      if ( isa(chosen_target, 'Target') )
+        if ( ~chosen_target.in_bounds() )
+          %   MARK: goto: error
+          tcp_comm.send_when_ready( 'error', 3 );
+          STATES.current = STATES.error;
+          tcp_comm.send_when_ready( 'state', STATES.current );
           first_entry = true;
         end
       end
