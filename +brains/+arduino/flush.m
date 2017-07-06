@@ -1,27 +1,25 @@
-function flush(index, duration)
+function flush(indices, duration)
+
+%   FLUSH -- Open the solenoid(s) for a long time.
+%
+%     IN:
+%       - `indices` (double) -- Indices of channels to flush. Defaults to
+%         1.
+%       - `duration` (double) -- Length of time to leave the channels open,
+%         in milliseconds. Defaults to 10000.
 
 if ( nargin == 0 )
-  index = 1;
+  indices = 1;
   duration = 10e3;
-elseif ( nargin < 2 )
+elseif ( nargin == 1 )
   duration = 10e3;
 end
 
-reward_messages = { ...
-  struct('message', 'REWARD1', 'char', 'A'), ...
-  struct('message', 'REWARD2', 'char', 'B') ...
-};
+comm = brains.arduino.get_serial_comm();
+comm.start();
 
-port = brains.arduino.get_arduino_port();
-baud_rate = 115200;
-
-comm = Communicator( reward_messages, port, baud_rate );
-
-comm.send_reward_size( reward_messages{index}.char, duration );
-
-message = sprintf( 'REWARD%d', index );
-
-comm.send( message );
-
+for i = 1:numel(indices)
+  comm.reward( indices(i), duration );
+end
 
 end
