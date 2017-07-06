@@ -22,4 +22,6 @@ for i = 1:numel(indices)
   comm.reward( indices(i), duration );
 end
 
+comm.close();
+
 end
