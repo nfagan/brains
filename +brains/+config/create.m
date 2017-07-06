@@ -244,9 +244,10 @@ STIMULI.error_cue = struct( ...
 % - REWARDS - %
 REWARDS.main = 250; % ms
 REWARDS.bridge = 150;
+REWARDS.flush = 10e3;
 REWARDS.pulse_frequency = .5;
 REWARDS.last_reward_size = []; % ms
-REWARDS.gui_fields.include = { 'main', 'bridge', 'pulse_frequency' };
+REWARDS.gui_fields.include = { 'main', 'bridge', 'flush', 'pulse_frequency' };
 
 %   export as one struct
 opts = struct();
