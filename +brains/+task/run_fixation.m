@@ -30,20 +30,50 @@ trial_type_num = STRUCTURE.trial_type_nums(1);
 first_entry = true;
 STATES.current = STATES.new_trial;
 
+REWARDS.pulse_timer = NaN;
+REWARDS.current_frequency = REWARDS.min_frequency;
+REWARDS.debounce_timer = NaN;
+
+errors = struct();
+errors.fix_not_met = false;
+errors.fix_broken = false;
+errors.rule_cue_fix_broken = false;
+errors.train_fixation_fix_broken = false;
+
+active_target = STIMULI.fixation;
+
+n_correct = 0;
+n_errors = 0;
+
 while (true)
   
   %   STATE NEW_TRIAL
   if ( STATES.current == STATES.new_trial )
     Screen( 'Flip', opts.WINDOW.index );
-    disp( 'Entered new_trial' );
     if ( TRIAL_NUMBER > 0 )
       tn = TRIAL_NUMBER;
       DATA(tn).trial_number = tn;
+      DATA(tn).errors = errors;
+      %   get N correct and incorrect
+      last_trial_n_errors = sum( structfun(@(x) x, errors) );
+      if ( last_trial_n_errors > 0 )
+        n_errors = n_errors + 1;
+      else
+        n_correct = n_correct + 1;
+      end
+      %   display data
+      clc;
+      disp( DATA(tn).errors );
+      fprintf( '\n - Trial number: %d', tn );
+      fprintf( '\n - N errors: %d', n_errors );
+      fprintf( '\n - N correct: %d', n_correct );
     end
     TRIAL_NUMBER = TRIAL_NUMBER + 1;
     trial_in_block = trial_in_block + 1;
     %   reset event times
     PROGRESS = structfun( @(x) NaN, PROGRESS, 'un', false );
+    PROGRESS.trial_start = TIMER.get_time( 'task' );
+    errors = structfun( @(x) false, errors, 'un', false );
     if ( STRUCTURE.trials_per_block == 0 )
       if ( rand() > .5 )
         trial_type_num = 1;
@@ -60,8 +90,13 @@ while (true)
         trial_type_num = STRUCTURE.trial_type_nums(1);
       end
     end
+    serial_comm.clear_rewards();
+    TIMER.reset_timers( 'trial' );
     STRUCTURE.rule_cue_type = STRUCTURE.rule_cue_types{trial_type_num};
     STATES.current = STATES.fixation;
+    REWARDS.current = REWARDS.min_frequency;
+    REWARDS.current_frequency = REWARDS.min_frequency;
+    REWARDS.pulse_timer = NaN;
     first_entry = true;
   end
   
@@ -77,10 +112,12 @@ while (true)
       if ( TRIAL_NUMBER == 1 )
         fix_targ.vertices([2, 4]) = fix_targ.vertices([2, 4]) - 0;
       end
+      errors.fix_broken = false;
+      errors.fix_not_met = false;
       log_progress = true;
       first_entry = false;
     end
-    TRACKER.update_coordinates();
+%     TRACKER.update_coordinates();
     fix_targ.update_targets();
     fix_targ.draw();
     Screen( 'Flip', opts.WINDOW.index );
@@ -97,6 +134,7 @@ while (true)
     if ( TIMER.duration_met('fixation') )
       %   MARK: goto: error
       STATES.current = STATES.error;
+      errors.fix_not_met = true;
       first_entry = true;
     end
   end
@@ -131,22 +169,28 @@ while (true)
         frame_cues.(targ_name).scale( .95 );
         frame_cues.(targ_name).color = rule_cue.color;
       end
+      active_target = rule_cue;
+      errors.rule_cue_fix_broken = false;
       log_progress = true;
       did_show = false;
       first_entry = false;
     end
     if ( ~did_show )
       rule_cue.draw();
-      structfun( @(x) x.draw_frame(), frame_cues );
+      
+      %   MARK: draw peripheral cues
+%       structfun( @(x) x.draw_frame(), frame_cues );
+      %   end draw peripheral cues
       Screen( 'Flip', opts.WINDOW.index );
       did_show = true;
     end
-    TRACKER.update_coordinates();
+%     TRACKER.update_coordinates();
     rule_cue.update_targets();
     %   if fixation to the rule cue is broken, abort the trial and return
     %   to the new trial state.
     if ( ~rule_cue.in_bounds() )
       %   MARK: goto: error
+      errors.rule_cue_fix_broken = true;
       STATES.current = STATES.error;
       first_entry = true;
     end
@@ -163,9 +207,11 @@ while (true)
       TIMER.reset_timers( 'train_fixation' );
       did_show = false;
       made_error = false;
+      errors.train_fixation_fix_broken = false;
+      active_target = STIMULI.fixation;
       first_entry = false;
     end
-    TRACKER.update_coordinates();
+%     TRACKER.update_coordinates();
     fix_targ.update_targets();
     if ( ~did_show )
       fix_targ.draw();
@@ -174,6 +220,7 @@ while (true)
     if ( ~fix_targ.in_bounds() )
       %   MARK: goto: error;
       made_error = true;
+      errors.train_fixation_fix_broken = true;
       STATES.current = STATES.error;
       first_entry = true;
     end
@@ -226,6 +273,43 @@ while (true)
   tcp_comm.update();
   tcp_comm.send_when_ready( 'gaze', TRACKER.coordinates );
   
+  % - Update targets
+  TRACKER.update_coordinates();
+  
+  % - Check if within fix bounds
+  cs = STATES.current;
+  if ( active_target.in_bounds() && ...
+      cs ~= STATES.error && cs ~= STATES.iti && cs ~= STATES.new_trial && ...
+      TIMER.duration_met('trial') )
+    
+%     current_frequency = REWARDS.current_frequency;
+%     if ( current_frequency > REWARDS.max_frequency )
+%         current_frequency = REWARDS.max_frequency;
+%         REWARDS.current = REWARDS.max_frequency;
+%     end
+%     if ( isnan(REWARDS.pulse_timer) )
+%       should_reward = true;
+%     else
+%       should_reward = toc( REWARDS.pulse_timer ) > REWARDS.current_frequency/1e3;
+%     end
+%     if ( should_reward )
+%       serial_comm.reward( 1, REWARDS.current );
+%       REWARDS.pulse_timer = tic;
+%       REWARDS.current_frequency = current_frequency + REWARDS.increment;
+%       REWARDS.current = current_frequency + REWARDS.increment;
+%     end
+    
+    if ( isnan(REWARDS.pulse_timer) )
+      should_reward = true;
+    else
+      should_reward = toc(REWARDS.pulse_timer) > REWARDS.pulse_frequency/1e3;
+    end
+    if ( should_reward )
+      serial_comm.reward( 1, REWARDS.increment );
+      REWARDS.pulse_timer = tic;
+    end
+  end
+  
   % - If an error occurred, return to the new trial.
   if ( ~isnan(tcp_comm.consume('error')) )
     %   MARK: goto: error
@@ -251,7 +335,15 @@ while (true)
     if ( key_code(INTERFACE.stop_key) ), break; end;
     %   Deliver reward if reward key is pressed
     if ( key_code(INTERFACE.rwd_key) )
-      serial_comm.reward( 1, REWARDS.main );
+      if ( isnan(REWARDS.debounce_timer) )
+        should_reward_key = true;
+      else
+        should_reward_key = toc( REWARDS.debounce_timer ) > .1;
+      end
+      if ( should_reward_key )
+        serial_comm.reward( 1, REWARDS.key_press );
+        REWARDS.debounce_timer = tic;
+      end
     end
   end
   

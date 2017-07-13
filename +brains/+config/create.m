@@ -81,6 +81,7 @@ fixations.gaze_cue_correct = .2;
 fixations.gaze_cue_incorrect = .2;
 
 time_in.task = Inf;
+time_in.trial = Inf;
 time_in.fixation = Inf;
 time_in.train_fixation = 2;
 time_in.rule_cue = 1;
@@ -243,11 +244,16 @@ STIMULI.error_cue = struct( ...
 
 % - REWARDS - %
 REWARDS.main = 250; % ms
+REWARDS.key_press = 200;
 REWARDS.bridge = 150;
 REWARDS.flush = 10e3;
 REWARDS.pulse_frequency = .5;
 REWARDS.last_reward_size = []; % ms
-REWARDS.gui_fields.include = { 'main', 'bridge', 'flush', 'pulse_frequency' };
+REWARDS.min_frequency = 100;
+REWARDS.max_frequency = 100;
+REWARDS.increment = 50;
+REWARDS.gui_fields.include = { 'main', 'key_press', 'bridge', 'flush', ...
+  'pulse_frequency', 'min_frequency', 'max_frequency' };
 
 %   export as one struct
 opts = struct();

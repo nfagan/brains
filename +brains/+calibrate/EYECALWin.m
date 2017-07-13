@@ -8,24 +8,11 @@ config = brains.config.load();
 
 addpath( genpath(fullfile(config.IO.repo_folder, 'arduino')) );
 
-IS_M1 = config.INTERFACE.IS_M1;
-if ( IS_M1 )
-  M_str = 'M1';
-else
-  M_str = 'M2';
-end
-port = config.SERIAL.ports.(M_str);
-rwd_channels = config.SERIAL.reward_channels.(M_str);
-if ( config.INTERFACE.is_master_arduino )
-  role = 'master';
-else
-  role = 'slave';
-end
-
-comm = ...
-  brains.arduino.BrainsSerialManagerPaired( port, struct(), rwd_channels, role );
+comm = brains.arduino.get_serial_comm();
 
 comm.bypass = ~config.INTERFACE.use_arduino;
+
+comm.start();
 
 fullRect = config.CALIBRATION.full_rect;
 calRect = config.CALIBRATION.cal_rect;
