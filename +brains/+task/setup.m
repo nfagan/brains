@@ -18,6 +18,7 @@ IO =        opts.IO;
 SCREEN =    opts.SCREEN;
 TIMINGS =   opts.TIMINGS;
 STIMULI =   opts.STIMULI;
+IMAGES =    opts.IMAGES;
 INTERFACE = opts.INTERFACE;
 SERIAL =    opts.SERIAL;
 TCP =       opts.TCP;
@@ -134,6 +135,21 @@ for i = 1:numel(stim_fs)
   STIMULI.(stim_fs{i}) = stim_;
 end
 
+% - load images
+fs = fieldnames( IMAGES );
+for i = 1:numel(fs)
+  img_path = IMAGES.(fs{i});
+  img_files = brains.util.dirnames( img_path, 'png' );
+  img_files = [ img_files, brains.util.dirnames(img_path, 'jpg') ];
+  assert( numel(img_files) > 0, 'No .png or .jpg files found in %s.', img_path );
+  full_img_files = cellfun( @(x) fullfile(img_path, x), img_files, 'un', false );
+  img_matrices = cellfun( @imread, full_img_files, 'un', false );
+  IMAGES.(fs{i}) = struct( ...
+      'filenames', {img_files} ...
+    , 'matrices', {img_matrices} ...
+  );
+end
+
 % - export
 opts.SCREEN =         SCREEN;
 opts.WINDOW =         WINDOW;
@@ -142,5 +158,6 @@ opts.TRACKER =        TRACKER;
 opts.TIMER =          TIMER;
 opts.ROIS =           ROIS;
 opts.STIMULI =        STIMULI;
+opts.IMAGES =         IMAGES;
 
 end

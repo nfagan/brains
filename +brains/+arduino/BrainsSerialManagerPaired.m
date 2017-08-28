@@ -32,6 +32,7 @@ classdef BrainsSerialManagerPaired < serial_comm.SerialManagerPaired
       %   LED -- Light up an LED for the given duration.
       %
       %     IN:
+      %       - `id` (char, double) -- Index of LED to light.
       %       - `duration` (double)
       
       if ( ~ischar(id) )

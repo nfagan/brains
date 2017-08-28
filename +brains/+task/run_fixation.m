@@ -12,6 +12,7 @@ TIMER =         opts.TIMER;
 STATES =        opts.STATES;
 TRACKER =       opts.TRACKER;
 STIMULI =       opts.STIMULI;
+IMAGES =        opts.IMAGES;
 STRUCTURE =     opts.STRUCTURE;
 INTERFACE =     opts.INTERFACE;
 REWARDS =       opts.REWARDS;
@@ -112,20 +113,28 @@ while (true)
       if ( TRIAL_NUMBER == 1 )
         fix_targ.vertices([2, 4]) = fix_targ.vertices([2, 4]) - 0;
       end
+      square_ind = strcmp( IMAGES.fixation.filenames, 'square.png' );
+      fix_targ.image = IMAGES.fixation.matrices{ square_ind };
+      active_target = fix_targ;
       errors.fix_broken = false;
       errors.fix_not_met = false;
       log_progress = true;
+      did_show = false;
       first_entry = false;
     end
-%     TRACKER.update_coordinates();
     fix_targ.update_targets();
-    fix_targ.draw();
-    Screen( 'Flip', opts.WINDOW.index );
+    if ( ~did_show )
+      fix_targ.draw();
+      Screen( 'Flip', opts.WINDOW.index );
+      did_show = true;
+    end
     if ( log_progress )
       PROGRESS.fixation_onset = TIMER.get_time( 'task' );
       log_progress = false;
     end
     if ( fix_targ.duration_met() )
+      TIMER.reset_timers( 'trial' );
+      serial_comm.clear_rewards();
       PROGRESS.fixation_acquired = TIMER.get_time( 'task' );
       %   MARK: goto: rule cue
       STATES.current = STATES.rule_cue;
@@ -208,14 +217,26 @@ while (true)
       did_show = false;
       made_error = false;
       errors.train_fixation_fix_broken = false;
-      active_target = STIMULI.fixation;
+      fix_targ = STIMULI.fixation_picture;
+      active_target = STIMULI.fixation_picture;
+      image_switch_timer = tic;
       first_entry = false;
     end
 %     TRACKER.update_coordinates();
+    if ( ~did_show || toc(image_switch_timer) > STRUCTURE.image_frequency )
+      square_ind = strcmp( IMAGES.fixation.filenames, 'square.png' );
+      other_images = IMAGES.fixation.matrices( ~square_ind );
+      other_images = other_images( randperm(numel(other_images)) );
+      img = other_images{1};
+      fix_targ.image = img;
+      image_switch_timer = tic;
+      did_show = false;
+    end
     fix_targ.update_targets();
     if ( ~did_show )
       fix_targ.draw();
       Screen( 'Flip', opts.WINDOW.index );
+      did_show = true;
     end
     if ( ~fix_targ.in_bounds() )
       %   MARK: goto: error;
@@ -280,24 +301,7 @@ while (true)
   cs = STATES.current;
   if ( active_target.in_bounds() && ...
       cs ~= STATES.error && cs ~= STATES.iti && cs ~= STATES.new_trial && ...
-      TIMER.duration_met('trial') )
-    
-%     current_frequency = REWARDS.current_frequency;
-%     if ( current_frequency > REWARDS.max_frequency )
-%         current_frequency = REWARDS.max_frequency;
-%         REWARDS.current = REWARDS.max_frequency;
-%     end
-%     if ( isnan(REWARDS.pulse_timer) )
-%       should_reward = true;
-%     else
-%       should_reward = toc( REWARDS.pulse_timer ) > REWARDS.current_frequency/1e3;
-%     end
-%     if ( should_reward )
-%       serial_comm.reward( 1, REWARDS.current );
-%       REWARDS.pulse_timer = tic;
-%       REWARDS.current_frequency = current_frequency + REWARDS.increment;
-%       REWARDS.current = current_frequency + REWARDS.increment;
-%     end
+      cs ~= STATES.fixation && TIMER.duration_met('trial') )
     
     if ( isnan(REWARDS.pulse_timer) )
       should_reward = true;
@@ -338,7 +342,7 @@ while (true)
       if ( isnan(REWARDS.debounce_timer) )
         should_reward_key = true;
       else
-        should_reward_key = toc( REWARDS.debounce_timer ) > .1;
+        should_reward_key = toc( REWARDS.debounce_timer ) > .5;
       end
       if ( should_reward_key )
         serial_comm.reward( 1, REWARDS.key_press );
