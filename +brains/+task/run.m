@@ -31,7 +31,7 @@ PROGRESS = struct();
 TRIAL_NUMBER = 0;
 trial_in_block = 0;
 FRAMES.stp = 1;
-FRAMES.mean = NaN;
+FRAMES.mean = 0;
 FRAMES.min = Inf;
 FRAMES.max = -Inf;
 
@@ -526,6 +526,7 @@ while ( true )
         STATES.current = STATES.error;
         tcp_comm.send_when_ready( 'error', 3 );
         tcp_comm.send_when_ready( 'choice', 0 );
+        tcp_comm.send_when_ready( 'state', STATES.current );
         looked_away = true;
         first_entry = true;
       end
@@ -578,8 +579,7 @@ while ( true )
       STATES.current = STATES.error;
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
-    end
-    if ( TIMER.duration_met('time_to_cue_fixation') )
+    elseif ( TIMER.duration_met('time_to_cue_fixation') )
       if ( ~is_m2 )
         STATES.current = STATES.fixation_delay;
         tcp_comm.send_when_ready( 'state', STATES.current );
@@ -596,20 +596,6 @@ while ( true )
         first_entry = true;
       end
     end
-%     if ( TIMER.duration_met('cue_display') && ~failed_to_choose_in_time )
-%       %   MARK: goto: fixation_delay
-%       if ( is_m2 && isempty(STRUCTURE.m2_chose) )
-%         tcp_comm.send_when_ready( 'choice', 0 );
-%         STRUCTURE.m2_chose = 0;
-%       end
-%       if ( ~made_cue_error )
-%         %   MARK: goto: iti
-%         STATES.current = STATES.fixation_delay;
-% %         STATES.current = STATES.iti;
-%         tcp_comm.send_when_ready( 'state', STATES.current );
-%         first_entry = true;
-%       end
-%     end
   end
   
   %%   STATE FIXATION_DELAY
@@ -925,26 +911,7 @@ while ( true )
     end
   end
   
-  % - Determine frame times.
-  if ( INTERFACE.DEBUG )
-    if ( FRAMES.stp > 1 )
-      FRAMES.current = TIMER.get_time( 'task' );
-      FRAMES.delta = FRAMES.current - FRAMES.last;
-      FRAMES.last = FRAMES.current;
-      FRAMES.min = min( [FRAMES.min, FRAMES.delta] );
-      FRAMES.max = max( [FRAMES.max, FRAMES.delta] );
-      if ( FRAMES.stp == 2 )
-        FRAMES.mean = FRAMES.delta;
-      else
-        N1 = FRAMES.stp - 1;
-        N2 = FRAMES.stp - 2;
-        FRAMES.mean = (FRAMES.mean*N2 + FRAMES.delta) / N1;
-      end
-    else
-      FRAMES.last = TIMER.get_time( 'task' );
-    end
-    FRAMES.stp = FRAMES.stp + 1;
-  end
+  %%  EVERY ITERATION
   
   if ( INTERFACE.DEBUG )
     disp( TRACKER.coordinates );
@@ -952,7 +919,26 @@ while ( true )
   
   % - Update tcp_comm
   tcp_comm.update();
-  tcp_comm.send_when_ready( 'gaze', TRACKER.coordinates );
+  if ( ~INTERFACE.IS_M1 )
+    tcp_comm.send_when_ready( 'gaze', TRACKER.coordinates );
+  else
+    current_looks_m2 = tcp_comm.consume( 'gaze' );
+    % - Determine frame times.
+    if ( FRAMES.stp > 1 )
+      FRAMES.current = TIMER.get_time( 'task' );
+      FRAMES.delta = FRAMES.current - FRAMES.last;
+      FRAMES.last = FRAMES.current;
+      FRAMES.min = min( [FRAMES.min, FRAMES.delta] );
+      FRAMES.max = max( [FRAMES.max, FRAMES.delta] );
+      N1 = FRAMES.stp - 1;
+      N2 = FRAMES.stp - 2;
+      FRAMES.mean = (FRAMES.mean*N2 + FRAMES.delta) / N1;
+    else
+      FRAMES.last = TIMER.get_time( 'task' );
+      FRAMES.mean = 0;
+    end
+    FRAMES.stp = FRAMES.stp + 1;
+  end
   
   % - If an error occurred, return to the new trial.
   if ( ~isnan(tcp_comm.consume('error')) )
