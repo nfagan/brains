@@ -449,7 +449,7 @@ function text_field_creator( parent, basefield, subfields, text_pos, field_pos )
     );    
     position_ = [ fx, y_, fw, l_ ];
     val = eval( sprintf('%s.(''%s'')', config_path, field) );
-    is_num = isnumeric( val );
+    is_num = isnumeric( val ) || islogical( val );
     if ( is_num ), val = num2str( val ); end
     uicontrol( parent ...
       , 'Style', 'edit' ...

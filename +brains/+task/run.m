@@ -549,6 +549,7 @@ while ( true )
         tcp_comm.send_when_ready( 'choice', correct_is );
         %   MARK: GOTO: fixation_delay
         STATES.current = STATES.fixation_delay;
+        tcp_comm.send_when_ready( 'state', STATES.current );
         first_entry = true;
       end
     elseif ( is_m2 && ~is_gaze_trial )
@@ -585,6 +586,7 @@ while ( true )
         STATES.current = STATES.error;
         STRUCTURE.m2_chose = 0;
         failed_to_choose_in_time = true;
+        tcp_comm.send_when_ready( 'state', STATES.current );
         first_entry = true;
       end
     end
