@@ -23,6 +23,5 @@ end
 
 tcp_port = TCP.port;
 tcp_comm = tcp_comm_constructor( address, tcp_port );
-tcp_comm.bypass = ~INTERFACE.require_synch;
 
 end
