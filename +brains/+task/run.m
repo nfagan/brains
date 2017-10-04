@@ -539,8 +539,9 @@ while ( true )
         did_look = true;
         %   MARK: goto: error
         STATES.current = STATES.error;
+        tcp_comm.send_when_ready( 'state', STATES.current );
         tcp_comm.send_when_ready( 'error', 3 );
-        tcp_comm.send_when_ready( 'choice', 0 );
+        tcp_comm.send_when_ready( 'choice', incorrect_is );
         first_entry = true;
       end
       if ( correct_target.duration_met() )
@@ -579,7 +580,12 @@ while ( true )
       first_entry = true;
     end
     if ( TIMER.duration_met('time_to_cue_fixation') )
-      if ( isempty(STRUCTURE.m2_chose) )
+      if ( ~is_m2 )
+        STATES.current = STATES.fixation_delay;
+        tcp_comm.send_when_ready( 'state', STATES.current );
+        first_entry = true;
+      end
+      if ( isempty(STRUCTURE.m2_chose) && is_m2 )
         %   MARK: goto: error
         errors.m2_no_choice = true;
         tcp_comm.send_when_ready( 'choice', 0 );
