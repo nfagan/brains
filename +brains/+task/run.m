@@ -12,6 +12,7 @@ TIMER =         opts.TIMER;
 STATES =        opts.STATES;
 TRACKER =       opts.TRACKER;
 STIMULI =       opts.STIMULI;
+IMAGES  =       opts.IMAGES;
 STRUCTURE =     opts.STRUCTURE;
 INTERFACE =     opts.INTERFACE;
 REWARDS =       opts.REWARDS;
@@ -21,6 +22,9 @@ serial_comm =   opts.COMMUNICATORS.serial_comm;
 
 first_entry = true;
 STATES.current = STATES.new_trial;
+
+SYNC_TIMER = tic();
+SYNC_FREQUENCY = 6;
 
 DATA = struct();
 PROGRESS = struct();
@@ -33,13 +37,26 @@ FRAMES.max = -Inf;
 
 trial_type_num = STRUCTURE.trial_type_nums(1);
 
+errors = struct( ...
+    'initial_fixation_not_met', false ...
+  , 'broke_fixation', false ...
+  , 'm2_wrong_target', false ...
+  , 'm2_no_choice', false ...
+  , 'm2_fix_delay_no_look', false ...
+  );
+n_correct = 0;
+
+reward_key_timer = NaN;
+
 %   main loop
 while ( true )
   
-  %   STATE NEW_TRIAL
+  %%   STATE NEW_TRIAL
   if ( STATES.current == STATES.new_trial )
     Screen( 'Flip', opts.WINDOW.index );
-    disp( 'Entered new_trial' );
+    if ( INTERFACE.DEBUG )
+      disp( 'Entered new_trial' );
+    end
     if ( TRIAL_NUMBER > 0 )
       tn = TRIAL_NUMBER;
       DATA(tn).trial_number = tn;
@@ -49,11 +66,26 @@ while ( true )
       DATA(tn).correct_location = correct_location;
       DATA(tn).incorrect_location = incorrect_location;
       DATA(tn).events = PROGRESS;
+      DATA(tn).errors = errors;
+        %   display data
+      clc;
+      disp( DATA(TRIAL_NUMBER).errors );
+      fprintf( '\n - Trial number: %d', tn );
+      err_types = fieldnames( errors );
+      for ii = 1:numel(err_types)
+        n_errors = sum( arrayfun(@(x) x.errors.(err_types{ii}), DATA) );
+        fprintf( '\n - N errors (%s): %d', err_types{ii}, n_errors );
+      end
+      if ( ~any(structfun(@(x) x, errors)) )
+        n_correct = n_correct + 1;
+      end
+      fprintf( '\n - N correct: %d', n_correct );
     end
     TRIAL_NUMBER = TRIAL_NUMBER + 1;
     trial_in_block = trial_in_block + 1;
     %   reset event times
     PROGRESS = structfun( @(x) NaN, PROGRESS, 'un', false );
+    errors = structfun( @(x) false, errors, 'un', false );
     %   determine rule cue type
     if ( INTERFACE.IS_M1 || ~INTERFACE.require_synch )
       if ( STRUCTURE.trials_per_block == 0 )
@@ -109,8 +141,10 @@ while ( true )
         led_location = 1;
       end
     end
-    disp( 'Trialtype is:' );
-    disp( STRUCTURE.rule_cue_type );
+    if ( INTERFACE.DEBUG )
+      disp( 'Trialtype is:' );
+      disp( STRUCTURE.rule_cue_type );
+    end
     %   set fixation delay time
     if ( INTERFACE.IS_M1 )
       fix_delays = TIMINGS.delays.fixation_delay;
@@ -131,14 +165,21 @@ while ( true )
     %   MARK: goto: fixation
     STATES.current = STATES.fixation;
     tcp_comm.send_when_ready( 'state', STATES.current );
+    %   trial start
+    TRACKER.send_message( sprintf('TRIAL__%d', TRIAL_NUMBER) );
+    PROGRESS.trial_start = TIMER.get_time( 'task' );
+    serial_comm.sync_pulse( 1 );
+    %   END
     first_entry = true;
   end
   
-  %   STATE FIXATION
+  %%   STATE FIXATION
   if ( STATES.current == STATES.fixation )
     if ( first_entry )
       Screen( 'Flip', opts.WINDOW.index );
-      disp( 'Entered fixation' );
+      if ( INTERFACE.DEBUG )
+        disp( 'Entered fixation' );
+      end
       tcp_comm.await_matching_state( STATES.current );
       TIMER.reset_timers( 'fixation' );
       fix_targ = STIMULI.fixation;
@@ -164,7 +205,9 @@ while ( true )
       log_progress = false;
     end
     if ( fix_targ.duration_met() )
-      disp( 'Met fixation' );
+      if ( INTERFACE.DEBUG )
+        disp( 'Met fixation' );
+      end
       PROGRESS.fixation_acquired = TIMER.get_time( 'task' );
       if ( INTERFACE.require_synch )
         other_fix_met = tcp_comm.consume( 'fix_met' ) == 1;
@@ -189,16 +232,25 @@ while ( true )
     tcp_comm.send_when_ready( 'fix_met', fix_met );
     if ( TIMER.duration_met('fixation') )
       %   MARK: goto: rule cue
-      STATES.current = STATES.rule_cue;
+      %
+      %   @FixMe
+      %
+      %   This will break when we introduce synchronization!
+      if ( fix_met )
+        STATES.current = STATES.rule_cue;
+      else
+        STATES.current = STATES.error;
+        errors.initial_fixation_not_met = true;
+      end
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
     end
   end
   
-  %   STATE RULE_CUE
+  %%   STATE RULE_CUE
   if ( STATES.current == STATES.rule_cue )
     if ( first_entry )
-      disp( 'Entered rule cue' );
+      if ( INTERFACE.DEBUG ), disp( 'Entered rule cue' ); end
       tcp_comm.await_matching_state( STATES.current );
       PROGRESS.rule_cue = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'rule_cue' );
@@ -234,8 +286,12 @@ while ( true )
     end
     if ( ~did_show )
       rule_cue.draw();
-      structfun( @(x) x.draw_frame(), frame_cues );
+      if ( STRUCTURE.draw_frame_cues )
+        structfun( @(x) x.draw_frame(), frame_cues );
+      end
       Screen( 'Flip', opts.WINDOW.index );
+      PROGRESS.rule_cue_onset = TIMER.get_time( 'task' );
+      serial_comm.sync_pulse( 2 );
       did_show = true;
     end
     TRACKER.update_coordinates();
@@ -247,6 +303,7 @@ while ( true )
       tcp_comm.send_when_ready( 'error', 2 );
       STATES.current = STATES.error;
       tcp_comm.send_when_ready( 'state', STATES.current );
+      errors.broke_fixation = true;
       first_entry = true;
     end
     if ( tcp_comm.consume('error') == 2 )
@@ -255,27 +312,27 @@ while ( true )
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
     end
-    if ( log_progress )
-      PROGRESS.rule_cue_onset = TIMER.get_time( 'task' );
-      log_progress = false;
-    end
     if ( TIMER.duration_met('rule_cue') )
       %   MARK: goto: cue_display
-      STATES.current = STATES.cue_display;
+      STATES.current = STATES.cue_display2;
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
     end
   end
   
-  %   STATE CUE_DISPLAY
+  
+  %%   STATE CUE_DISPLAY
   if ( STATES.current == STATES.cue_display ) 
     if ( first_entry )
       Screen( 'Flip', opts.WINDOW.index );
-      disp( 'Entered cue_display' );
+      if ( INTERFACE.DEBUG )
+        disp( 'Entered cue_display' );
+      end
       PROGRESS.rule_cue_offset = TIMER.get_time( 'task' );
       tcp_comm.await_matching_state( STATES.current );
       PROGRESS.post_rule_cue = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'cue_display' );
+      TIMER.reset_timers( 'time_to_cue_fixation' );
       is_gaze_trial = strcmp( STRUCTURE.rule_cue_type, 'gaze' );
       is_m2 = ~INTERFACE.IS_M1;
       if ( is_gaze_trial )
@@ -293,6 +350,8 @@ while ( true )
       lit_led = false;
       made_cue_error = false;
       did_show = false;
+      did_show_choice = false;
+      failed_to_choose_in_time = false;
       first_entry = false;
     end
     TRACKER.update_coordinates();
@@ -311,25 +370,35 @@ while ( true )
         log_progress = false;
       end
       if ( correct_target.duration_met() )
-        fprintf( '\nM2: made choice %d\n', correct_is );
-        if ( isnan(last_pulse) )
-          should_reward = true;
-        else
-          should_reward = toc( last_pulse ) > REWARDS.pulse_frequency;
+        if ( ~did_show_choice )
+          fprintf( '\nM2: made choice %d\n', correct_is );
+          did_show_choice = true;
         end
-        if ( should_reward )
-          serial_comm.reward( 1, REWARDS.main );
-          last_pulse = tic;
-        end
+%         if ( isnan(last_pulse) )
+%           should_reward = true;
+%         else
+%           should_reward = toc( last_pulse ) > REWARDS.pulse_frequency/1e3;
+%         end
+%         if ( should_reward )
+%           disp( 'Rewarding ...' );
+%           serial_comm.reward( 1, REWARDS.main );
+%           last_pulse = tic;
+%         end
         chosen_target = correct_target;
         STRUCTURE.m2_chose = correct_is;
         tcp_comm.send_when_ready( 'choice', correct_is );
       end
       if ( incorrect_target.duration_met() )
-        fprintf( '\nM2: made choice %d\n', incorrect_is );
+        if ( ~did_show_choice )
+          fprintf( '\nM2: made choice %d\n', incorrect_is );
+          did_show_choice = true;
+        end
         chosen_target = incorrect_target;
         STRUCTURE.m2_chose = incorrect_is;
         tcp_comm.send_when_ready( 'choice', incorrect_is );
+        %   MARK: goto error
+        STATES.current = STATES.error;
+        first_entry = true;
       end
       %   once the made a choice, if they look away from the target ...
       if ( ~isa(chosen_target, 'double') )
@@ -368,31 +437,187 @@ while ( true )
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
     end
-    if ( TIMER.duration_met('cue_display') )
+    if ( TIMER.duration_met('time_to_cue_fixation') )
+      if ( isempty(STRUCTURE.m2_chose) )
+        %   MARK: goto: error
+        tcp_comm.send_when_ready( 'choice', 0 );
+        STATES.current = STATES.error;
+        STRUCTURE.m2_chose = 0;
+        failed_to_choose_in_time = true;
+        first_entry = true;
+      end
+    end
+    if ( TIMER.duration_met('cue_display') && ~failed_to_choose_in_time )
       %   MARK: goto: fixation_delay
       if ( is_m2 && isempty(STRUCTURE.m2_chose) )
         tcp_comm.send_when_ready( 'choice', 0 );
         STRUCTURE.m2_chose = 0;
       end
       if ( ~made_cue_error )
+        %   MARK: goto: iti
         STATES.current = STATES.fixation_delay;
+%         STATES.current = STATES.iti;
         tcp_comm.send_when_ready( 'state', STATES.current );
         first_entry = true;
       end
     end
   end
   
-  %   STATE FIXATION_DELAY  
+  %%   STATE CUE_DISPLAY2
+  if ( STATES.current == STATES.cue_display2 )
+    if ( first_entry )
+      Screen( 'Flip', opts.WINDOW.index );
+      if ( INTERFACE.DEBUG ), disp( 'Entered cue_display2' ); end
+      PROGRESS.rule_cue_offset = TIMER.get_time( 'task' );
+      tcp_comm.await_matching_state( STATES.current );
+      PROGRESS.post_rule_cue = TIMER.get_time( 'task' );
+      TIMER.reset_timers( 'cue_display' );
+      TIMER.reset_timers( 'time_to_cue_fixation' );
+      is_gaze_trial = strcmp( STRUCTURE.rule_cue_type, 'gaze' );
+      is_m2 = ~INTERFACE.IS_M1;
+      if ( is_gaze_trial )
+        correct_target = STIMULI.gaze_cue_correct;
+        incorrect_target = STIMULI.gaze_cue_incorrect;
+        incorrect_target.put( incorrect_location );
+        correct_target.put( correct_location );
+        incorrect_target.reset_targets();
+        correct_target.reset_targets();
+      end
+      chosen_target = [];
+      STRUCTURE.m2_chose = [];
+      last_pulse = NaN;
+      log_progress = true;
+      lit_led = false;
+      made_cue_error = false;
+      did_show = false;
+      did_show_choice = false;
+      did_look = false;
+      did_log_plex_progress = false;
+      failed_to_choose_in_time = false;
+      looked_away = false;
+      first_entry = false;
+    end
+    TRACKER.update_coordinates();
+    fix_targ.update_targets();
+    if ( is_m2 && is_gaze_trial )
+      incorrect_target.update_targets();
+      correct_target.update_targets();
+      if ( ~did_show )
+        incorrect_target.draw();
+        correct_target.draw();
+        Screen( 'Flip', opts.WINDOW.index );
+        did_show = true;
+      end
+      if ( log_progress )
+        PROGRESS.m2_target_onset = TIMER.get_time( 'task' );
+        log_progress = false;
+      end
+      if ( correct_target.in_bounds() )
+        if ( ~did_log_plex_progress )
+          PROGRESS.gaze_cue_target_acquire = TIMER.get_time( 'task' );
+          serial_comm.sync_pulse( 3 );
+          did_log_plex_progress = true;
+        end
+        STRUCTURE.m2_chose = correct_is;
+        tcp_comm.send_when_ready( 'choice', correct_is );
+        did_look = true;
+      elseif ( did_look )
+        %   MARK: goto: error
+        STATES.current = STATES.error;
+        tcp_comm.send_when_ready( 'error', 3 );
+        tcp_comm.send_when_ready( 'choice', 0 );
+        looked_away = true;
+        first_entry = true;
+      end
+      if ( incorrect_target.in_bounds() )
+        errors.m2_wrong_target = true;
+        if ( ~did_log_plex_progress )
+          PROGRESS.gaze_cue_target_acquire = TIMER.get_time( 'task' );
+          serial_comm.sync_pulse( 3 );
+          did_log_plex_progress = true;
+        end
+        did_look = true;
+        %   MARK: goto: error
+        STATES.current = STATES.error;
+        tcp_comm.send_when_ready( 'error', 3 );
+        tcp_comm.send_when_ready( 'choice', 0 );
+        first_entry = true;
+      end
+      if ( correct_target.duration_met() )
+        chosen_target = correct_target;
+        STRUCTURE.m2_chose = correct_is;
+        tcp_comm.send_when_ready( 'choice', correct_is );
+        %   MARK: GOTO: fixation_delay
+        STATES.current = STATES.fixation_delay;
+        first_entry = true;
+      end
+    elseif ( is_m2 && ~is_gaze_trial )
+      if ( ~lit_led )
+        serial_comm.LED( led_location, opts.TIMINGS.LED );
+        lit_led = true;
+      end
+      if ( ~did_show )
+        fix_targ.draw();
+        Screen( 'Flip', opts.WINDOW.index );
+        did_show = true;
+      end
+      if ( ~fix_targ.in_bounds() )
+        %   MARK: goto: error
+        tcp_comm.send_when_ready( 'error', 3 );
+        STATES.current = STATES.error;
+        tcp_comm.send_when_ready( 'state', STATES.current );
+        first_entry = true;
+      end
+    else
+      Screen( 'Flip', opts.WINDOW.index );
+    end
+    if ( tcp_comm.consume('error') == 3 )
+      %   MARK: goto: error
+      STATES.current = STATES.error;
+      tcp_comm.send_when_ready( 'state', STATES.current );
+      first_entry = true;
+    end
+    if ( TIMER.duration_met('time_to_cue_fixation') )
+      if ( isempty(STRUCTURE.m2_chose) )
+        %   MARK: goto: error
+        errors.m2_no_choice = true;
+        tcp_comm.send_when_ready( 'choice', 0 );
+        STATES.current = STATES.error;
+        STRUCTURE.m2_chose = 0;
+        failed_to_choose_in_time = true;
+        first_entry = true;
+      end
+    end
+%     if ( TIMER.duration_met('cue_display') && ~failed_to_choose_in_time )
+%       %   MARK: goto: fixation_delay
+%       if ( is_m2 && isempty(STRUCTURE.m2_chose) )
+%         tcp_comm.send_when_ready( 'choice', 0 );
+%         STRUCTURE.m2_chose = 0;
+%       end
+%       if ( ~made_cue_error )
+%         %   MARK: goto: iti
+%         STATES.current = STATES.fixation_delay;
+% %         STATES.current = STATES.iti;
+%         tcp_comm.send_when_ready( 'state', STATES.current );
+%         first_entry = true;
+%       end
+%     end
+  end
+  
+  %%   STATE FIXATION_DELAY
   if ( STATES.current == STATES.fixation_delay )
     if ( first_entry )
       Screen( 'Flip', opts.WINDOW.index );
-      disp( 'Entered fixation_delay' );
+      if ( INTERFACE.DEBUG )
+        disp( 'Entered fixation_delay' );
+      end
       tcp_comm.await_matching_state( STATES.current );
       tcp_comm.consume( 'fix_met' );
       PROGRESS.fixation_delay = TIMER.get_time( 'task' );
       TIMER.set_durations( 'fixation_delay', Inf );
       TIMER.reset_timers( {'fixation_delay', 'pre_fixation_delay'} );
-      fix_targ.reset_targets();
+      m2_active_target = STIMULI.m2_second_fixation_picture;
+      m2_active_target.reset_targets();
       did_show = false;
       did_look = false;
       is_fixating = 0;
@@ -401,16 +626,31 @@ while ( true )
       first_entry = false;
     end
     TRACKER.update_coordinates();
-    fix_targ.update_targets();
+    m2_active_target.update_targets();
     if ( ~did_show )
-      fix_targ.draw();
+      m2_active_target.draw();
       Screen( 'Flip', opts.WINDOW.index );
+      PROGRESS.fixation_delay_stim_onset = TIMER.get_time( 'task' );
+      serial_comm.sync_pulse( 4 );
       did_show = true;
     end
-    if ( fix_targ.in_bounds() )
+    if ( m2_active_target.in_bounds() )
       is_fixating = 1;
       did_look = true;
+      if ( isnan(last_pulse) )
+        should_reward = true;
+      else
+        should_reward = toc( last_pulse ) > REWARDS.pulse_frequency/1e3;
+      end
+      if ( should_reward )
+        if ( INTERFACE.DEBUG )
+          disp( 'Rewarding ...' );
+        end
+        serial_comm.reward( 1, REWARDS.main );
+        last_pulse = tic;
+      end
     elseif ( did_look )
+      errors.broke_fixation = true;
       made_error = true;
       tcp_comm.send_when_ready( 'error', 4 );
        %   MARK: goto: error
@@ -446,6 +686,7 @@ while ( true )
       first_entry = true;
     end
     if ( TIMER.duration_met('pre_fixation_delay') && ~did_look )
+      errors.m2_fix_delay_no_look = true;
       tcp_comm.send_when_ready( 'error', 4 );
       %   MARK: goto: error
       STATES.current = STATES.error;
@@ -454,11 +695,13 @@ while ( true )
     end
   end
   
-  %   STATE RESPONSE
+  %%   STATE RESPONSE
   if ( STATES.current == STATES.response )
     if ( first_entry )
       Screen( 'Flip', opts.WINDOW.index );
-      disp( 'Entered response' );
+      if ( INTERFACE.DEBUG )
+        disp( 'Entered response' );
+      end
       PROGRESS.m2_target_offset = TIMER.get_time( 'task' );
       tcp_comm.await_matching_state( STATES.current );
       PROGRESS.response = TIMER.get_time( 'task' );
@@ -467,10 +710,13 @@ while ( true )
       response_target2 = STIMULI.response_target2;
       response_target1.reset_targets();
       response_target2.reset_targets();
-      fix_targ.reset_targets();
+      m2_active_target = STIMULI.m2_second_fixation_picture;
+      m2_active_target.reset_targets();
       if ( INTERFACE.IS_M1 )
         STRUCTURE.m2_chose = tcp_comm.await_data( 'choice' );
-        fprintf( '\nM1: Received choice value %d\n', STRUCTURE.m2_chose );
+        if ( INTERFACE.DEBUG )
+          fprintf( '\nM1: Received choice value %d\n', STRUCTURE.m2_chose );
+        end
       else
         tcp_comm.consume( 'choice' );
       end
@@ -480,7 +726,7 @@ while ( true )
       first_entry = false;
     end
     TRACKER.update_coordinates();
-    fix_targ.update_targets();
+    m2_active_target.update_targets();
     if ( INTERFACE.IS_M1 )
       response_target1.update_targets();
       response_target2.update_targets();
@@ -491,7 +737,9 @@ while ( true )
         did_show = true;
       end
       if ( response_target1.duration_met() )
-        fprintf( '\nM1: made choice %d\n', 1 );
+        if ( INTERFACE.DEBUG )
+          fprintf( '\nM1: made choice %d\n', 1 );
+        end
         STRUCTURE.m1_chose = 1;
         %   MARK: goto: evaluate_choice
         STATES.current = STATES.evaluate_choice;
@@ -500,7 +748,9 @@ while ( true )
         first_entry = true;
       end
       if ( response_target2.duration_met() )
-        fprintf( '\nM1: made choice %d\n', 2 );
+        if ( INTERFACE.DEBUG )
+          fprintf( '\nM1: made choice %d\n', 2 );
+        end
         STRUCTURE.m1_chose = 2;
         %   MARK: goto: evaluate_choice
         STATES.current = STATES.evaluate_choice;
@@ -510,21 +760,36 @@ while ( true )
       end
     else
       if ( ~did_show )
-        fix_targ.draw();
+        m2_active_target.draw();
         Screen( 'Flip', opts.WINDOW.index );
         did_show = true;
       end
-      if ( ~fix_targ.in_bounds() )
+      if ( ~m2_active_target.in_bounds() )
         made_error = true;
         tcp_comm.send_when_ready( 'error', 5 );
         %   MARK: goto: error;
         STATES.current = STATES.error;
         tcp_comm.send_when_ready( 'state', STATES.current );
         first_entry = true;
+      else
+        if ( isnan(last_pulse) )
+          should_reward = true;
+        else
+          should_reward = toc( last_pulse ) > REWARDS.pulse_frequency/1e3;
+        end
+        if ( should_reward )
+          if ( INTERFACE.DEBUG )
+            disp( 'Rewarding ...' );
+          end
+          serial_comm.reward( 1, REWARDS.main );
+          last_pulse = tic;
+        end
       end
       received_m1_choice = tcp_comm.consume( 'choice' );
       if ( ~isnan(received_m1_choice) && ~made_error )
-        fprintf( '\nM2: Received choice value: %d\n', received_m1_choice );
+        if ( INTERFACE.DEBUG )
+          fprintf( '\nM2: Received choice value: %d\n', received_m1_choice );
+        end
         STRUCTURE.m1_chose = received_m1_choice;
         %   MARK: goto: evaluate_choice
         STATES.current = STATES.evaluate_choice;
@@ -545,7 +810,9 @@ while ( true )
       if ( ~INTERFACE.IS_M1 && isnan(received_m1_choice) )
         received_m1_choice = tcp_comm.await_data( 'choice' );
         STRUCTURE.m1_chose = received_m1_choice;
-        fprintf( '\nM2: Received choice value: %d\n', received_m1_choice );
+        if ( INTERFACE.DEBUG )
+          fprintf( '\nM2: Received choice value: %d\n', received_m1_choice );
+        end
       end
       %   MARK: goto: evaluate_choice
       STATES.current = STATES.evaluate_choice;
@@ -554,18 +821,22 @@ while ( true )
     end
   end
   
-  %   STATE EVALUATE_CHOICE
+  %%   STATE EVALUATE_CHOICE
   if ( STATES.current == STATES.evaluate_choice )
     if ( first_entry )
-      disp( 'Entered evaluate_choie' );
+      if ( INTERFACE.DEBUG )
+        disp( 'Entered evaluate_choie' );
+      end
       Screen( 'Flip', opts.WINDOW.index );
       tcp_comm.await_matching_state( STATES.current );
       PROGRESS.evaluate_choice = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'evaluate_choice' );
       m1_chose = STRUCTURE.m1_chose;
       m2_chose = STRUCTURE.m2_chose;
-      fprintf( '\nM1 chose: %d', m1_chose );
-      fprintf( '\nM2 chose: %d', m2_chose );
+      if ( INTERFACE.DEBUG)
+        fprintf( '\nM1 chose: %d', m1_chose );
+        fprintf( '\nM2 chose: %d', m2_chose );
+      end
       both_made_choices = m1_chose ~= 0 && m2_chose ~= 0;
       %   a left choice (1) for m1 is a right choice (2) for m2. So, e.g,
       %   for a led trial, if the correct led location is 2, the
@@ -582,7 +853,7 @@ while ( true )
           serial_comm.reward( 1, REWARDS.main );
           serial_comm.reward( 2, REWARDS.main );
         else
-          disp( 'M1 was not correct' );
+          if ( INTERFACE.DEBUG), disp( 'M1 was not correct' ); end;
         end
       end
       first_entry = false;
@@ -595,10 +866,12 @@ while ( true )
     end
   end
   
-  %   STATE ITI
+  %%   STATE ITI
   if ( STATES.current == STATES.iti )
     if ( first_entry )
-      disp( 'Entered ITI' );
+      if ( INTERFACE.DEBUG )
+        disp( 'Entered ITI' );
+      end
       Screen( 'Flip', opts.WINDOW.index );
       tcp_comm.await_matching_state( STATES.current );
       PROGRESS.iti = TIMER.get_time( 'task' );
@@ -613,15 +886,21 @@ while ( true )
     end
   end
   
-  %   STATE ERROR
+  %%   STATE ERROR
   if ( STATES.current == STATES.error )
     if ( first_entry )
-      disp( 'Entered error' );
+      if ( INTERFACE.DEBUG )
+        disp( 'Entered error' );
+      end
       Screen( 'Flip', opts.WINDOW.index );
       tcp_comm.await_matching_state( STATES.current );
       PROGRESS.error = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'error' );
-      err_cue = STIMULI.error_cue;
+      if ( errors.initial_fixation_not_met )
+        err_cue = STIMULI.fixation_error_cue;
+      else
+        err_cue = STIMULI.error_cue;
+      end
       did_show = false;
       first_entry = false;
     end
@@ -676,10 +955,7 @@ while ( true )
   end
   
   % - Update rewards  
-  if ( TIMER.duration_met('debounce_arduino_messages') )
-    serial_comm.update();
-    TIMER.reset_timers( 'debounce_arduino_messages' );
-  end
+  serial_comm.update();
   
   % - Quit if error in EyeLink
   success = TRACKER.check_recording();
@@ -692,7 +968,15 @@ while ( true )
     if ( key_code(INTERFACE.stop_key) ), break; end;
     %   Deliver reward if reward key is pressed
     if ( key_code(INTERFACE.rwd_key) )
-      serial_comm.reward( 1, REWARDS.main );
+      if ( isnan(reward_key_timer) )
+        should_reward = true;
+      else
+        should_reward = toc( reward_key_timer ) > REWARDS.iti/1e3;
+      end
+      if ( should_reward )
+        serial_comm.reward( 1, REWARDS.iti );
+        reward_key_timer = tic;
+      end
     end
   end
   

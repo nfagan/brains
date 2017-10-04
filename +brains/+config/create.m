@@ -23,6 +23,7 @@ INTERFACE.save_data = true;
 INTERFACE.allow_overwrite = false;
 INTERFACE.use_eyelink = true;
 INTERFACE.use_arduino = true;
+INTERFACE.use_led = true;
 INTERFACE.require_synch = true;
 INTERFACE.rwd_key = KbName( 'r' );
 INTERFACE.stop_key = KbName( 'escape' );
@@ -58,12 +59,14 @@ STRUCTURE.rule_cue_types = { 'gaze', 'led' };
 STRUCTURE.trial_type_nums = [ 1, 2 ];
 STRUCTURE.trials_per_block = 1;
 STRUCTURE.image_frequency = .5;
+STRUCTURE.fixation_led_duration = 1e3;
+STRUCTURE.draw_frame_cues = true;
 STRUCTURE.gui_fields.exclude = { 'rule_cue_types' };
 
 % - STATES - %
 state_sequence = { 'new_trial', 'fixation', 'rule_cue', 'cue_display' ...
   , 'fixation_delay', 'response', 'evaluate_choice', 'iti', 'error' ...
-  , 'train_fixation' };
+  , 'train_fixation', 'error__fixation', 'cue_display2' };
 for i = 0:numel(state_sequence)-1
   STATES.(state_sequence{i+1}) = i;
 end
@@ -87,13 +90,16 @@ time_in.fixation = Inf;
 time_in.train_fixation = 2;
 time_in.rule_cue = 1;
 time_in.cue_display = 2;
+time_in.time_to_cue_fixation = 1;
 time_in.pre_fixation_delay = 1;
 time_in.fixation_delay = 2;
 time_in.response = 2;
 time_in.evaluate_choice = 0;
 time_in.iti = 1;
 time_in.error = 1;
+time_in.error__fixation = 1;
 time_in.debounce_arduino_messages = .01;
+time_in.gui_fields.exclude = { 'debouce_arduino_messages' };
 
 delays.fixation_delay = .5:.05:.8;
 
@@ -244,6 +250,15 @@ STIMULI.error_cue = struct( ...
   , 'non_editable',     non_editable_properties ...
 );
 
+STIMULI.fixation_error_cue = struct( ...
+    'class',            'Rectangle' ...
+  , 'size',             [ 300 ] ...
+  , 'color',            [ 0 255 0 ] ...
+  , 'placement',        'center' ...
+  , 'has_target',       false ...
+  , 'non_editable',     non_editable_properties ...
+);
+
 STIMULI.fixation_picture = struct( ...
     'class',            'Image' ...
   , 'image_file',       fullfile( 'fixation', 'square.png' ) ...
@@ -257,10 +272,27 @@ STIMULI.fixation_picture = struct( ...
   , 'non_editable',     non_editable_properties ...
 );
 
-IMAGES.fixation = fullfile( IO.stimuli_path, 'fixation' );  
+STIMULI.m2_second_fixation_picture = struct( ...
+    'class',            'Image' ...
+  , 'image_file',       fullfile( 'm2', 'a.png' ) ...
+  , 'size',             [ 150 ] ...
+  , 'color',            [ 96, 110, 132 ] ...
+  , 'placement',        'center' ...
+  , 'has_target',       true ...
+  , 'target_duration',  fixations.fixation ...
+  , 'target_padding',   0 ...
+  , 'target_offset',    [0, 0] ...
+  , 'non_editable',     non_editable_properties ...
+);
+
+IMAGES.fixation = fullfile( IO.stimuli_path, 'fixation' );
+IMAGES.m2 = fullfile( IO.stimuli_path, 'm2' );
 
 % - REWARDS - %
 REWARDS.main = 250; % ms
+REWARDS.fixation = 250;
+REWARDS.iti = 100;
+REWARDS.iti_pulses = 3;
 REWARDS.key_press = 200;
 REWARDS.bridge = 150;
 REWARDS.flush = 10e3;
@@ -269,8 +301,8 @@ REWARDS.last_reward_size = []; % ms
 REWARDS.min_frequency = 100;
 REWARDS.max_frequency = 100;
 REWARDS.increment = 50;
-REWARDS.gui_fields.include = { 'main', 'key_press', 'bridge', 'flush', ...
-  'pulse_frequency', 'min_frequency', 'max_frequency' };
+REWARDS.gui_fields.include = { 'main', 'fixation', 'key_press', 'bridge', 'flush', ...
+  'pulse_frequency', 'min_frequency', 'max_frequency', 'iti', 'iti_pulses' };
 
 %   export as one struct
 opts = struct();

@@ -1,5 +1,9 @@
 #include <Wire.h>
 
+//
+//  Initialization + reward
+//
+
 char init_char = '*';
 char reward_status = '?';
 int n_rewards = 2;
@@ -9,6 +13,10 @@ int reward_pins[2] = { 11, 10 };
 int rewards[2] = { 0, 0 };
 bool reward_state_changed[2] = { false, false };
 
+//
+//  LED
+//
+
 int n_leds = 2;
 int led_pins[2] = { 2, 3 };
 char led_messages[2] = { 'Y', 'U' };
@@ -16,6 +24,17 @@ char led_time_end = 'T';
 int led_times[2] = { 0, 0 };
 int led_magnitudes[2] = { 200, 200 };
 bool led_state_changed[2] = { false, false };
+
+//
+//  Plexon sync
+//
+
+const int n_plex_messages = 4;
+char plexon_sync_messages[n_plex_messages] = { '1', '2', '3', '4' };
+int plexon_sync_pins[n_plex_messages] = { 4, 5, 6, 7 };
+const int plex_sync_pulse_length = 100;
+int plex_times[n_plex_messages] = { plex_sync_pulse_length };
+int plex_state_changed[n_plex_messages] = { false };
 
 int response_index = 0;
 
@@ -49,6 +68,9 @@ void setup() {
   for ( int i = 0; i < n_leds; i++ ) {
     pinMode( led_pins[i], OUTPUT );
   }
+  for ( int i = 0; i < n_plex_messages; ++i ) {
+    pinMode( plexon_sync_pins[i], OUTPUT );
+  }
 }
 
 void loop() {
@@ -56,6 +78,8 @@ void loop() {
   millisThisFrame = millis();
 
   handleSerialComm();
+
+  handlePlexSync();
 
   handleReward();
 
@@ -70,6 +94,17 @@ void handleSerialComm() {
   if ( Serial.available() <= 0 ) return;
   int inByte = Serial.read();
   char inChar = char( inByte );
+
+  //  check if this is a plexon sync pulse message
+  int plex_ind = findIndex( plexon_sync_messages, n_plex_messages, inChar );
+
+  if ( plex_ind != -1 ) {
+    plex_state_changed[plex_ind] = true;
+    plex_times[plex_ind] = plex_sync_pulse_length;
+    Serial.println("!");
+    return;
+  }
+  
   switch ( inChar ) {
     case '?':
       if ( bslave ) {
@@ -204,6 +239,27 @@ void handleLED() {
       analogWrite( led_pins[i], led_magnitudes[i] );
     }
     led_state_changed[i] = false;
+  }
+  
+}
+
+void handlePlexSync() {
+
+  unsigned long delta = millisThisFrame - millisLastFrame;
+  for ( int i = 0; i < n_plex_messages; i++ ) {
+    if ( plex_times[i] == 0 ) continue;
+    plex_times[i] -= delta;
+    if ( plex_times[i] <= 0 ) {
+      plex_state_changed[i] = true;
+      plex_times[i] = 0;
+    }
+    if (!plex_state_changed[i]) continue;
+    if ( plex_times[i] == 0 ) {
+      digitalWrite( plexon_sync_pins[i], LOW );
+    } else {
+      digitalWrite( plexon_sync_pins[i], HIGH );
+    }
+    plex_state_changed[i] = false;
   }
   
 }

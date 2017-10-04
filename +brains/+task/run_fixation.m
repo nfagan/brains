@@ -66,7 +66,12 @@ while (true)
       clc;
       disp( DATA(tn).errors );
       fprintf( '\n - Trial number: %d', tn );
-      fprintf( '\n - N errors: %d', n_errors );
+%       fprintf( '\n - N errors: %d', n_errors );
+      err_types = fieldnames( errors );
+      for ii = 1:numel(err_types)
+        n_errors = sum( arrayfun(@(x) x.errors.(err_types{ii}), DATA) );
+        fprintf( '\n - N errors (%s): %d', err_types{ii}, n_errors );
+      end
       fprintf( '\n - N correct: %d', n_correct );
     end
     TRIAL_NUMBER = TRIAL_NUMBER + 1;
@@ -90,6 +95,11 @@ while (true)
         STRUCTURE.trial_type_nums = fliplr( STRUCTURE.trial_type_nums );
         trial_type_num = STRUCTURE.trial_type_nums(1);
       end
+    end
+    if ( rand() > .5 )
+      led_index = 1;
+    else
+      led_index = 2;
     end
     serial_comm.clear_rewards();
     TIMER.reset_timers( 'trial' );
@@ -124,6 +134,7 @@ while (true)
     end
     fix_targ.update_targets();
     if ( ~did_show )
+      serial_comm.reward( 1, REWARDS.fixation );
       fix_targ.draw();
       Screen( 'Flip', opts.WINDOW.index );
       did_show = true;
@@ -142,7 +153,7 @@ while (true)
     end
     if ( TIMER.duration_met('fixation') )
       %   MARK: goto: error
-      STATES.current = STATES.error;
+      STATES.current = STATES.error__fixation;
       errors.fix_not_met = true;
       first_entry = true;
     end
@@ -220,6 +231,9 @@ while (true)
       fix_targ = STIMULI.fixation_picture;
       active_target = STIMULI.fixation_picture;
       image_switch_timer = tic;
+      if ( INTERFACE.use_led )
+        serial_comm.LED( led_index, STRUCTURE.fixation_led_duration );
+      end
       first_entry = false;
     end
 %     TRACKER.update_coordinates();
@@ -247,6 +261,14 @@ while (true)
     end
     if ( TIMER.duration_met('train_fixation') && ~made_error )
       %   MARK: goto: iti;
+      %
+      %   @FixMe
+      %
+      %   Remove WaitSecs; implement better reward check
+      for j = 1:REWARDS.iti_pulses
+        serial_comm.reward( 1, REWARDS.iti );
+        WaitSecs( 0.05 );
+      end
       STATES.current = STATES.iti;
       first_entry = true;
     end
@@ -268,8 +290,29 @@ while (true)
     end
     if ( TIMER.duration_met('error') )
       %   MARK: goto: new_trial
-      STATES.current = STATES.new_trial;
+      STATES.current = STATES.iti;
       tcp_comm.send_when_ready( 'state', STATES.current );
+      first_entry = true;
+    end
+  end
+  
+  %   STATE ERRROR FIXATION
+  if ( STATES.current == STATES.error__fixation )
+    if ( first_entry )
+      Screen( 'Flip', opts.WINDOW.index );
+      TIMER.reset_timers( 'error__fixation' );
+      err_cue = STIMULI.fixation_error_cue;
+      did_show = false;
+      first_entry = false;
+    end
+    if ( ~did_show )
+      err_cue.draw();
+      Screen( 'Flip', opts.WINDOW.index );
+      did_show = true;
+    end
+    if ( TIMER.duration_met('error__fixation') )
+      %   MARK: goto: new_trial
+      STATES.current = STATES.iti;
       first_entry = true;
     end
   end
@@ -280,7 +323,6 @@ while (true)
       Screen( 'Flip', opts.WINDOW.index );
       PROGRESS.iti = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'iti' );
-      serial_comm.reward( 1, REWARDS.main );
       first_entry = false;
     end
     if ( TIMER.duration_met('iti') )
@@ -301,7 +343,8 @@ while (true)
   cs = STATES.current;
   if ( active_target.in_bounds() && ...
       cs ~= STATES.error && cs ~= STATES.iti && cs ~= STATES.new_trial && ...
-      cs ~= STATES.fixation && TIMER.duration_met('trial') )
+      cs ~= STATES.fixation && cs ~= STATES.error__fixation && ...
+      TIMER.duration_met('trial') )
     
     if ( isnan(REWARDS.pulse_timer) )
       should_reward = true;

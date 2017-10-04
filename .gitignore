@@ -4,5 +4,6 @@
 *.edf
 archive/
 data/
+notes/
 +brains/+config/config.mat
 +brains/+config/default.mat

@@ -3,6 +3,7 @@ classdef BrainsSerialManagerPaired < serial_comm.SerialManagerPaired
   properties    
     addtl_chars = struct( 'LED_END', 'T' );
     led_ids = { 'Y', 'U' };
+    plex_ids = { '1', '2', '3', '4' };
   end
   
   methods
@@ -39,6 +40,24 @@ classdef BrainsSerialManagerPaired < serial_comm.SerialManagerPaired
         id = obj.led_ids{ id };
       end
       obj.write( id, duration, obj.addtl_chars.LED_END );
+    end
+    
+    function sync_pulse(obj, id)
+      
+      %   SYNC_PULSE -- Send a synchronization pulse to Plexon.
+      %
+      %     The length of a pulse is defined in the brains.ino file as
+      %     `plex_sync_pulse_length`.
+      %
+      %     IN:
+      %       - `id` (char) -- Char identifying the channel on which to
+      %         output.
+      
+      if ( ~ischar(id) )
+        id = num2str( id );
+      end
+      assert( any(strcmp(obj.plex_ids, id)), 'Unrecognized plex id.' );
+      obj.write( id );
     end
   end  
   
