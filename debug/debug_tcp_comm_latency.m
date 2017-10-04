@@ -1,27 +1,18 @@
 clear all; clc;
 
-is_client = false;
-
 N = 1e3;
 latencies = zeros( 1, N );
 start = [];
 
 latency_thresholds = [1, 2, 3, 5, 10, 20];
 
-tcp_comm = [];
+tcp_comm = brains.server.get_tcp_comm();
 
-address = 'localhost';
-port = 55e3;
-
-if ( is_client )
-  tcp_comm = brains.server.Client( address, port );
-else
-  tcp_comm = brains.server.Server( address, port );
-end
+is_server = isa( tcp_comm, 'brains.server.Server' );
 
 tcp_comm.start();
 
-if ( is_client )
+if ( is_server )
   for i = 1:N
     start = tic;
     tcp_comm.send_when_ready( 'gaze', [10, 10] );
@@ -34,7 +25,7 @@ else
   end
 end
 
-if ( is_client )
+if ( is_server )
   perc = @(x) (sum(x) / numel(x)) * 100;
   
   tcp_comm.send_when_ready( 'choice', 0 );
