@@ -923,21 +923,24 @@ while ( true )
     tcp_comm.send_when_ready( 'gaze', TRACKER.coordinates );
   else
     current_looks_m2 = tcp_comm.consume( 'gaze' );
+    is_valid_looks = ~any( isnan(current_looks_m2) );
     % - Determine frame times.
-    if ( FRAMES.stp > 1 )
-      FRAMES.current = TIMER.get_time( 'task' );
-      FRAMES.delta = FRAMES.current - FRAMES.last;
-      FRAMES.last = FRAMES.current;
-      FRAMES.min = min( [FRAMES.min, FRAMES.delta] );
-      FRAMES.max = max( [FRAMES.max, FRAMES.delta] );
-      N1 = FRAMES.stp - 1;
-      N2 = FRAMES.stp - 2;
-      FRAMES.mean = (FRAMES.mean*N2 + FRAMES.delta) / N1;
-    else
-      FRAMES.last = TIMER.get_time( 'task' );
-      FRAMES.mean = 0;
+    if ( is_valid_looks )
+      if ( FRAMES.stp > 1 )
+        FRAMES.current = TIMER.get_time( 'task' );
+        FRAMES.delta = FRAMES.current - FRAMES.last;
+        FRAMES.last = FRAMES.current;
+        FRAMES.min = min( [FRAMES.min, FRAMES.delta] );
+        FRAMES.max = max( [FRAMES.max, FRAMES.delta] );
+        N1 = FRAMES.stp - 1;
+        N2 = FRAMES.stp - 2;
+        FRAMES.mean = (FRAMES.mean*N2 + FRAMES.delta) / N1;
+      else
+        FRAMES.last = TIMER.get_time( 'task' );
+        FRAMES.mean = 0;
+      end
+      FRAMES.stp = FRAMES.stp + 1;
     end
-    FRAMES.stp = FRAMES.stp + 1;
   end
   
   % - If an error occurred, return to the new trial.
