@@ -99,7 +99,6 @@ time_in.iti = 1;
 time_in.error = 1;
 time_in.error__fixation = 1;
 time_in.debounce_arduino_messages = .01;
-time_in.gui_fields.exclude = { 'debouce_arduino_messages' };
 
 delays.fixation_delay = .5:.05:.8;
 
