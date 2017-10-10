@@ -13,6 +13,7 @@ STATES =        opts.STATES;
 TRACKER =       opts.TRACKER;
 STIMULI =       opts.STIMULI;
 IMAGES =        opts.IMAGES;
+SOUNDS =        opts.SOUNDS;
 STRUCTURE =     opts.STRUCTURE;
 INTERFACE =     opts.INTERFACE;
 REWARDS =       opts.REWARDS;
@@ -34,6 +35,8 @@ STATES.current = STATES.new_trial;
 REWARDS.pulse_timer = NaN;
 REWARDS.current_frequency = REWARDS.min_frequency;
 REWARDS.debounce_timer = NaN;
+
+ALIGN_CENTER_STIMULI_TO_TOP = true;
 
 errors = struct();
 errors.fix_not_met = false;
@@ -101,6 +104,24 @@ while (true)
     else
       led_index = 2;
     end
+    
+    %   extract stimuli
+    switch ( STRUCTURE.rule_cue_type )
+      case 'gaze'
+        rule_cue = STIMULI.rule_cue_gaze;
+      case 'led'
+        rule_cue = STIMULI.rule_cue_led;
+      otherwise
+        error( 'Unrecognized rule cue ''%s''', STRUCTURE.rule_cue_type );
+    end
+    
+    fix_targ = STIMULI.fixation;
+    fix_picture = STIMULI.fixation_picture;
+    if ( TRIAL_NUMBER == 1 && ALIGN_CENTER_STIMULI_TO_TOP )
+      align_stimuli_to_top( {fix_targ, rule_cue, fix_picture} );
+%       shift_stimulus_up( fix_targ, 300 );
+    end
+    
     serial_comm.clear_rewards();
     TIMER.reset_timers( 'trial' );
     STRUCTURE.rule_cue_type = STRUCTURE.rule_cue_types{trial_type_num};
@@ -116,12 +137,14 @@ while (true)
     if ( first_entry )
       Screen( 'Flip', opts.WINDOW.index );
       TIMER.reset_timers( 'fixation' );
-      fix_targ = STIMULI.fixation;
       fix_targ.reset_targets();
       fix_targ.blink( 0 );
-      %   SHIFT FIXATION SQUARE UP
-      if ( TRIAL_NUMBER == 1 )
-        fix_targ.vertices([2, 4]) = fix_targ.vertices([2, 4]) - 0;
+      if ( isempty(SOUNDS.fixation_task_new_trial_cue.audio) )
+        beep();
+      else
+        aud = SOUNDS.fixation_task_new_trial_cue.audio;
+        fs = SOUNDS.fixation_task_new_trial_cue.fs;
+        sound( aud, fs );
       end
       square_ind = strcmp( IMAGES.fixation.filenames, 'square.png' );
       fix_targ.image = IMAGES.fixation.matrices{ square_ind };
@@ -163,14 +186,6 @@ while (true)
   if ( STATES.current == STATES.rule_cue )
     if ( first_entry )
       TIMER.reset_timers( 'rule_cue' );
-      switch ( STRUCTURE.rule_cue_type )
-        case 'gaze'
-          rule_cue = STIMULI.rule_cue_gaze;
-        case 'led'
-          rule_cue = STIMULI.rule_cue_led;
-        otherwise
-          error( 'Unrecognized rule cue ''%s''', STRUCTURE.rule_cue_type );
-      end
       %   draw the peripheral targets
       wrect = opts.WINDOW.rect;
       frame_width = wrect(3)/3;
@@ -399,4 +414,17 @@ while (true)
   
 end
 
+end
+
+function align_stimuli_to_top(stim)
+  cellfun( @align_stimulus_to_top, stim );
+end
+
+function align_stimulus_to_top(stim)
+current_height = stim.vertices(4) - stim.vertices(2);
+stim.vertices([2, 4]) = [ 0, current_height ];
+end
+
+function shift_stimulus_up(stim, amt)
+stim.vertices([2, 4]) = stim.vertices([2, 4]) - amt;
 end

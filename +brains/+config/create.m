@@ -287,6 +287,9 @@ STIMULI.m2_second_fixation_picture = struct( ...
 IMAGES.fixation = fullfile( IO.stimuli_path, 'fixation' );
 IMAGES.m2 = fullfile( IO.stimuli_path, 'm2' );
 
+SOUNDS.fixation_task_new_trial_cue = fullfile( IO.stimuli_path, ...
+  'sounds', 'beep.wav' );
+
 % - REWARDS - %
 REWARDS.main = 250; % ms
 REWARDS.fixation = 250;

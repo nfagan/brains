@@ -23,8 +23,7 @@ serial_comm =   opts.COMMUNICATORS.serial_comm;
 first_entry = true;
 STATES.current = STATES.new_trial;
 
-SYNC_TIMER = tic();
-SYNC_FREQUENCY = 6;
+ALIGN_CENTER_STIMULI_TO_TOP = true;
 
 DATA = struct();
 PROGRESS = struct();
@@ -157,6 +156,11 @@ while ( true )
         assert( ~INTERFACE.require_synch, 'Received NaN for fixation_delay.' );
         fixation_delay_time = TIMINGS.delays.fixation_delay(1);
       end
+    end
+    if ( TRIAL_NUMBER == 1 && ALIGN_CENTER_STIMULI_TO_TOP )
+      align_stimuli_to_top( {STIMULI.fixation, STIMULI.rule_cue_gaze ...
+        , STIMULI.rule_cue_led, STIMULI.m2_second_fixation_picture ...
+        , STIMULI.error_cue, STIMULI.fixation_error_cue} );
     end
     %   reset choice parameters
     STRUCTURE.m1_chose = [];
@@ -631,18 +635,18 @@ while ( true )
     if ( m2_active_target.in_bounds() )
       is_fixating = 1;
       did_look = true;
-      if ( isnan(last_pulse) )
-        should_reward = true;
-      else
-        should_reward = toc( last_pulse ) > REWARDS.pulse_frequency/1e3;
-      end
-      if ( should_reward )
-        if ( INTERFACE.DEBUG )
-          disp( 'Rewarding ...' );
-        end
-        serial_comm.reward( 1, REWARDS.main );
-        last_pulse = tic;
-      end
+%       if ( isnan(last_pulse) )
+%         should_reward = true;
+%       else
+%         should_reward = toc( last_pulse ) > REWARDS.pulse_frequency/1e3;
+%       end
+%       if ( should_reward )
+%         if ( INTERFACE.DEBUG )
+%           disp( 'Rewarding ...' );
+%         end
+%         serial_comm.reward( 1, REWARDS.main );
+%         last_pulse = tic;
+%       end
     elseif ( did_look )
       errors.broke_fixation = true;
       made_error = true;
@@ -766,18 +770,18 @@ while ( true )
         tcp_comm.send_when_ready( 'state', STATES.current );
         first_entry = true;
       else
-        if ( isnan(last_pulse) )
-          should_reward = true;
-        else
-          should_reward = toc( last_pulse ) > REWARDS.pulse_frequency/1e3;
-        end
-        if ( should_reward )
-          if ( INTERFACE.DEBUG )
-            disp( 'Rewarding ...' );
-          end
-          serial_comm.reward( 1, REWARDS.main );
-          last_pulse = tic;
-        end
+%         if ( isnan(last_pulse) )
+%           should_reward = true;
+%         else
+%           should_reward = toc( last_pulse ) > REWARDS.pulse_frequency/1e3;
+%         end
+%         if ( should_reward )
+%           if ( INTERFACE.DEBUG )
+%             disp( 'Rewarding ...' );
+%           end
+%           serial_comm.reward( 1, REWARDS.main );
+%           last_pulse = tic;
+%         end
       end
       received_m1_choice = tcp_comm.consume( 'choice' );
       if ( ~isnan(received_m1_choice) && ~made_error )
@@ -853,6 +857,12 @@ while ( true )
       first_entry = false;
     end
     if ( TIMER.duration_met('evaluate_choice') )
+      if ( ~INTERFACE.IS_M1 )
+        for j = 1:REWARDS.iti_pulses
+          serial_comm.reward( 1, REWARDS.main );
+          WaitSecs( 0.05 );
+        end
+      end
       %   MARK: goto: iti
       STATES.current = STATES.iti;
       tcp_comm.send_when_ready( 'state', STATES.current );
@@ -904,8 +914,8 @@ while ( true )
       did_show = true;
     end
     if ( TIMER.duration_met('error') )
-      %   MARK: goto: new_trial
-      STATES.current = STATES.new_trial;
+      %   MARK: goto: iti
+      STATES.current = STATES.iti;
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
     end
@@ -915,6 +925,14 @@ while ( true )
   
   if ( INTERFACE.DEBUG )
     disp( TRACKER.coordinates );
+  end
+  
+  % - ROIS
+  in_roi_bounds = debug__test_roi( TRACKER, opts, [0, 0, 100, 100] );
+  if ( in_roi_bounds )
+    disp( 'IN BOUNDS!' );
+  else
+    disp( 'NOT IN BOUNDS!' );
   end
   
   % - Update tcp_comm
@@ -991,4 +1009,13 @@ if ( INTERFACE.save_data )
   save( fullfile(IO.data_folder, IO.data_file), 'data' );
 end
 
+end
+
+function align_stimuli_to_top(stim)
+  cellfun( @align_stimulus_to_top, stim );
+end
+
+function align_stimulus_to_top(stim)
+current_height = stim.vertices(4) - stim.vertices(2);
+stim.vertices([2, 4]) = [ 0, current_height ];
 end

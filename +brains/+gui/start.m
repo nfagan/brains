@@ -14,13 +14,29 @@ narginchk( 0, 1 );
 
 config = brains.config.load();
 
+persistent SINGLETON;
+
 if ( nargin == 1 )
   F = varargin{1};
   set_position = false;
+  SINGLETON = F;
 else
-  F = figure;
-  set_position = true;
+  if ( isempty(SINGLETON) )
+    F = figure;
+    SINGLETON = F;
+    set_position = true;
+  else
+    if ( isvalid(SINGLETON) )
+      figure( SINGLETON );
+      return;
+    else
+      SINGLETON = [];
+      brains.gui.start();
+      return;
+    end
+  end
 end
+
 F_W = .75;
 F_L = .8;
 F_X = (1-F_W)/2;

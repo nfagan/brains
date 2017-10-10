@@ -19,6 +19,7 @@ SCREEN =    opts.SCREEN;
 TIMINGS =   opts.TIMINGS;
 STIMULI =   opts.STIMULI;
 IMAGES =    opts.IMAGES;
+SOUNDS =    opts.SOUNDS;
 INTERFACE = opts.INTERFACE;
 SERIAL =    opts.SERIAL;
 TCP =       opts.TCP;
@@ -150,6 +151,22 @@ for i = 1:numel(fs)
   );
 end
 
+% - load sounds
+
+fs = fieldnames( SOUNDS );
+for i = 1:numel(fs)
+  audio = [];
+  sr = [];
+  sound_path = SOUNDS.(fs{i});
+  if ( exist(sound_path, 'file') > 0 )
+    [audio, sr] = audioread( sound_path );
+  end
+  SOUNDS.(fs{i}) = struct( ...
+      'audio', audio ...
+    , 'fs', sr ...
+  );
+end
+
 % - export
 opts.SCREEN =         SCREEN;
 opts.WINDOW =         WINDOW;
@@ -159,5 +176,6 @@ opts.TIMER =          TIMER;
 opts.ROIS =           ROIS;
 opts.STIMULI =        STIMULI;
 opts.IMAGES =         IMAGES;
+opts.SOUNDS =         SOUNDS;
 
 end
