@@ -928,7 +928,7 @@ while ( true )
   end
   
   % - ROIS
-  in_roi_bounds = debug__test_roi( TRACKER, opts, [0, 0, 100, 100] );
+  in_roi_bounds = debug__test_roi( TRACKER, opts, [-2.75, 0, 2.75, 2] );
   if ( in_roi_bounds )
     disp( 'IN BOUNDS!' );
   else

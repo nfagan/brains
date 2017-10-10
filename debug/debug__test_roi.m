@@ -8,13 +8,17 @@ else
   m_str = 'M2';
 end
 
-z_dist_to_monitor_cm = 1000;
-x_dist_to_monitor_cm = 100;
-y_dist_to_monitor_cm = 100;
+z_dist_to_monitor_cm = 28.5;
+x_dist_to_monitor_cm = 21.5;
+y_dist_to_monitor_cm = 4.5;
 screen_dims_cm = [43.625, 10.75];
-dist_to_roi_cm = 1e4;
+dist_to_roi_cm = 52.5;
 
 pixel_coords = tracker.coordinates;
+
+if ( isempty(pixel_coords) )
+	in_bounds = false; return;
+end
 
 scr_rect_full = opts.SCREEN.rect.(m_str);
 

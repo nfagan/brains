@@ -188,7 +188,7 @@ while sharedWorkspace('EYECALWin','keepGoing') %global workspace saves values ou
     Screen('Flip', window);
     % Wait the intertrial interval:
     sleepWithKbCheck(const.interTrial,keyHandlers);
-    KbCheck(const.interTrial,keyHandlers);
+%     KbCheck(const.interTrial,keyHandlers);
     if ~sharedWorkspace('EYECALWin','keepGoing');
         break;
     end   
