@@ -37,6 +37,9 @@ REWARDS.current_frequency = REWARDS.min_frequency;
 REWARDS.debounce_timer = NaN;
 
 ALIGN_CENTER_STIMULI_TO_TOP = true;
+SCREEN_HEIGHT = 27.3;
+SCREEN_OFFSET = 19.5;
+SCREEN_HEIGHT_PX = 768;
 
 errors = struct();
 errors.fix_not_met = false;
@@ -59,8 +62,9 @@ while (true)
       DATA(tn).trial_number = tn;
       DATA(tn).errors = errors;
       %   get N correct and incorrect
-      last_trial_n_errors = sum( structfun(@(x) x, errors) );
-      if ( last_trial_n_errors > 0 )
+%       last_trial_n_errors = sum( structfun(@(x) x, errors) );
+      any_errors = any( structfun(@(x) x, errors) );
+      if ( any_errors )
         n_errors = n_errors + 1;
       else
         n_correct = n_correct + 1;
@@ -118,7 +122,8 @@ while (true)
     fix_targ = STIMULI.fixation;
     fix_picture = STIMULI.fixation_picture;
     if ( TRIAL_NUMBER == 1 && ALIGN_CENTER_STIMULI_TO_TOP )
-      align_stimuli_to_top( {fix_targ, rule_cue, fix_picture} );
+      align_stimuli_to_top( {fix_targ, rule_cue, fix_picture} ...
+        , SCREEN_HEIGHT, SCREEN_OFFSET, SCREEN_HEIGHT_PX );
 %       shift_stimulus_up( fix_targ, 300 );
     end
     
@@ -416,14 +421,31 @@ end
 
 end
 
-function align_stimuli_to_top(stim)
-  cellfun( @align_stimulus_to_top, stim );
+function align_stimuli_to_top(stim, scr_height_cm, offset, scr_height_px)
+  cellfun( @(x) align_stimulus_to_top(x, scr_height_cm, offset, scr_height_px) ...
+    , stim );
 end
 
-function align_stimulus_to_top(stim)
+function align_stimulus_to_top(stim, scr_height_cm, offset_y_cm, screen_height_y_px)
 current_height = stim.vertices(4) - stim.vertices(2);
 stim.vertices([2, 4]) = [ 0, current_height ];
+
+for i = 1:numel(stim.targets)
+  new_y0 = get_target_offset(scr_height_cm, offset_y_cm, screen_height_y_px);
+  new_y1 = new_y0 + current_height;
+  stim.targets{i}.bounds(2) = new_y0;
+  stim.targets{i}.bounds(4) = new_y1;
 end
+
+end
+
+function pixel_offset = get_target_offset( scr_height_cm, offset_y_cm, screen_height_y_px )
+
+pixel_offset = (offset_y_cm / scr_height_cm) * screen_height_y_px;
+
+end
+
+%align_stimuli_to_top( {fix_targ, rule_cue, fix_picture}, 19.5, 27.3 );
 
 function shift_stimulus_up(stim, amt)
 stim.vertices([2, 4]) = stim.vertices([2, 4]) - amt;

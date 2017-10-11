@@ -23,7 +23,12 @@ serial_comm =   opts.COMMUNICATORS.serial_comm;
 first_entry = true;
 STATES.current = STATES.new_trial;
 
+GAZE_CUE_SHIFT_AMOUNT = 100;
+
 ALIGN_CENTER_STIMULI_TO_TOP = true;
+SCREEN_HEIGHT = 27.3;
+SCREEN_OFFSET = 19.5;
+SCREEN_HEIGHT_PX = 768;
 
 DATA = struct();
 PROGRESS = struct();
@@ -160,7 +165,8 @@ while ( true )
     if ( TRIAL_NUMBER == 1 && ALIGN_CENTER_STIMULI_TO_TOP )
       align_stimuli_to_top( {STIMULI.fixation, STIMULI.rule_cue_gaze ...
         , STIMULI.rule_cue_led, STIMULI.m2_second_fixation_picture ...
-        , STIMULI.error_cue, STIMULI.fixation_error_cue} );
+        , STIMULI.error_cue, STIMULI.fixation_error_cue} ...
+        , SCREEN_HEIGHT, SCREEN_OFFSET, SCREEN_HEIGHT_PX);
     end
     %   reset choice parameters
     STRUCTURE.m1_chose = [];
@@ -486,6 +492,10 @@ while ( true )
         correct_target.put( correct_location );
         incorrect_target.reset_targets();
         correct_target.reset_targets();
+        
+         %   SHIFT GAZE CUES DOWN
+        correct_target.shift(0, GAZE_CUE_SHIFT_AMOUNT);
+        incorrect_target.shift(0, GAZE_CUE_SHIFT_AMOUNT);
       end
       chosen_target = [];
       STRUCTURE.m2_chose = [];
@@ -928,12 +938,12 @@ while ( true )
   end
   
   % - ROIS
-  in_roi_bounds = debug__test_roi( TRACKER, opts, [-2.75, 0, 2.75, 2] );
-  if ( in_roi_bounds )
-    disp( 'IN BOUNDS!' );
-  else
-    disp( 'NOT IN BOUNDS!' );
-  end
+%   in_roi_bounds = debug__test_roi( TRACKER, opts, [-2.75, 0, 2.75, 2] );
+%   if ( in_roi_bounds )
+%     disp( 'IN BOUNDS!' );
+%   else
+%     disp( 'NOT IN BOUNDS!' );
+%   end
   
   % - Update tcp_comm
   tcp_comm.update();
@@ -1011,11 +1021,26 @@ end
 
 end
 
-function align_stimuli_to_top(stim)
-  cellfun( @align_stimulus_to_top, stim );
+function align_stimuli_to_top(stim, scr_height_cm, offset, scr_height_px)
+  cellfun( @(x) align_stimulus_to_top(x, scr_height_cm, offset, scr_height_px) ...
+    , stim );
 end
 
-function align_stimulus_to_top(stim)
+function align_stimulus_to_top(stim, scr_height_cm, offset_y_cm, screen_height_y_px)
 current_height = stim.vertices(4) - stim.vertices(2);
 stim.vertices([2, 4]) = [ 0, current_height ];
+
+for i = 1:numel(stim.targets)
+  new_y0 = get_target_offset(scr_height_cm, offset_y_cm, screen_height_y_px);
+  new_y1 = new_y0 + current_height;
+  stim.targets{i}.bounds(2) = new_y0;
+  stim.targets{i}.bounds(4) = new_y1;
+end
+
+end
+
+function pixel_offset = get_target_offset( scr_height_cm, offset_y_cm, screen_height_y_px )
+
+pixel_offset = (offset_y_cm / scr_height_cm) * screen_height_y_px;
+
 end
