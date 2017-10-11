@@ -9,8 +9,10 @@ function pos = get_projected_position(angle, z_dist)
 %     OUT:
 %       - `pos` (2-element double)
 
-pos = zeros( 1, 2 );
-pos(1) = tan( angle(1) ) / z_dist;
-pos(2) = tan( angle(2) ) / z_dist;
+pos = tan(angle) * z_dist;
+
+% pos = zeros( 1, 2 );
+% pos(1) = tan( angle(1) ) / z_dist;
+% pos(2) = tan( angle(2) ) / z_dist;
 
 end
