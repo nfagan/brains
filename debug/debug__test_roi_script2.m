@@ -1,4 +1,5 @@
 import brains.util.gaze.*;
+addpath( 'C:\Repositories\brains\debug' );
 
 gaze_info = struct();
 gaze_info.dist_to_monitor_cm = 62.5;
@@ -14,6 +15,8 @@ y_roi_shift = -2;
 roi1_local_verts = [6, 7.5, 10.5, 10.6];  % nose
 % roi1_local_verts = [0, 0, 16, 16];  % image
 % roi1_local_verts = [3.9, 11.8, 12.2, 16]; % mouth
+
+image_far_vertices = [-8, -8, 8, 8];
 
 roi_info = struct();
 % roi_info.eye_origin_far_img_rect = [-8+x_roi_shift, -8+y_roi_shift, 8+x_roi_shift, 8+y_roi_shift];

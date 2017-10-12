@@ -939,16 +939,15 @@ while ( true )
     disp( TRACKER.coordinates );
   end
   
-  if ( ~isempty(TRACKER.coordinates) )  
+  if ( ~isempty(TRACKER.coordinates) && INTERFACE.IS_M1 )
     gaze_info = get_gaze_setup_info();
     roi_info = get_roi_info();
     pixel_coords = TRACKER.coordinates;
     in_bounds = debug__test_roi_2( pixel_coords, [0, 0, 3072, 768] ...
       , roi_info.eye_origin_far_verts, gaze_info );
     if ( in_bounds )
-      disp( 'IN BOUNDS!' );
-    else
-      disp( '-' );
+      func = @(x) serial_comm.reward(1, 50);
+      debounce( 100/1e3, func );
     end
   end
   
@@ -1033,6 +1032,7 @@ function gaze_info = get_gaze_setup_info()
 gaze_info.dist_to_monitor_cm = 100;
 gaze_info.x_dist_to_monitor_cm = 20;
 gaze_info.y_dist_to_monitor_cm = 20;
+
 gaze_info.screen_dims_cm = [111.3, 30.5];
 gaze_info.dist_to_roi_cm = 200;
 
@@ -1074,5 +1074,21 @@ end
 function pixel_offset = get_target_offset( scr_height_cm, offset_y_cm, screen_height_y_px )
 
 pixel_offset = (offset_y_cm / scr_height_cm) * screen_height_y_px;
+
+end
+
+function debounce( amt, func, varargin )
+
+persistent last_call;
+
+if ( isempty(last_call) )
+  func( varargin{:} );
+  last_call = tic();
+else
+  if ( toc(last_call) > amt )
+    func( varargin{:} );
+    last_call = tic();
+  end
+end
 
 end
