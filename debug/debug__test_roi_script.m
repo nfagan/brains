@@ -25,7 +25,7 @@ win = manager.open_window( scr_index, [0, 0, 0], [0, 0, 800, 600] );
 
 screen_dims_cm = [8.375, 6.125];
 z_near_cm = 10;
-z_far_cm = 50;
+z_far_cm = 10;
 
 stim_width_cm = 5;
 stim_height_cm = 5;
@@ -62,7 +62,8 @@ all_local_rois = { roi1_local_verts };
 eye_origin_far_roi_rects = cell( size(all_rois) );
 roi_rects = cell( size(all_rois) );
 
-eye_origin_far_img_rect = [-stim_width_cm/2, -stim_height_cm/2, stim_width_cm/2, stim_height_cm/2];
+% eye_origin_far_img_rect = [-stim_width_cm/2, -stim_height_cm/2, stim_width_cm/2, stim_height_cm/2];
+eye_origin_far_img_rect = [-stim_width_cm, 0, 0, 16];
 
 for i = 1:numel(roi_rects)
   current = all_rois{i};
@@ -83,7 +84,7 @@ pixel_coords = zeros( 1, 2 );
 while ( true )
   [key_pressed, ~, key_code] = KbCheck();
   if ( key_pressed )
-    if ( key_code(conf.INTERFACE.stop_key) ), break; end;
+    if ( key_code(27) ), break; end;
   end 
   
   [pixel_coords(1), pixel_coords(2)] = GetMouse();

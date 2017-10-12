@@ -25,7 +25,7 @@ STATES.current = STATES.new_trial;
 
 GAZE_CUE_SHIFT_AMOUNT = 100;
 
-ALIGN_CENTER_STIMULI_TO_TOP = true;
+ALIGN_CENTER_STIMULI_TO_TOP = false;
 SCREEN_HEIGHT = 27.3;
 SCREEN_OFFSET = 19.5;
 SCREEN_HEIGHT_PX = 768;
@@ -933,17 +933,24 @@ while ( true )
   
   %%  EVERY ITERATION
   
+  TRACKER.update_coordinates();  
+  
   if ( INTERFACE.DEBUG )
     disp( TRACKER.coordinates );
   end
   
-  % - ROIS
-%   in_roi_bounds = debug__test_roi( TRACKER, opts, [-2.75, 0, 2.75, 2] );
-%   if ( in_roi_bounds )
-%     disp( 'IN BOUNDS!' );
-%   else
-%     disp( 'NOT IN BOUNDS!' );
-%   end
+  if ( ~isempty(TRACKER.coordinates) )  
+    gaze_info = get_gaze_setup_info();
+    roi_info = get_roi_info();
+    pixel_coords = TRACKER.coordinates;
+    in_bounds = debug__test_roi_2( pixel_coords, [0, 0, 3072, 768] ...
+      , roi_info.eye_origin_far_verts, gaze_info );
+    if ( in_bounds )
+      disp( 'IN BOUNDS!' );
+    else
+      disp( '-' );
+    end
+  end
   
   % - Update tcp_comm
   tcp_comm.update();
@@ -1018,6 +1025,31 @@ if ( INTERFACE.save_data )
   data.opts.FRAMES = FRAMES;
   save( fullfile(IO.data_folder, IO.data_file), 'data' );
 end
+
+end
+
+function gaze_info = get_gaze_setup_info()
+
+gaze_info.dist_to_monitor_cm = 100;
+gaze_info.x_dist_to_monitor_cm = 20;
+gaze_info.y_dist_to_monitor_cm = 20;
+gaze_info.screen_dims_cm = [111.3, 30.5];
+gaze_info.dist_to_roi_cm = 200;
+
+end
+
+function roi_info = get_roi_info()
+
+import brains.util.gaze.*;
+
+roi_info.eye_origin_far_img_rect = [-8, -8, 8, 8];
+roi_info.local_verts = [0.7, 1.5, 14.7, 6.6];
+roi_info.stim_width_cm = 16;
+roi_info.stim_height_cm = 16;
+roi_info.local_fractional_verts = ...
+  get_fractional_vertices( roi_info.local_verts, [roi_info.stim_width_cm, roi_info.stim_height_cm] );
+roi_info.eye_origin_far_verts = ...
+  get_pixel_verts_from_fraction( roi_info.eye_origin_far_img_rect, roi_info.local_fractional_verts );
 
 end
 
