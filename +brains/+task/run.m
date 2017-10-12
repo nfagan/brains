@@ -520,11 +520,8 @@ while ( true )
         incorrect_target.draw();
         correct_target.draw();
         Screen( 'Flip', opts.WINDOW.index );
-        did_show = true;
-      end
-      if ( log_progress )
         PROGRESS.m2_target_onset = TIMER.get_time( 'task' );
-        log_progress = false;
+        did_show = true;
       end
       if ( correct_target.in_bounds() )
         if ( ~did_log_plex_progress )
@@ -538,6 +535,7 @@ while ( true )
       elseif ( did_look )
         %   MARK: goto: error
         STATES.current = STATES.error;
+        STRUCTURE.m2_chose = 0;
         tcp_comm.send_when_ready( 'error', 3 );
         tcp_comm.send_when_ready( 'choice', 0 );
         tcp_comm.send_when_ready( 'state', STATES.current );
@@ -594,11 +592,32 @@ while ( true )
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
     elseif ( TIMER.duration_met('time_to_cue_fixation') )
-      if ( ~is_m2 )
-        STATES.current = STATES.fixation_delay;
+%       if ( ~is_m2 )
+%         STATES.current = STATES.fixation_delay;
+%         tcp_comm.send_when_ready( 'state', STATES.current );
+%         first_entry = true;
+%       end
+      %
+      %   note: moved choice receipt from response to here
+      %
+      if ( INTERFACE.IS_M1 )
+        STRUCTURE.m2_chose = tcp_comm.await_data( 'choice' );
+        if ( INTERFACE.DEBUG )
+          fprintf( '\nM1: Received choice value %d\n', STRUCTURE.m2_chose );
+        end
+        if ( STRUCTURE.m2_chose == 0 )
+          STATES.current = STATES.error;
+        else
+          STATES.current = STATES.fixation_delay;
+        end
         tcp_comm.send_when_ready( 'state', STATES.current );
         first_entry = true;
+      else
+        tcp_comm.consume( 'choice' );
       end
+      %
+      %   end move choice receipt
+      %
       if ( isempty(STRUCTURE.m2_chose) && is_m2 )
         %   MARK: goto: error
         errors.m2_no_choice = true;
@@ -622,7 +641,11 @@ while ( true )
       tcp_comm.await_matching_state( STATES.current );
       tcp_comm.consume( 'fix_met' );
       PROGRESS.fixation_delay = TIMER.get_time( 'task' );
-      TIMER.set_durations( 'fixation_delay', Inf );
+      if ( TIMINGS.time_in.fixation_delay == 0 )
+        TIMER.set_durations( 'fixation_delay', Inf );
+      else
+        TIMER.set_durations( 'fixation_delay', TIMINGS.time_in.fixation_delay );
+      end
       TIMER.reset_timers( {'fixation_delay', 'pre_fixation_delay'} );
       m2_active_target = STIMULI.m2_second_fixation_picture;
       m2_active_target.reset_targets();
@@ -635,71 +658,68 @@ while ( true )
     end
     TRACKER.update_coordinates();
     m2_active_target.update_targets();
-    if ( ~did_show )
-      m2_active_target.draw();
-      Screen( 'Flip', opts.WINDOW.index );
-      PROGRESS.fixation_delay_stim_onset = TIMER.get_time( 'task' );
-      serial_comm.sync_pulse( 4 );
-      did_show = true;
-    end
-    if ( m2_active_target.in_bounds() )
-      is_fixating = 1;
-      did_look = true;
-%       if ( isnan(last_pulse) )
-%         should_reward = true;
-%       else
-%         should_reward = toc( last_pulse ) > REWARDS.pulse_frequency/1e3;
-%       end
-%       if ( should_reward )
-%         if ( INTERFACE.DEBUG )
-%           disp( 'Rewarding ...' );
-%         end
-%         serial_comm.reward( 1, REWARDS.main );
-%         last_pulse = tic;
-%       end
-    elseif ( did_look )
-      errors.broke_fixation = true;
-      made_error = true;
-      tcp_comm.send_when_ready( 'error', 4 );
-       %   MARK: goto: error
-      STATES.current = STATES.error;
-      tcp_comm.send_when_ready( 'state', STATES.current );
-      first_entry = true;
-    end
-    tcp_comm.send_when_ready( 'fix_met', is_fixating );
-    if ( INTERFACE.require_synch )
-      other_is_fixating = tcp_comm.consume( 'fix_met' );
-      other_is_fixating = ~isnan( other_is_fixating ) && other_is_fixating > 0;
-    else
-      other_is_fixating = 1;
-    end
-    if ( other_is_fixating && is_fixating )
-      if ( ~did_begin_timer )
-        TIMER.set_durations( 'fixation_delay', fixation_delay_time );
-        TIMER.reset_timers( 'fixation_delay' );
-        did_begin_timer = true;
+    if ( TIMINGS.time_in.fixation_delay == 0 )
+      if ( ~did_show )
+        m2_active_target.draw();
+        Screen( 'Flip', opts.WINDOW.index );
+        PROGRESS.fixation_delay_stim_onset = TIMER.get_time( 'task' );
+        serial_comm.sync_pulse( 4 );
+        did_show = true;
       end
-    end
-    if ( tcp_comm.consume('error') == 4 )
-      made_error = true;
-      %   MARK: goto: error
-      STATES.current = STATES.error;
-      tcp_comm.send_when_ready( 'state', STATES.current );
-      first_entry = true;
-    end
-    if ( TIMER.duration_met('fixation_delay') && ~made_error )
-      %   MARK: goto: response
-      STATES.current = STATES.response;
-      tcp_comm.send_when_ready( 'state', STATES.current );
-      first_entry = true;
-    end
-    if ( TIMER.duration_met('pre_fixation_delay') && ~did_look )
-      errors.m2_fix_delay_no_look = true;
-      tcp_comm.send_when_ready( 'error', 4 );
-      %   MARK: goto: error
-      STATES.current = STATES.error;
-      tcp_comm.send_when_ready( 'state', STATES.current );
-      first_entry = true;
+      if ( m2_active_target.in_bounds() )
+        is_fixating = 1;
+        did_look = true;
+      elseif ( did_look )
+        errors.broke_fixation = true;
+        made_error = true;
+        tcp_comm.send_when_ready( 'error', 4 );
+         %   MARK: goto: error
+        STATES.current = STATES.error;
+        tcp_comm.send_when_ready( 'state', STATES.current );
+        first_entry = true;
+      end
+      tcp_comm.send_when_ready( 'fix_met', is_fixating );
+      if ( INTERFACE.require_synch )
+        other_is_fixating = tcp_comm.consume( 'fix_met' );
+        other_is_fixating = ~isnan( other_is_fixating ) && other_is_fixating > 0;
+      else
+        other_is_fixating = 1;
+      end
+      if ( other_is_fixating && is_fixating )
+        if ( ~did_begin_timer )
+          TIMER.set_durations( 'fixation_delay', fixation_delay_time );
+          TIMER.reset_timers( 'fixation_delay' );
+          did_begin_timer = true;
+        end
+      end
+      if ( tcp_comm.consume('error') == 4 )
+        made_error = true;
+        %   MARK: goto: error
+        STATES.current = STATES.error;
+        tcp_comm.send_when_ready( 'state', STATES.current );
+        first_entry = true;
+      end
+      if ( TIMER.duration_met('fixation_delay') && ~made_error )
+        %   MARK: goto: response
+        STATES.current = STATES.response;
+        tcp_comm.send_when_ready( 'state', STATES.current );
+        first_entry = true;
+      end
+      if ( TIMER.duration_met('pre_fixation_delay') && ~did_look )
+        errors.m2_fix_delay_no_look = true;
+        tcp_comm.send_when_ready( 'error', 4 );
+        %   MARK: goto: error
+        STATES.current = STATES.error;
+        tcp_comm.send_when_ready( 'state', STATES.current );
+        first_entry = true;
+      end
+    else
+      if ( TIMER.duration_met('fixation_delay') )
+        %   MARK: goto: response
+        STATES.current = STATES.response;
+        tcp_comm.send_when_ready( 'state', STATES.current );
+        first_entry = true;
+      end
     end
   end
   
@@ -720,14 +740,14 @@ while ( true )
       response_target2.reset_targets();
       m2_active_target = STIMULI.m2_second_fixation_picture;
       m2_active_target.reset_targets();
-      if ( INTERFACE.IS_M1 )
-        STRUCTURE.m2_chose = tcp_comm.await_data( 'choice' );
-        if ( INTERFACE.DEBUG )
-          fprintf( '\nM1: Received choice value %d\n', STRUCTURE.m2_chose );
-        end
-      else
-        tcp_comm.consume( 'choice' );
-      end
+%       if ( INTERFACE.IS_M1 )
+%         STRUCTURE.m2_chose = tcp_comm.await_data( 'choice' );
+%         if ( INTERFACE.DEBUG )
+%           fprintf( '\nM1: Received choice value %d\n', STRUCTURE.m2_chose );
+%         end
+%       else
+%         tcp_comm.consume( 'choice' );
+%       end
       STRUCTURE.m1_chose = [];
       did_show = false;
       made_error = false;
