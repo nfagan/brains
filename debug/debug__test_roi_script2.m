@@ -54,9 +54,9 @@ while ( true )
   
   in_bounds = debug__test_roi_2( pixel_coords, reported_win_rect, roi_info.eye_origin_far_verts, gaze_info );
   
-  if ( ~in_bounds )
-    disp( '-' );
-  end
+%   if ( ~in_bounds )
+%     disp( '-' );
+%   end
   
 %   if ( in_bounds )
 %     disp( 'IN BOUNDS!' );

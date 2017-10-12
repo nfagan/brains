@@ -267,7 +267,7 @@ while (true)
       did_show = false;
     end
     fix_targ.update_targets();
-    if ( ~did_show )
+    if ( ~did_show && ~TIMER.duration_met('train_fixation') )
       fix_targ.draw();
       Screen( 'Flip', opts.WINDOW.index );
       did_show = true;

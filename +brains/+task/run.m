@@ -25,7 +25,7 @@ STATES.current = STATES.new_trial;
 
 GAZE_CUE_SHIFT_AMOUNT = 100;
 
-ALIGN_CENTER_STIMULI_TO_TOP = false;
+ALIGN_CENTER_STIMULI_TO_TOP = true;
 SCREEN_HEIGHT = 27.3;
 SCREEN_OFFSET = 19.5;
 SCREEN_HEIGHT_PX = 768;
@@ -832,9 +832,7 @@ while ( true )
   %%   STATE EVALUATE_CHOICE
   if ( STATES.current == STATES.evaluate_choice )
     if ( first_entry )
-      if ( INTERFACE.DEBUG )
-        disp( 'Entered evaluate_choie' );
-      end
+      if ( INTERFACE.DEBUG ), disp( 'Entered evaluate_choie' ); end
       Screen( 'Flip', opts.WINDOW.index );
       tcp_comm.await_matching_state( STATES.current );
       PROGRESS.evaluate_choice = TIMER.get_time( 'task' );
@@ -861,7 +859,7 @@ while ( true )
           serial_comm.reward( 1, REWARDS.main );
           serial_comm.reward( 2, REWARDS.main );
         else
-          if ( INTERFACE.DEBUG), disp( 'M1 was not correct' ); end;
+          if ( INTERFACE.DEBUG ), disp( 'M1 was not correct' ); end;
         end
       end
       first_entry = false;
@@ -933,11 +931,7 @@ while ( true )
   
   %%  EVERY ITERATION
   
-  TRACKER.update_coordinates();  
-  
-  if ( INTERFACE.DEBUG )
-    disp( TRACKER.coordinates );
-  end
+  TRACKER.update_coordinates();
   
   if ( ~isempty(TRACKER.coordinates) && INTERFACE.IS_M1 )
     gaze_info = get_gaze_setup_info();
@@ -1030,11 +1024,11 @@ end
 function gaze_info = get_gaze_setup_info()
 
 gaze_info.dist_to_monitor_cm = 100;
-gaze_info.x_dist_to_monitor_cm = 20;
-gaze_info.y_dist_to_monitor_cm = 20;
+gaze_info.x_dist_to_monitor_cm = 58;
+gaze_info.y_dist_to_monitor_cm = 12;
 
 gaze_info.screen_dims_cm = [111.3, 30.5];
-gaze_info.dist_to_roi_cm = 200;
+gaze_info.dist_to_roi_cm = 141;
 
 end
 
@@ -1042,8 +1036,14 @@ function roi_info = get_roi_info()
 
 import brains.util.gaze.*;
 
-roi_info.eye_origin_far_img_rect = [-8, -8, 8, 8];
-roi_info.local_verts = [0.7, 1.5, 14.7, 6.6];
+x_offset = 0;
+y_offset = 9;
+
+% roi_info.eye_origin_far_img_rect = [-8+x_offset, -8+y_offset, 8+x_offset, 8+y_offset];
+roi_info.eye_origin_far_img_rect = [-17, 0, -1, 16];
+% roi_info.eye_origin_far_img_rect = [];
+% roi_info.local_verts = [0.7, 1.5, 14.7, 6.6];
+roi_info.local_verts = [3, 3, 13, 6];
 roi_info.stim_width_cm = 16;
 roi_info.stim_height_cm = 16;
 roi_info.local_fractional_verts = ...

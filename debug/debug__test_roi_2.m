@@ -23,16 +23,16 @@ proj_y = projected_pos(2);
 in_bounds_x = proj_x >= roi(1) && proj_x <= roi(3);
 in_bounds_y = proj_y >= roi(2) && proj_y <= roi(4);
 
-% if ( in_bounds_x )
-%   disp( 'in bounds x' );
-% else
-% %   disp( '--' );
-% end
-% if ( in_bounds_y )
-%   disp( 'in_bounds_y' );
-% else
-% %   disp( '--' );
-% end
+if ( in_bounds_x )
+  disp( 'in bounds x' );
+else
+%   disp( '--' );
+end
+if ( in_bounds_y )
+  disp( 'in_bounds_y' );
+else
+%   disp( '--' );
+end
 
 in_bounds = in_bounds_x && in_bounds_y;
 
