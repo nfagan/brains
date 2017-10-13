@@ -39,6 +39,11 @@ FRAMES.mean = 0;
 FRAMES.min = Inf;
 FRAMES.max = -Inf;
 
+GAZE_CUE_BLOCK_SIZE = 50;
+GAZE_CUE_PLACEMENT_TYPES = { 'center-left', 'center-right' };
+GAZE_CUE_PLACEMENTS = [repmat({'center-left'}, 1, GAZE_CUE_BLOCK_SIZE/2) ...
+  , repmat({'center-right'}, 1, GAZE_CUE_BLOCK_SIZE/2)];
+
 trial_type_num = STRUCTURE.trial_type_nums(1);
 
 errors = struct( ...
@@ -87,6 +92,7 @@ while ( true )
     end
     TRIAL_NUMBER = TRIAL_NUMBER + 1;
     trial_in_block = trial_in_block + 1;
+    any_errors = any( structfun(@(x) x == 1, errors) );
     %   reset event times
     PROGRESS = structfun( @(x) NaN, PROGRESS, 'un', false );
     errors = structfun( @(x) false, errors, 'un', false );
@@ -121,16 +127,29 @@ while ( true )
       STRUCTURE.rule_cue_type = STRUCTURE.rule_cue_types{trial_type_num};
     end
     %   get correct target location for m2
-    if ( rand() > .5 )
-      incorrect_location = 'center-left';
-      correct_location = 'center-right';
-      incorrect_is = 1;
-      correct_is = 2;
-    else
-      incorrect_location = 'center-right';
-      correct_location = 'center-left';
-      incorrect_is = 2;
-      correct_is = 1;
+%     if ( rand() > .5 )
+%       incorrect_location = 'center-left';
+%       correct_location = 'center-right';
+%       incorrect_is = 1;
+%       correct_is = 2;
+%     else
+%       incorrect_location = 'center-right';
+%       correct_location = 'center-left';
+%       incorrect_is = 2;
+%       correct_is = 1;
+%     end
+    
+    if ( ~any_errors )
+      gaze_cue_placement_ind = randperm( GAZE_CUE_BLOCK_SIZE, 1 );
+      correct_location = GAZE_CUE_PLACEMENTS{gaze_cue_placement_ind};
+      incorrect_location = setdiff( GAZE_CUE_PLACEMENT_TYPES, correct_location );
+      if ( strcmp(correct_location, 'center-right') )
+        correct_is = 2;
+        incorrect_is = 1;
+      else
+        correct_is = 1;
+        incorrect_is = 2;
+      end    
     end
     %   make the led cue appear on the side opposite of the gaze target.
     if ( ~INTERFACE.IS_M1 || ~INTERFACE.require_synch )
