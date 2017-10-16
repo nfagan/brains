@@ -12,9 +12,10 @@ function varargout = start(varargin)
 
 narginchk( 0, 1 );
 
-config = brains.config.load();
-
 persistent SINGLETON;
+
+config = brains.config.load();
+CURRENT_CONFIG_FILE = 'config.mat';
 
 if ( nargin == 1 )
   F = varargin{1};
@@ -183,7 +184,7 @@ panels.run = uipanel( F ...
   , 'Position', [ X, Y, W, L ] ...
 );
 
-funcs = { 'hard reset', 'reset to default', 'make default' ...
+funcs = { 'load', 'hard reset', 'reset to default', 'make default' ...
   , 'clean-up', 'flush', 'calibrate', 'start fixation', 'start' };
 w = .5;
 l = 1 / numel(funcs);
@@ -232,7 +233,7 @@ function handle_checkbox(source, event)
 
   chk_name = source.String;
   config.INTERFACE.(chk_name) = ~config.INTERFACE.(chk_name);
-  brains.config.save( config );
+  brains.config.save( config, '-file', CURRENT_CONFIG_FILE );
 end
 
 function handle_button(source, event)
@@ -243,25 +244,25 @@ function handle_button(source, event)
   switch ( func )
     case 'start'
       clear mex;
-      brains.config.save( config );
+      brains.config.save( config, '-file', CURRENT_CONFIG_FILE);
       brains.task.start();
     case 'start fixation'
       clear mex;
-      brains.config.save( config );
+      brains.config.save( config, '-file', CURRENT_CONFIG_FILE);
       brains.task.start( 'fixation' );
     case 'calibrate'
       clear mex;
-      brains.config.save( config );
+      brains.config.save( config, '-file', CURRENT_CONFIG_FILE);
       brains.calibrate.EyeCal();
     case 'flush'
-      brains.config.save( config );
+      brains.config.save( config, '-file', CURRENT_CONFIG_FILE);
       brains.arduino.auto_flush();
     case 'clean-up'
-      brains.config.save( config );
+      brains.config.save( config, '-file', CURRENT_CONFIG_FILE);
       brains.task.cleanup();
     case 'reset to default'
       config = brains.config.load( '-default' );
-      brains.config.save( config );
+      brains.config.save( config, '-file', CURRENT_CONFIG_FILE);
       clf( F );
       brains.gui.start( F );
     case 'make default'
@@ -270,9 +271,22 @@ function handle_button(source, event)
       brains.config.create();
       clf( F );
       brains.gui.start( F );
+    case 'load'
+      load_new_config_file();
     otherwise
       error( 'Unrecognized identifier ''%s''', source.String );
   end
+end
+
+function load_new_config_file()
+  
+  error( 'Not yet implemented!' );
+  
+  [fname, path] = uigetfile( {'*.mat','MAT-files (*.mat)' }, 'MultiSelect', 'off' );
+  config = load( fullfile(path, fname) );
+  config = config.( char(fieldnames(config)) );
+  CURRENT_CONFIG_FILE = fname;
+  brains.gui.start();
 end
 
 function handle_textfields(source, event)
@@ -291,7 +305,7 @@ function handle_textfields(source, event)
   else
     eval( sprintf( '%s = ''%s'';', identifier, val ) );  
   end
-  brains.config.save( config );
+  brains.config.save( config, '-file', CURRENT_CONFIG_FILE);
 end
 
 % - STIMULI - %
@@ -411,7 +425,7 @@ function handle_stimuli_popup(source, event)
     end
     
     config.STIMULI.(stim_name_).(prop_name) = prop_val_;
-    brains.config.save( config );
+    brains.config.save( config, '-file', CURRENT_CONFIG_FILE);
     
     if ( need_update )
       parent_ind = arrayfun( @(x) strcmp(x.Tag, 'stim_selector') ...

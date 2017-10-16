@@ -39,10 +39,9 @@ FRAMES.mean = 0;
 FRAMES.min = Inf;
 FRAMES.max = -Inf;
 
-GAZE_CUE_BLOCK_SIZE = 50;
+GAZE_CUE_BLOCK_SIZE = 80;
 GAZE_CUE_PLACEMENT_TYPES = { 'center-left', 'center-right' };
-GAZE_CUE_PLACEMENTS = [repmat({'center-left'}, 1, GAZE_CUE_BLOCK_SIZE/2) ...
-  , repmat({'center-right'}, 1, GAZE_CUE_BLOCK_SIZE/2)];
+GAZE_CUE_PLACEMENTS = get_gaze_cue_placement( GAZE_CUE_BLOCK_SIZE );
 
 trial_type_num = STRUCTURE.trial_type_nums(1);
 
@@ -127,22 +126,14 @@ while ( true )
       STRUCTURE.rule_cue_type = STRUCTURE.rule_cue_types{trial_type_num};
     end
     %   get correct target location for m2
-%     if ( rand() > .5 )
-%       incorrect_location = 'center-left';
-%       correct_location = 'center-right';
-%       incorrect_is = 1;
-%       correct_is = 2;
-%     else
-%       incorrect_location = 'center-right';
-%       correct_location = 'center-left';
-%       incorrect_is = 2;
-%       correct_is = 1;
-%     end
-    
     if ( ~any_errors )
-      gaze_cue_placement_ind = randperm( GAZE_CUE_BLOCK_SIZE, 1 );
+      if ( isempty(GAZE_CUE_PLACEMENTS) )
+        GAZE_CUE_PLACEMENTS = get_gaze_cue_placement( GAZE_CUE_BLOCK_SIZE );
+      end
+      gaze_cue_placement_ind = randperm( numel(GAZE_CUE_PLACEMENTS), 1 );
       correct_location = GAZE_CUE_PLACEMENTS{gaze_cue_placement_ind};
       incorrect_location = setdiff( GAZE_CUE_PLACEMENT_TYPES, correct_location );
+      incorrect_location = incorrect_location{1};
       if ( strcmp(correct_location, 'center-right') )
         correct_is = 2;
         incorrect_is = 1;
@@ -150,6 +141,7 @@ while ( true )
         correct_is = 1;
         incorrect_is = 2;
       end    
+      GAZE_CUE_PLACEMENTS(gaze_cue_placement_ind) = [];
     end
     %   make the led cue appear on the side opposite of the gaze target.
     if ( ~INTERFACE.IS_M1 || ~INTERFACE.require_synch )
@@ -759,6 +751,16 @@ while ( true )
       response_target2.reset_targets();
       m2_active_target = STIMULI.m2_second_fixation_picture;
       m2_active_target.reset_targets();
+      if ( STRUCTURE.m2_chose ~= 0 )
+        if ( STRUCTURE.m2_chose == 1 )
+          response_target1.color = [ 200, 200, 200 ];
+          response_target2.color = [ 255, 255, 255 ];
+        else
+          response_target1.color = [ 255, 255, 255 ];
+          response_target2.color = [ 200, 200, 200 ];
+        end
+      end
+      
 %       if ( INTERFACE.IS_M1 )
 %         STRUCTURE.m2_chose = tcp_comm.await_data( 'choice' );
 %         if ( INTERFACE.DEBUG )
@@ -812,12 +814,12 @@ while ( true )
         did_show = true;
       end
       if ( ~m2_active_target.in_bounds() )
-        made_error = true;
-        tcp_comm.send_when_ready( 'error', 5 );
-        %   MARK: goto: error;
-        STATES.current = STATES.error;
-        tcp_comm.send_when_ready( 'state', STATES.current );
-        first_entry = true;
+%         made_error = true;
+%         tcp_comm.send_when_ready( 'error', 5 );
+%         %   MARK: goto: error;
+%         STATES.current = STATES.error;
+%         tcp_comm.send_when_ready( 'state', STATES.current );
+%         first_entry = true;
       else
 %         if ( isnan(last_pulse) )
 %           should_reward = true;
@@ -891,8 +893,11 @@ while ( true )
       if ( INTERFACE.IS_M1 )
         %   if trialtype is 'gaze', and choices match ...
         if ( strcmp(STRUCTURE.rule_cue_type, 'gaze') && matching_choices )
-          serial_comm.reward( 1, REWARDS.main );
-          serial_comm.reward( 2, REWARDS.main );
+          for j = 1:REWARDS.iti_pulses
+            serial_comm.reward( 1, REWARDS.iti );
+            serial_comm.reward( 2, REWARDS.iti );
+            WaitSecs( 0.05 );
+          end
         %   if trialtype is 'led', and m1's choice matches laser_location
         elseif ( strcmp(STRUCTURE.rule_cue_type, 'led') && matching_laser )
           serial_comm.reward( 1, REWARDS.main );
@@ -904,7 +909,7 @@ while ( true )
       first_entry = false;
     end
     if ( TIMER.duration_met('evaluate_choice') )
-      if ( ~INTERFACE.IS_M1 )
+      if ( ~INTERFACE.IS_M1 && ~INTERFACE.require_synch )
         for j = 1:REWARDS.iti_pulses
           serial_comm.reward( 1, REWARDS.main );
           WaitSecs( 0.05 );
@@ -972,17 +977,17 @@ while ( true )
   
   TRACKER.update_coordinates();
   
-  if ( ~isempty(TRACKER.coordinates) && INTERFACE.IS_M1 )
-    gaze_info = get_gaze_setup_info();
-    roi_info = get_roi_info();
-    pixel_coords = TRACKER.coordinates;
-    in_bounds = debug__test_roi_2( pixel_coords, [0, 0, 3072, 768] ...
-      , roi_info.eye_origin_far_verts, gaze_info );
-    if ( in_bounds )
-      func = @(x) serial_comm.reward(1, 50);
-      debounce( 100/1e3, func );
-    end
-  end
+%   if ( ~isempty(TRACKER.coordinates) && INTERFACE.IS_M1 )
+%     gaze_info = get_gaze_setup_info();
+%     roi_info = get_roi_info();
+%     pixel_coords = TRACKER.coordinates;
+%     in_bounds = debug__test_roi_2( pixel_coords, [0, 0, 3072, 768] ...
+%       , roi_info.eye_origin_far_verts, gaze_info );
+%     if ( in_bounds )
+%       func = @(x) serial_comm.reward(1, 50);
+%       debounce( 100/1e3, func );
+%     end
+%   end
   
   % - Update tcp_comm
   tcp_comm.update();
@@ -1129,5 +1134,13 @@ else
     last_call = tic();
   end
 end
+
+end
+
+function GAZE_CUE_PLACEMENTS = get_gaze_cue_placement(n)
+
+GAZE_CUE_PLACEMENTS = [repmat({'center-left'}, 1, n/2) ...
+  , repmat({'center-right'}, 1, n/2)];
+GAZE_CUE_PLACEMENTS = GAZE_CUE_PLACEMENTS( randperm(n) );
 
 end
