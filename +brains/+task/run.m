@@ -218,16 +218,12 @@ while ( true )
     if ( first_entry )
       Screen( 'Flip', opts.WINDOW.index );
       if ( INTERFACE.DEBUG ), disp( 'Entered fixation' ); end
-      [res, msg] = tcp_comm.await_matching_state( STATES.current, STATES.error );
+      [res, msg] = tcp_comm.await_matching_state( STATES.current );
       if ( res ~= 0 )
         MESSAGES{end+1} = msg;
       end
       if ( res == 1 )        
         break;
-      elseif ( res == 2 )
-        STATES.current = STATES.error;
-        first_entry = true;
-        continue;
       end
       TIMER.reset_timers( 'fixation' );
       fix_targ = STIMULI.fixation;
@@ -299,16 +295,13 @@ while ( true )
   if ( STATES.current == STATES.rule_cue )
     if ( first_entry )
       if ( INTERFACE.DEBUG ), disp( 'Entered rule cue' ); end
-      [res, msg] = tcp_comm.await_matching_state( STATES.current, STATES.error );
+      tcp_comm.consum( 'fix_met' );
+      [res, msg] = tcp_comm.await_matching_state( STATES.current );
       if ( res ~= 0 )
         MESSAGES{end+1} = msg;
       end
-      if ( res == 1 )        
+      if ( res == 1 )    
         break;
-      elseif ( res == 2 )
-        STATES.current = STATES.error;
-        first_entry = true;
-        continue;
       end
       PROGRESS.rule_cue = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'rule_cue' );
@@ -338,6 +331,8 @@ while ( true )
         frame_cues.(targ_name).scale( .95 );
         frame_cues.(targ_name).color = rule_cue.color;
       end
+      own_fix_met = false;
+      other_fix_met = false;
       log_progress = true;
       did_show = false;
       first_entry = false;
@@ -356,7 +351,7 @@ while ( true )
     rule_cue.update_targets();
     %   if fixation to the rule cue is broken, abort the trial and return
     %   to the new trial state.
-    if ( ~rule_cue.in_bounds() )
+    if ( ~rule_cue.in_bounds() && ~own_fix_met )
       %   MARK: goto: error
       disp( 'M1: LOOKED AWAY FROM RULE CUE' );
       tcp_comm.send_when_ready( 'error', 2 );
@@ -372,10 +367,21 @@ while ( true )
       first_entry = true;
     end
     if ( TIMER.duration_met('rule_cue') )
-      %   MARK: goto: cue_display
-      STATES.current = STATES.cue_display2;
-      tcp_comm.send_when_ready( 'state', STATES.current );
-      first_entry = true;
+      tcp_comm.send_when_ready( 'fix_met', 1 );
+      own_fix_met = true;
+    end
+    if ( own_fix_met )
+      other_fix_met = tcp_comm.consume( 'fix_met' );
+      if ( ~isnan(other_fix_met) && other_fix_met )
+        %   MARK: goto: cue_display
+        STATES.current = STATES.cue_display2;
+        tcp_comm.send_when_ready( 'state', STATES.current );
+        first_entry = true;
+      elseif ( other_fix_met == 0 )
+        STATES.current = STATES.error;
+        tcp_comm.send_when_ready( 'state', STATES.current );
+        first_entry = true;
+      end
     end
   end
   
@@ -388,16 +394,12 @@ while ( true )
         disp( 'Entered cue_display' );
       end
       PROGRESS.rule_cue_offset = TIMER.get_time( 'task' );
-      [res, msg] = tcp_comm.await_matching_state( STATES.current, STATES.error );
+      [res, msg] = tcp_comm.await_matching_state( STATES.current );
       if ( res ~= 0 )
         MESSAGES{end+1} = msg;
       end
       if ( res == 1 )        
         break;
-      elseif ( res == 2 )
-        STATES.current = STATES.error;
-        first_entry = true;
-        continue;
       end
       PROGRESS.post_rule_cue = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'cue_display' );
@@ -538,16 +540,12 @@ while ( true )
       Screen( 'Flip', opts.WINDOW.index );
       if ( INTERFACE.DEBUG ), disp( 'Entered cue_display2' ); end
       PROGRESS.rule_cue_offset = TIMER.get_time( 'task' );
-      [res, msg] = tcp_comm.await_matching_state( STATES.current, STATES.error );
+      [res, msg] = tcp_comm.await_matching_state( STATES.current );
       if ( res ~= 0 )
         MESSAGES{end+1} = msg;
       end
       if ( res == 1 )        
         break;
-      elseif ( res == 2 )
-        STATES.current = STATES.error;
-        first_entry = true;
-        continue;
       end
       PROGRESS.post_rule_cue = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'cue_display' );
@@ -707,16 +705,12 @@ while ( true )
       if ( INTERFACE.DEBUG )
         disp( 'Entered fixation_delay' );
       end
-      [res, msg] = tcp_comm.await_matching_state( STATES.current, STATES.error );
+      [res, msg] = tcp_comm.await_matching_state( STATES.current );
       if ( res ~= 0 )
         MESSAGES{end+1} = msg;
       end
       if ( res == 1 )        
         break;
-      elseif ( res == 2 )
-        STATES.current = STATES.error;
-        first_entry = true;
-        continue;
       end
       tcp_comm.consume( 'fix_met' );
       PROGRESS.fixation_delay = TIMER.get_time( 'task' );
@@ -810,16 +804,12 @@ while ( true )
         disp( 'Entered response' );
       end
       PROGRESS.m2_target_offset = TIMER.get_time( 'task' );
-      [res, msg] = tcp_comm.await_matching_state( STATES.current, STATES.error );
+      [res, msg] = tcp_comm.await_matching_state( STATES.current );
       if ( res ~= 0 )
         MESSAGES{end+1} = msg;
       end
       if ( res == 1 )        
         break;
-      elseif ( res == 2 )
-        STATES.current = STATES.error;
-        first_entry = true;
-        continue;
       end
       PROGRESS.response = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'response' );
@@ -957,16 +947,12 @@ while ( true )
       m1_chose = STRUCTURE.m1_chose;
       m2_chose = STRUCTURE.m2_chose;
       Screen( 'Flip', opts.WINDOW.index );
-      [res, msg] = tcp_comm.await_matching_state( STATES.current, STATES.error );
+      [res, msg] = tcp_comm.await_matching_state( STATES.current );
       if ( res ~= 0 )
         MESSAGES{end+1} = msg;
       end
       if ( res == 1 )        
         break;
-      elseif ( res == 2 )
-        STATES.current = STATES.error;
-        first_entry = true;
-        continue;
       end
       PROGRESS.evaluate_choice = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'evaluate_choice' );
@@ -1024,16 +1010,12 @@ while ( true )
         if ( m2_chose == 2 ), response_target1.draw(); response_target1.blink(0.2, 3); end;
       end
       Screen( 'Flip', opts.WINDOW.index );
-      [res, msg] = tcp_comm.await_matching_state( STATES.current, STATES.error );
+      [res, msg] = tcp_comm.await_matching_state( STATES.current );
       if ( res ~= 0 )
         MESSAGES{end+1} = msg;
       end
       if ( res == 1 )        
         break;
-      elseif ( res == 2 )
-        STATES.current = STATES.error;
-        first_entry = true;
-        continue;
       end
       PROGRESS.iti = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'iti' );
