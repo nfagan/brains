@@ -335,21 +335,36 @@ classdef IPInterface < handle
         TASK SPECIFIC METHODS
     %}
     
-    function await_matching_state(obj, state)
+    function [res, msg] = await_matching_state(obj, state, other_state)
       
       %   AWAIT_MATCHING_STATE -- Wait until the partner's state matches
       %     the current state.
       %
       %     IN:
       %       - `state` (double) -- State to match.
+      %     OUT:
+      %       - `res` (double) -- result. 0 if successful.
+      %       - `msg` (char) -- Error message, if unsucessful.
       
+      res = 0;
+      msg = '';
+      if ( nargin < 3 ), other_state = -1; end
       if ( obj.bypass ), return; end;
       timeout_check = tic;
       timeout_amt = obj.TIMEOUTS.awaits;
-      while ( obj.DATA.state ~= state )
+      while ( true )
+        if ( obj.DATA.state == state )
+          break;
+        elseif ( other_state ~= -1 && obj.DATA.state == other_state )
+          msg = 'Other state reached.';
+          res = 2;
+          break;
+        end
         if ( toc(timeout_check) > timeout_amt )
-          error( 'Synchronization timed-out (%0.1f seconds ellapsed).' ...
+          res = 1;
+          msg = sprintf( 'Synchronization timed-out (%0.1f seconds ellapsed).' ...
             , timeout_amt );
+          break;
         end
         obj.update();
       end

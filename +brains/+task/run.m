@@ -22,6 +22,7 @@ serial_comm =   opts.COMMUNICATORS.serial_comm;
 
 first_entry = true;
 STATES.current = STATES.new_trial;
+STATES.previous = NaN;
 
 GAZE_CUE_SHIFT_AMOUNT = 100;
 
@@ -39,9 +40,12 @@ FRAMES.mean = 0;
 FRAMES.min = Inf;
 FRAMES.max = -Inf;
 
+PSUEDO_RANDOM_GAZE_CUES = false;
 GAZE_CUE_BLOCK_SIZE = 80;
 GAZE_CUE_PLACEMENT_TYPES = { 'center-left', 'center-right' };
 GAZE_CUE_PLACEMENTS = get_gaze_cue_placement( GAZE_CUE_BLOCK_SIZE );
+
+MESSAGES = {};
 
 trial_type_num = STRUCTURE.trial_type_nums(1);
 
@@ -126,7 +130,7 @@ while ( true )
       STRUCTURE.rule_cue_type = STRUCTURE.rule_cue_types{trial_type_num};
     end
     %   get correct target location for m2
-    if ( ~any_errors )
+    if ( ~any_errors && PSUEDO_RANDOM_GAZE_CUES )
       if ( isempty(GAZE_CUE_PLACEMENTS) )
         GAZE_CUE_PLACEMENTS = get_gaze_cue_placement( GAZE_CUE_BLOCK_SIZE );
       end
@@ -142,6 +146,21 @@ while ( true )
         incorrect_is = 2;
       end    
       GAZE_CUE_PLACEMENTS(gaze_cue_placement_ind) = [];
+    else
+      if ( rand() > .3 )
+        correct_location = 'center-right';
+      else
+        correct_location = 'center-left';
+      end
+      if ( strcmp(correct_location, 'center-right') )
+        incorrect_location = 'center-left';
+        correct_is = 2;
+        incorrect_is = 1;
+      else
+        incorrect_location = 'center-right';
+        correct_is = 1;
+        incorrect_is = 2;
+      end 
     end
     %   make the led cue appear on the side opposite of the gaze target.
     if ( ~INTERFACE.IS_M1 || ~INTERFACE.require_synch )
@@ -198,10 +217,18 @@ while ( true )
   if ( STATES.current == STATES.fixation )
     if ( first_entry )
       Screen( 'Flip', opts.WINDOW.index );
-      if ( INTERFACE.DEBUG )
-        disp( 'Entered fixation' );
+      if ( INTERFACE.DEBUG ), disp( 'Entered fixation' ); end
+      [res, msg] = tcp_comm.await_matching_state( STATES.current, STATES.error );
+      if ( res ~= 0 )
+        MESSAGES{end+1} = msg;
       end
-      tcp_comm.await_matching_state( STATES.current );
+      if ( res == 1 )        
+        break;
+      elseif ( res == 2 )
+        STATES.current = STATES.error;
+        first_entry = true;
+        continue;
+      end
       TIMER.reset_timers( 'fixation' );
       fix_targ = STIMULI.fixation;
       fix_targ.reset_targets();
@@ -272,7 +299,17 @@ while ( true )
   if ( STATES.current == STATES.rule_cue )
     if ( first_entry )
       if ( INTERFACE.DEBUG ), disp( 'Entered rule cue' ); end
-      tcp_comm.await_matching_state( STATES.current );
+      [res, msg] = tcp_comm.await_matching_state( STATES.current, STATES.error );
+      if ( res ~= 0 )
+        MESSAGES{end+1} = msg;
+      end
+      if ( res == 1 )        
+        break;
+      elseif ( res == 2 )
+        STATES.current = STATES.error;
+        first_entry = true;
+        continue;
+      end
       PROGRESS.rule_cue = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'rule_cue' );
       switch ( STRUCTURE.rule_cue_type )
@@ -321,6 +358,7 @@ while ( true )
     %   to the new trial state.
     if ( ~rule_cue.in_bounds() )
       %   MARK: goto: error
+      disp( 'M1: LOOKED AWAY FROM RULE CUE' );
       tcp_comm.send_when_ready( 'error', 2 );
       STATES.current = STATES.error;
       tcp_comm.send_when_ready( 'state', STATES.current );
@@ -350,7 +388,17 @@ while ( true )
         disp( 'Entered cue_display' );
       end
       PROGRESS.rule_cue_offset = TIMER.get_time( 'task' );
-      tcp_comm.await_matching_state( STATES.current );
+      [res, msg] = tcp_comm.await_matching_state( STATES.current, STATES.error );
+      if ( res ~= 0 )
+        MESSAGES{end+1} = msg;
+      end
+      if ( res == 1 )        
+        break;
+      elseif ( res == 2 )
+        STATES.current = STATES.error;
+        first_entry = true;
+        continue;
+      end
       PROGRESS.post_rule_cue = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'cue_display' );
       TIMER.reset_timers( 'time_to_cue_fixation' );
@@ -490,7 +538,17 @@ while ( true )
       Screen( 'Flip', opts.WINDOW.index );
       if ( INTERFACE.DEBUG ), disp( 'Entered cue_display2' ); end
       PROGRESS.rule_cue_offset = TIMER.get_time( 'task' );
-      tcp_comm.await_matching_state( STATES.current );
+      [res, msg] = tcp_comm.await_matching_state( STATES.current, STATES.error );
+      if ( res ~= 0 )
+        MESSAGES{end+1} = msg;
+      end
+      if ( res == 1 )        
+        break;
+      elseif ( res == 2 )
+        STATES.current = STATES.error;
+        first_entry = true;
+        continue;
+      end
       PROGRESS.post_rule_cue = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'cue_display' );
       TIMER.reset_timers( 'time_to_cue_fixation' );
@@ -649,7 +707,17 @@ while ( true )
       if ( INTERFACE.DEBUG )
         disp( 'Entered fixation_delay' );
       end
-      tcp_comm.await_matching_state( STATES.current );
+      [res, msg] = tcp_comm.await_matching_state( STATES.current, STATES.error );
+      if ( res ~= 0 )
+        MESSAGES{end+1} = msg;
+      end
+      if ( res == 1 )        
+        break;
+      elseif ( res == 2 )
+        STATES.current = STATES.error;
+        first_entry = true;
+        continue;
+      end
       tcp_comm.consume( 'fix_met' );
       PROGRESS.fixation_delay = TIMER.get_time( 'task' );
       if ( TIMINGS.time_in.fixation_delay == 0 )
@@ -742,22 +810,34 @@ while ( true )
         disp( 'Entered response' );
       end
       PROGRESS.m2_target_offset = TIMER.get_time( 'task' );
-      tcp_comm.await_matching_state( STATES.current );
+      [res, msg] = tcp_comm.await_matching_state( STATES.current, STATES.error );
+      if ( res ~= 0 )
+        MESSAGES{end+1} = msg;
+      end
+      if ( res == 1 )        
+        break;
+      elseif ( res == 2 )
+        STATES.current = STATES.error;
+        first_entry = true;
+        continue;
+      end
       PROGRESS.response = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'response' );
       response_target1 = STIMULI.response_target1;
       response_target2 = STIMULI.response_target2;
       response_target1.reset_targets();
       response_target2.reset_targets();
+      response_target1.blink( 0 );
+      response_target2.blink( 0 );
       m2_active_target = STIMULI.m2_second_fixation_picture;
       m2_active_target.reset_targets();
       if ( STRUCTURE.m2_chose ~= 0 )
         if ( STRUCTURE.m2_chose == 1 )
-          response_target1.color = [ 200, 200, 200 ];
+          response_target1.color = [ 255, 255, 255 ];
           response_target2.color = [ 255, 255, 255 ];
         else
           response_target1.color = [ 255, 255, 255 ];
-          response_target2.color = [ 200, 200, 200 ];
+          response_target2.color = [ 255, 255, 255 ];
         end
       end
       
@@ -874,12 +954,22 @@ while ( true )
   if ( STATES.current == STATES.evaluate_choice )
     if ( first_entry )
       if ( INTERFACE.DEBUG ), disp( 'Entered evaluate_choie' ); end
-      Screen( 'Flip', opts.WINDOW.index );
-      tcp_comm.await_matching_state( STATES.current );
-      PROGRESS.evaluate_choice = TIMER.get_time( 'task' );
-      TIMER.reset_timers( 'evaluate_choice' );
       m1_chose = STRUCTURE.m1_chose;
       m2_chose = STRUCTURE.m2_chose;
+      Screen( 'Flip', opts.WINDOW.index );
+      [res, msg] = tcp_comm.await_matching_state( STATES.current, STATES.error );
+      if ( res ~= 0 )
+        MESSAGES{end+1} = msg;
+      end
+      if ( res == 1 )        
+        break;
+      elseif ( res == 2 )
+        STATES.current = STATES.error;
+        first_entry = true;
+        continue;
+      end
+      PROGRESS.evaluate_choice = TIMER.get_time( 'task' );
+      TIMER.reset_timers( 'evaluate_choice' );
       if ( INTERFACE.DEBUG)
         fprintf( '\nM1 chose: %d', m1_chose );
         fprintf( '\nM2 chose: %d', m2_chose );
@@ -894,8 +984,8 @@ while ( true )
         %   if trialtype is 'gaze', and choices match ...
         if ( strcmp(STRUCTURE.rule_cue_type, 'gaze') && matching_choices )
           for j = 1:REWARDS.iti_pulses
-            serial_comm.reward( 1, REWARDS.iti );
-            serial_comm.reward( 2, REWARDS.iti );
+            serial_comm.reward( 1, REWARDS.main );
+            serial_comm.reward( 2, REWARDS.main );
             WaitSecs( 0.05 );
           end
         %   if trialtype is 'led', and m1's choice matches laser_location
@@ -917,6 +1007,7 @@ while ( true )
       end
       %   MARK: goto: iti
       STATES.current = STATES.iti;
+      STATES.previous = STATES.evaluate_choice;
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
     end
@@ -928,11 +1019,30 @@ while ( true )
       if ( INTERFACE.DEBUG )
         disp( 'Entered ITI' );
       end
+      if (  STATES.previous ~= STATES.error && INTERFACE.IS_M1 && m2_chose ~= 0 )
+        if ( m2_chose == 1 ), response_target2.draw(); response_target2.blink(0.2, 3); end;
+        if ( m2_chose == 2 ), response_target1.draw(); response_target1.blink(0.2, 3); end;
+      end
       Screen( 'Flip', opts.WINDOW.index );
-      tcp_comm.await_matching_state( STATES.current );
+      [res, msg] = tcp_comm.await_matching_state( STATES.current, STATES.error );
+      if ( res ~= 0 )
+        MESSAGES{end+1} = msg;
+      end
+      if ( res == 1 )        
+        break;
+      elseif ( res == 2 )
+        STATES.current = STATES.error;
+        first_entry = true;
+        continue;
+      end
       PROGRESS.iti = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'iti' );
       first_entry = false;
+    end
+    if (  STATES.previous ~= STATES.error && INTERFACE.IS_M1 && m2_chose ~= 0 )
+      if ( m2_chose == 1 ), response_target2.draw(); end;
+      if ( m2_chose == 2 ), response_target1.draw(); end;
+      Screen( 'Flip', opts.WINDOW.index );
     end
     if ( TIMER.duration_met('iti') )
       %   MARK: goto: new_trial
@@ -968,6 +1078,7 @@ while ( true )
     if ( TIMER.duration_met('error') )
       %   MARK: goto: iti
       STATES.current = STATES.iti;
+      STATES.previous = STATES.error;
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
     end
@@ -1051,6 +1162,10 @@ while ( true )
   
   % - Quit if time exceeds total time
   if ( TIMER.duration_met('task') ), break; end;
+end
+
+for i = 1:numel(MESSAGES)
+  fprintf( '\n\n%s', MESSAGES{i} );
 end
 
 TRACKER.shutdown();
