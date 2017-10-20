@@ -40,7 +40,7 @@ FRAMES.mean = 0;
 FRAMES.min = Inf;
 FRAMES.max = -Inf;
 
-PSUEDO_RANDOM_GAZE_CUES = false;
+PSUEDO_RANDOM_GAZE_CUES = true;
 GAZE_CUE_BLOCK_SIZE = 80;
 GAZE_CUE_PLACEMENT_TYPES = { 'center-left', 'center-right' };
 GAZE_CUE_PLACEMENTS = get_gaze_cue_placement( GAZE_CUE_BLOCK_SIZE );
@@ -447,10 +447,12 @@ while ( true )
           serial_comm.sync_pulse( 3 );
           did_log_plex_progress = true;
         end
-        STRUCTURE.m2_chose = correct_is;
-        tcp_comm.send_when_ready( 'choice', correct_is );
+        fprintf( '\n M2: Looked to %d', correct_is );
+%         STRUCTURE.m2_chose = correct_is;
+%         tcp_comm.send_when_ready( 'choice', correct_is );
         did_look = true;
       elseif ( did_look )
+        fprintf( '\n M2: Looked away from gaze cue.' );
         %   MARK: goto: error
         STATES.current = STATES.error;
         STRUCTURE.m2_chose = 0;
@@ -459,8 +461,10 @@ while ( true )
         tcp_comm.send_when_ready( 'state', STATES.current );
         looked_away = true;
         first_entry = true;
+        continue;
       end
       if ( incorrect_target.in_bounds() )
+        fprintf( '\n M2: Wrong target.' );
         errors.m2_wrong_target = true;
         if ( ~did_log_plex_progress )
           PROGRESS.gaze_cue_target_acquire = TIMER.get_time( 'task' );
@@ -474,8 +478,10 @@ while ( true )
         tcp_comm.send_when_ready( 'error', 3 );
         tcp_comm.send_when_ready( 'choice', incorrect_is );
         first_entry = true;
+        continue;
       end
       if ( correct_target.duration_met() )
+        fprintf( '\n M2: Chose %d', correct_is );
         chosen_target = correct_target;
         STRUCTURE.m2_chose = correct_is;
         tcp_comm.send_when_ready( 'choice', correct_is );
@@ -483,6 +489,7 @@ while ( true )
         STATES.current = STATES.fixation_delay;
         tcp_comm.send_when_ready( 'state', STATES.current );
         first_entry = true;
+        continue;
       end
     elseif ( is_m2 && ~is_gaze_trial )
       if ( ~lit_led )
@@ -504,25 +511,33 @@ while ( true )
     else
       Screen( 'Flip', opts.WINDOW.index );
     end
+    if ( ~is_m2 )
+      m2_choice = tcp_comm.consume( 'choice' );
+      if ( ~isnan(m2_choice) )
+        STRUCTURE.m2_chose = m2_choice;
+        if ( m2_choice == 0 )
+          %   MARK: goto: error
+          STATES.current = STATES.error;
+        else
+          %   MARK: goto: fixation_delay
+          STATES.current = STATES.fixation_delay;
+        end
+        tcp_comm.send_when_ready( 'state', STATES.current );
+        first_entry = true;
+      end
+    end
     if ( tcp_comm.consume('error') == 3 )
       %   MARK: goto: error
       STATES.current = STATES.error;
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
+      continue;
     elseif ( TIMER.duration_met('time_to_cue_fixation') )
-%       if ( ~is_m2 )
-%         STATES.current = STATES.fixation_delay;
-%         tcp_comm.send_when_ready( 'state', STATES.current );
-%         first_entry = true;
-%       end
       %
       %   note: moved choice receipt from response to here
       %
-      if ( INTERFACE.IS_M1 )
+      if ( ~is_m2 )
         STRUCTURE.m2_chose = tcp_comm.await_data( 'choice' );
-        if ( INTERFACE.DEBUG )
-          fprintf( '\nM1: Received choice value %d\n', STRUCTURE.m2_chose );
-        end
         if ( STRUCTURE.m2_chose == 0 )
           STATES.current = STATES.error;
         else
@@ -537,6 +552,7 @@ while ( true )
       %   end move choice receipt
       %
       if ( isempty(STRUCTURE.m2_chose) && is_m2 )
+        fprintf( '\n M2: No choice' );
         %   MARK: goto: error
         errors.m2_no_choice = true;
         tcp_comm.send_when_ready( 'choice', 0 );
@@ -662,6 +678,7 @@ while ( true )
       if ( res == 1 )        
         break;
       end
+      tcp_comm.consume( 'choice' );
       PROGRESS.response = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'response' );
       response_target1 = STIMULI.response_target1;
@@ -681,15 +698,6 @@ while ( true )
           response_target2.color = [ 255, 255, 255 ];
         end
       end
-      
-%       if ( INTERFACE.IS_M1 )
-%         STRUCTURE.m2_chose = tcp_comm.await_data( 'choice' );
-%         if ( INTERFACE.DEBUG )
-%           fprintf( '\nM1: Received choice value %d\n', STRUCTURE.m2_chose );
-%         end
-%       else
-%         tcp_comm.consume( 'choice' );
-%       end
       STRUCTURE.m1_chose = [];
       did_show = false;
       made_error = false;
@@ -707,20 +715,15 @@ while ( true )
         did_show = true;
       end
       if ( response_target1.duration_met() )
-        if ( INTERFACE.DEBUG )
-          fprintf( '\nM1: made choice %d\n', 1 );
-        end
+        fprintf( '\nM1: CHOSE 1' );
         STRUCTURE.m1_chose = 1;
         %   MARK: goto: evaluate_choice
         STATES.current = STATES.evaluate_choice;
         tcp_comm.send_when_ready( 'choice', 1 );
         tcp_comm.send_when_ready( 'state', STATES.current );
         first_entry = true;
-      end
-      if ( response_target2.duration_met() )
-        if ( INTERFACE.DEBUG )
-          fprintf( '\nM1: made choice %d\n', 2 );
-        end
+      elseif ( response_target2.duration_met() )
+        fprintf( '\nM1: CHOSE 2' );
         STRUCTURE.m1_chose = 2;
         %   MARK: goto: evaluate_choice
         STATES.current = STATES.evaluate_choice;
@@ -807,10 +810,8 @@ while ( true )
       end
       PROGRESS.evaluate_choice = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'evaluate_choice' );
-      if ( INTERFACE.DEBUG)
-        fprintf( '\nM1 chose: %d', m1_chose );
-        fprintf( '\nM2 chose: %d', m2_chose );
-      end
+      fprintf( '\nM1 CHOSE: %d', m1_chose );
+      fprintf( '\nM2 CHOSE: %d', m2_chose );
       both_made_choices = m1_chose ~= 0 && m2_chose ~= 0;
       %   a left choice (1) for m1 is a right choice (2) for m2. So, e.g,
       %   for a led trial, if the correct led location is 2, the
@@ -820,6 +821,7 @@ while ( true )
       if ( INTERFACE.IS_M1 )
         %   if trialtype is 'gaze', and choices match ...
         if ( strcmp(STRUCTURE.rule_cue_type, 'gaze') && matching_choices )
+          fprintf( '\nM1: CHOICES MATCHED' );
           for j = 1:REWARDS.iti_pulses
             serial_comm.reward( 1, REWARDS.main );
             serial_comm.reward( 2, REWARDS.main );
@@ -856,7 +858,7 @@ while ( true )
       if ( INTERFACE.DEBUG )
         disp( 'Entered ITI' );
       end
-      if (  STATES.previous ~= STATES.error && INTERFACE.IS_M1 && m2_chose ~= 0 )
+      if ( STATES.previous ~= STATES.error && INTERFACE.IS_M1 && m2_chose ~= 0 )
         if ( m2_chose == 1 ), response_target2.draw(); response_target2.blink(0.2, 3); end;
         if ( m2_chose == 2 ), response_target1.draw(); response_target1.blink(0.2, 3); end;
       end
@@ -872,7 +874,7 @@ while ( true )
       TIMER.reset_timers( 'iti' );
       first_entry = false;
     end
-    if (  STATES.previous ~= STATES.error && INTERFACE.IS_M1 && m2_chose ~= 0 )
+    if ( STATES.previous ~= STATES.error && INTERFACE.IS_M1 && m2_chose ~= 0 )
       if ( m2_chose == 1 ), response_target2.draw(); end;
       if ( m2_chose == 2 ), response_target1.draw(); end;
       Screen( 'Flip', opts.WINDOW.index );
