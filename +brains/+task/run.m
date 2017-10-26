@@ -49,6 +49,7 @@ MESSAGES = {};
 
 trial_type_num = STRUCTURE.trial_type_nums(1);
 
+initiated_error = false;
 errors = struct( ...
     'initial_fixation_not_met', false ...
   , 'broke_fixation', false ...
@@ -103,6 +104,7 @@ while ( true )
     %   reset event times
     PROGRESS = structfun( @(x) NaN, PROGRESS, 'un', false );
     errors = structfun( @(x) false, errors, 'un', false );
+    initiated_error = false;
     %   determine rule cue type
     if ( INTERFACE.IS_M1 || ~INTERFACE.require_synch )
       if ( STRUCTURE.trials_per_block == 0 )
@@ -362,6 +364,7 @@ while ( true )
       tcp_comm.send_when_ready( 'state', STATES.current );
       tcp_comm.send_when_ready( 'fix_met', 0 );
       errors.broke_fixation = true;
+      initiated_error = true;
       first_entry = true;
       continue;
     end
@@ -469,6 +472,7 @@ while ( true )
         tcp_comm.send_when_ready( 'choice', 0 );
         tcp_comm.send_when_ready( 'state', STATES.current );
         looked_away = true;
+        initiated_error = true;
         first_entry = true;
         continue;
       end
@@ -486,6 +490,7 @@ while ( true )
         tcp_comm.send_when_ready( 'state', STATES.current );
         tcp_comm.send_when_ready( 'error', 3 );
         tcp_comm.send_when_ready( 'choice', incorrect_is );
+        initiated_error = true;
         first_entry = true;
         continue;
       end
@@ -515,6 +520,7 @@ while ( true )
         tcp_comm.send_when_ready( 'error', 3 );
         STATES.current = STATES.error;
         tcp_comm.send_when_ready( 'state', STATES.current );
+        initiated_error = true;
         first_entry = true;
       end
     else
@@ -542,7 +548,7 @@ while ( true )
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
       continue;
-    elseif ( TIMER.duration_met('time_to_cue_fixation') )
+    elseif ( is_m2 && TIMER.duration_met('time_to_cue_fixation') )
       %
       %   note: moved choice receipt from response to here
       %
@@ -569,6 +575,7 @@ while ( true )
         STATES.current = STATES.error;
         STRUCTURE.m2_chose = 0;
         failed_to_choose_in_time = true;
+        initiated_error = true;
         tcp_comm.send_when_ready( 'state', STATES.current );
         first_entry = true;
       end
@@ -622,6 +629,7 @@ while ( true )
       elseif ( did_look )
         errors.broke_fixation = true;
         made_error = true;
+        initiated_error = true;
         tcp_comm.send_when_ready( 'error', 4 );
          %   MARK: goto: error
         STATES.current = STATES.error;
@@ -657,6 +665,7 @@ while ( true )
       end
       if ( TIMER.duration_met('pre_fixation_delay') && ~did_look )
         errors.m2_fix_delay_no_look = true;
+        initiated_error = true;
         tcp_comm.send_when_ready( 'error', 4 );
         %   MARK: goto: error
         STATES.current = STATES.error;
@@ -917,7 +926,7 @@ while ( true )
       did_show = false;
       first_entry = false;
     end
-    if ( ~did_show )
+    if ( ~did_show && initiated_error )
       err_cue.draw();
       Screen( 'Flip', opts.WINDOW.index );
       did_show = true;
