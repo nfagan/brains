@@ -1,0 +1,1 @@
+netsh int ip set address "Local Area Connection" dhcp
