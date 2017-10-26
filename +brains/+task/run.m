@@ -41,7 +41,7 @@ FRAMES.min = Inf;
 FRAMES.max = -Inf;
 
 PSUEDO_RANDOM_GAZE_CUES = true;
-GAZE_CUE_BLOCK_SIZE = 80;
+GAZE_CUE_BLOCK_SIZE = 20;
 GAZE_CUE_PLACEMENT_TYPES = { 'center-left', 'center-right' };
 GAZE_CUE_PLACEMENTS = get_gaze_cue_placement( GAZE_CUE_BLOCK_SIZE );
 
@@ -55,6 +55,8 @@ errors = struct( ...
   , 'm2_wrong_target', false ...
   , 'm2_no_choice', false ...
   , 'm2_fix_delay_no_look', false ...
+  , 'm1_wrong_target', false ...
+  , 'm1_no_choice', false ...
   );
 n_correct = 0;
 
@@ -92,6 +94,8 @@ while ( true )
         n_correct = n_correct + 1;
       end
       fprintf( '\n - N correct: %d', n_correct );
+      fprintf( '\n - M2 CHOSE: %d', DATA(tn).m2_chose );
+      fprintf( '\n - M1 CHOSE: %d', DATA(tn).m1_chose );
     end
     TRIAL_NUMBER = TRIAL_NUMBER + 1;
     trial_in_block = trial_in_block + 1;
@@ -371,7 +375,11 @@ while ( true )
       own_fix_met = true;
     end
     if ( own_fix_met )
-      other_fix_met = tcp_comm.consume( 'fix_met' );
+      if ( INTERFACE.require_synch )
+        other_fix_met = tcp_comm.consume( 'fix_met' );
+      else
+        other_fix_met = 1;
+      end
       if ( ~isnan(other_fix_met) && other_fix_met )
         %   MARK: goto: cue_display
         STATES.current = STATES.cue_display2;
@@ -390,6 +398,7 @@ while ( true )
     if ( first_entry )
       Screen( 'Flip', opts.WINDOW.index );
       if ( INTERFACE.DEBUG ), disp( 'Entered cue_display2' ); end
+      tcp_comm.consume( 'choice' );
       PROGRESS.rule_cue_offset = TIMER.get_time( 'task' );
       [res, msg] = tcp_comm.await_matching_state( STATES.current );
       if ( res ~= 0 )
@@ -524,6 +533,7 @@ while ( true )
         end
         tcp_comm.send_when_ready( 'state', STATES.current );
         first_entry = true;
+        continue;
       end
     end
     if ( tcp_comm.consume('error') == 3 )
@@ -715,7 +725,7 @@ while ( true )
         did_show = true;
       end
       if ( response_target1.duration_met() )
-        fprintf( '\nM1: CHOSE 1' );
+%         fprintf( '\nM1: CHOSE 1' );
         STRUCTURE.m1_chose = 1;
         %   MARK: goto: evaluate_choice
         STATES.current = STATES.evaluate_choice;
@@ -723,7 +733,7 @@ while ( true )
         tcp_comm.send_when_ready( 'state', STATES.current );
         first_entry = true;
       elseif ( response_target2.duration_met() )
-        fprintf( '\nM1: CHOSE 2' );
+%         fprintf( '\nM1: CHOSE 2' );
         STRUCTURE.m1_chose = 2;
         %   MARK: goto: evaluate_choice
         STATES.current = STATES.evaluate_choice;
@@ -779,6 +789,7 @@ while ( true )
       if ( INTERFACE.IS_M1 && isempty(STRUCTURE.m1_chose) )
         tcp_comm.send_when_ready( 'choice', 0 );
         STRUCTURE.m1_chose = 0;
+        errors.m1_no_choice = true;
       end
       if ( ~INTERFACE.IS_M1 && isnan(received_m1_choice) )
         received_m1_choice = tcp_comm.await_data( 'choice' );
@@ -810,14 +821,14 @@ while ( true )
       end
       PROGRESS.evaluate_choice = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'evaluate_choice' );
-      fprintf( '\nM1 CHOSE: %d', m1_chose );
-      fprintf( '\nM2 CHOSE: %d', m2_chose );
+%       fprintf( '\nM1 CHOSE: %d', m1_chose );
+%       fprintf( '\nM2 CHOSE: %d', m2_chose );
       both_made_choices = m1_chose ~= 0 && m2_chose ~= 0;
       %   a left choice (1) for m1 is a right choice (2) for m2. So, e.g,
       %   for a led trial, if the correct led location is 2, the
       %   correct choice for m1 is 1.
       matching_choices = both_made_choices && abs( m1_chose-m2_chose ) == 1;
-      matching_laser = both_made_choices && abs( m1_chose-led_location ) == 1;
+      matching_laser = both_made_choices && abs( m1_chose-led_location ) == 1;        
       if ( INTERFACE.IS_M1 )
         %   if trialtype is 'gaze', and choices match ...
         if ( strcmp(STRUCTURE.rule_cue_type, 'gaze') && matching_choices )
@@ -833,6 +844,7 @@ while ( true )
           serial_comm.reward( 2, REWARDS.main );
         else
           if ( INTERFACE.DEBUG ), disp( 'M1 was not correct' ); end;
+          errors.m1_wrong_target = true;
         end
       end
       first_entry = false;
