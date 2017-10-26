@@ -1015,7 +1015,11 @@ for i = 1:numel(MESSAGES)
   fprintf( '\n\n%s', MESSAGES{i} );
 end
 
-TRACKER.shutdown();
+if ( INTERFACE.save_data )
+  TRACKER.shutdown();
+else
+  TRACKER.stop_recording();
+end
 
 if ( INTERFACE.save_data )
   data = struct();
