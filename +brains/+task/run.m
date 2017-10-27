@@ -41,7 +41,7 @@ FRAMES.min = Inf;
 FRAMES.max = -Inf;
 
 PSUEDO_RANDOM_GAZE_CUES = true;
-GAZE_CUE_BLOCK_SIZE = 20;
+GAZE_CUE_BLOCK_SIZE = 8;
 GAZE_CUE_PLACEMENT_TYPES = { 'center-left', 'center-right' };
 GAZE_CUE_PLACEMENTS = get_gaze_cue_placement( GAZE_CUE_BLOCK_SIZE );
 
@@ -152,7 +152,7 @@ while ( true )
         incorrect_is = 2;
       end    
       GAZE_CUE_PLACEMENTS(gaze_cue_placement_ind) = [];
-    else
+    elseif ( ~any_errors )
       if ( rand() > .3 )
         correct_location = 'center-right';
       else
@@ -385,6 +385,7 @@ while ( true )
       end
       if ( ~isnan(other_fix_met) && other_fix_met )
         %   MARK: goto: cue_display
+        serial_comm.reward( 1, REWARDS.bridge );
         STATES.current = STATES.cue_display2;
         tcp_comm.send_when_ready( 'state', STATES.current );
         first_entry = true;
