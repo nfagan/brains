@@ -9,6 +9,9 @@ comm.start();
 reward_key_timer = NaN;
 
 try
+  
+  fprintf( '\n Listening ... ' );
+  
   while ( true )
     [key_pressed, ~, key_code] = KbCheck();
     if ( key_pressed )
@@ -21,7 +24,7 @@ try
           should_reward = toc( reward_key_timer ) > conf.REWARDS.main/1e3;
         end
         if ( should_reward )
-          comm.reward( 1, conf.REWARDS.main );
+          comm.reward( 1, conf.REWARDS.key_press );
           reward_key_timer = tic;
         end
       end
@@ -32,6 +35,8 @@ catch err
   cleanup( comm );
   throw( err );
 end
+
+fprintf( 'Done.\n\n' );
 
 end
 
