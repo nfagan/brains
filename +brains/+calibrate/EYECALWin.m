@@ -4,6 +4,8 @@ import brains.calibrate.sharedWorkspace;
 import brains.calibrate.escapeHandler;
 import brains.calibrate.sleepWithKbCheck;
 
+KbName('UnifyKeyNames' );
+
 config = brains.config.load();
 
 addpath( genpath(fullfile(config.IO.repo_folder, 'arduino')) );
@@ -215,7 +217,7 @@ cont = true;
 while cont && Eyelink('CurrentMode')~=2
     % [keyIsDown, secs, keyCode, deltaSecs] = KbCheck([deviceNumber])
     [keyIsDown,secs,keyCode] = KbCheck;
-    if keyIsDown && keyCode(KbName('Esc'))
+    if keyIsDown && keyCode(KbName('escape'))
         disp('Aborted while waiting for Eyelink!');
         cont = false;
     end
