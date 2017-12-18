@@ -119,6 +119,7 @@ SERIAL.ports.M2 = 'COM3';
 SERIAL.reward_channels.M1 = { 'A', 'B' };
 SERIAL.reward_channels.M2 = { 'B', 'A' };
 SERIAL.baud_rate = 115200;
+SERIAL.led_calibration_port = struct( 'M1', 'COM4', 'M2', 'COM3' );
 
 % - TCP - %
 TCP.server_address = '169.254.139.190';

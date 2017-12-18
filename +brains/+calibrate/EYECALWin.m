@@ -48,7 +48,25 @@ if Eyelink('IsConnected')~=1 && ~dummymode %Verify connection to Eyelink
     return;
 end
 
-[window, wRect] = Screen('OpenWindow', const.monkeyScreen, const.bgColor, fullRect );%#ok<*NASGU>
+
+% new
+dist_file = brains_analysis.util.io.try_json_decode( ...
+  fullfile(config.IO.repo_folder, 'brains', 'data', 'distances', 'active_distance.json') );
+if ( config.INTERFACE.IS_M1 )
+  scr_distance = dist_file.m1.eye_to_monitor_front_cm;
+else
+  scr_distance = dist_file.m2.eye_to_monitor_front_cm;
+end
+screen_constants = brains_analysis.gaze.util.get_screen_constants();
+screen_dims_mm = [screen_constants.SCREEN_WIDTH_CM, screen_constants.SCREEN_HEIGHT_CM] * 10;
+screen_rect_mm = [ -screen_dims_mm(1)/2, -screen_dims_mm(2)/2, screen_dims_mm(1)/2, screen_dims_mm(2)/2 ];
+screen_rect_mm = round( screen_rect_mm );
+Eyelink( 'Command', 'screen_phys_coords = %d %d %d %d' ...
+ , screen_rect_mm(1), screen_rect_mm(2), screen_rect_mm(3), screen_rect_mm(4) );
+Eyelink( 'Command', 'screen_distance = %d', round(scr_distance * 10) );
+% new
+
+[window, wRect] = Screen( 'OpenWindow', const.monkeyScreen, const.bgColor, fullRect );%#ok<*NASGU>
 
 % blankScreen = Screen('OpenOffscreenWindow', const.monkeyScreen, const.bgColor, [], 32);
 const.screenCenter = round([mean(wRect([1 3])) mean(wRect([2 4]))]);
@@ -155,7 +173,8 @@ while sharedWorkspace('EYECALWin','keepGoing') %global workspace saves values ou
             targRect = shiftPoints(targShape, [targX targY])';
             targRect = targRect(:)';
             targRect([1, 3]) = targRect([1, 3]) - adjust_x;
-            disp( targRect );
+            
+%             disp( targRect );
             for b=1:NumMonkeys, %Number of monkeys to show per trial               
             imload=imread(imgfile{a(b)},'jpg');
             Screen('PutImage',window,imload,targRect);

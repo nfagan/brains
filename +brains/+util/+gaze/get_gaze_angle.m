@@ -11,10 +11,12 @@ function angle = get_gaze_angle(eye_pos, screen_pos, z_dist)
 x_dist = eye_pos(1) - screen_pos(1);
 y_dist = eye_pos(2) - screen_pos(2);
 
-x_dist = -x_dist;
+% x_dist = -x_dist;
 
 angle_x = atan( x_dist / z_dist );
 angle_y = atan( y_dist / z_dist );
+
+% angle_x = pi - angle_x;
 
 angle = [ angle_x, angle_y ];
 

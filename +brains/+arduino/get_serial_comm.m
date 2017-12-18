@@ -24,6 +24,7 @@ end
 
 port = SERIAL.ports.(m_str);
 rwd_channels = SERIAL.reward_channels.(m_str);
+rwd_channels = fliplr( rwd_channels );
 messages = [ SERIAL.messages.shared; SERIAL.messages.(m_str) ];
 
 comm = BrainsSerialManagerPaired( port, messages, rwd_channels, role );
