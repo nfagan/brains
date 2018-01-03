@@ -24,6 +24,8 @@ else
 end
 
 gaze_sync_times = nan( 10e3, 2 );
+plex_sync_times = nan( 10e3, 1 );
+plex_sync_stp = 1;
 
 gaze_stp = 1;
 gaze_sync_stp = 1;
@@ -48,11 +50,15 @@ try
   tcp_comm.bypass = ~conf.INTERFACE.require_synch;
   tcp_comm.start();
   
+  task_timer = tic();
+  
   tracker.send_message( 'SYNCH' );
   fprintf( '\n Sync!' );
-%   comm.sync_pulse( 1 );
+  comm.sync_pulse( 1 );
   
-  task_timer = tic();
+  plex_sync_times(plex_sync_stp) = toc( task_timer );
+  plex_sync_stp = plex_sync_stp + 1;
+  
   next_edf_pulse_time = toc( task_timer ) + edf_sync_interval;
   next_tcp_pulse_time = toc( task_timer ) + tcp_sync_interval;
   
@@ -107,7 +113,10 @@ try
     
     if ( toc(task_timer) > next_edf_pulse_time )
       tracker.send_message( 'RESYNCH' );
+      comm.sync_pulse( 2 );
       next_edf_pulse_time = toc( task_timer ) + edf_sync_interval;
+      plex_sync_times(plex_sync_stp) = toc( task_timer );
+      plex_sync_stp = plex_sync_stp + 1;
     end
     
     if ( ~isempty(tracker.coordinates) )
@@ -124,7 +133,11 @@ try
     mats = shared_utils.io.dirnames( save_p, '.mat' );
     next_id = numel( mats ) + 1;
     gaze_data_file = sprintf( 'position_%d.mat', next_id );
-    gaze_data = struct( 'position', gaze_data, 'sync_times', gaze_sync_times );
+    gaze_data = struct( ...
+        'position', gaze_data ...
+      , 'sync_times', gaze_sync_times ...
+      , 'plex_sync_times', plex_sync_times ...
+      );
     save( fullfile(save_p, gaze_data_file), 'gaze_data' );
   end
   

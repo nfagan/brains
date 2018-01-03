@@ -184,7 +184,7 @@ panels.run = uipanel( F ...
   , 'Position', [ X, Y, W, L ] ...
 );
 
-funcs = { 'load', 'hard reset', 'reset to default', 'make default' ...
+funcs = { 'save as', 'load', 'close-ports', 'hard reset', 'reset to default', 'make default' ...
   , 'clean-up', 'flush', 'calibrate', 'start fixation', 'start' };
 w = .5;
 l = 1 / numel(funcs);
@@ -273,20 +273,36 @@ function handle_button(source, event)
       brains.gui.start( F );
     case 'load'
       load_new_config_file();
+    case 'save as'
+      save_as_config_file();
+    case 'close-ports'
+      fprintf( '\n Closing ports ...' );
+      brains.arduino.close_ports();
     otherwise
       error( 'Unrecognized identifier ''%s''', source.String );
   end
 end
 
+function save_as_config_file()
+  
+  %   SAVE_AS_CONFIG_FILE -- Save the current config file to a new file.
+  
+  [fname, path] = uiputfile( {'*.mat','MAT-files (*.mat)' } );
+  if ( fname == 0 ), return; end
+  save( fullfile(path, fname), 'config' );
+end
+
 function load_new_config_file()
   
-  error( 'Not yet implemented!' );
+  %   LOAD_NEW_CONFIG_FILE -- Update the actively edited config file.
   
   [fname, path] = uigetfile( {'*.mat','MAT-files (*.mat)' }, 'MultiSelect', 'off' );
+  if ( fname == 0 ), return; end
   config = load( fullfile(path, fname) );
   config = config.( char(fieldnames(config)) );
   CURRENT_CONFIG_FILE = fname;
-  brains.gui.start();
+  brains.config.save( config );
+  brains.gui.start( F );
 end
 
 function handle_textfields(source, event)

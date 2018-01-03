@@ -3,6 +3,8 @@ function latest_dir = get_latest_data_dir(conf, date_fmt)
 if ( nargin < 1 ), conf = brains.config.load(); end
 if ( nargin < 2 ), date_fmt = 'mmddyy'; end
 
+latest_dir = '';
+
 data_dir = fullfile( conf.IO.repo_folder, 'brains', 'data' );
 shared_utils.assertions.assert__is_dir( data_dir );
 dirs = shared_utils.io.dirnames( data_dir, 'folders' );

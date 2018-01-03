@@ -20,7 +20,7 @@ classdef IPInterface < handle
         , 'fix_met_s',    'F',  'fix_met_r', 'f' ...
         , 'trial_type_s', 'T',  'trial_type_r', 't' ...
         , 'error_s',      'E',  'error_r', 'e' ...
-        , 'delay_s',      'D',  'delay_4', 'd' ...
+        , 'delay_s',      'D',  'delay_r', 'd' ...
     );
     TIMEOUTS = struct( 'send_ready', 5, 'awaits', 5, 'connect', 5 );
     DEBUG = false;
@@ -269,6 +269,7 @@ classdef IPInterface < handle
         obj.DATA.( kind ) = data;
         obj.receipt_ready_();
       end      
+      
       function handle_data_receipt( kind )
         
         %   HANDLE_DATA_RECEIPT -- Handle the receipt of a receipt

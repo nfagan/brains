@@ -17,6 +17,7 @@ assert( ~isempty(pts), 'Points can''t be empty.' );
 arrayfun( @(x) assert(isa(x, 'double') && mod(x, 1) == 0 ...
       , 'Points must be whole-number doubles.'), pts );
 
+    
 try
   fprintf( '\n Initializing ... ' );
   
@@ -28,8 +29,8 @@ try
   tracker.start_recording();
 
   reward_comm = brains.arduino.get_serial_comm();
-%   reward_comm.bypass = ~conf.INTERFACE.use_arduino;
-  reward_comm.bypass = true;
+  reward_comm.bypass = ~conf.INTERFACE.use_arduino;
+%   reward_comm.bypass = true;
   reward_comm.start();
   
   led_comm = brains.arduino.get_led_calibration_serial_comm();
@@ -83,10 +84,13 @@ function task()
 fprintf( '\n Listening ...' );
   
 while ( true )  
+  last_coords = tracker.coordinates;
   tracker.update_coordinates();
   reward_comm.update();
   led_comm.update();
-  if ( isempty(tracker.coordinates) ), continue; end
+  if ( isempty(tracker.coordinates) )
+    tracker.coordinates = last_coords;
+  end
   should_abort = handle_key_press();
   if ( should_abort ), break; end
 end

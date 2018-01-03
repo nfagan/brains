@@ -8,11 +8,7 @@ function comm = get_led_calibration_serial_comm()
 
 conf = brains.config.load();
 
-if ( conf.INTERFACE.IS_M1 )
-  port = conf.SERIAL.led_calibration_port.M1;
-else
-  port = conf.SERIAL.led_calibration_port.M2;
-end
+port = conf.SERIAL.ports.led_calibration;
 
 led_chars = { 'Q', 'W', 'E', 'R', 'T', 'Y', 'U' };
 

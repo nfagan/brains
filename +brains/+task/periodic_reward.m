@@ -16,7 +16,8 @@ reward_period_timer = NaN;
 try
   
   tracker = EyeTracker( conf.IO.edf_file, conf.IO.edf_folder, 0 );
-  tracker.bypass = ~conf.INTERFACE.use_eyelink;
+%   tracker.bypass = ~conf.INTERFACE.use_eyelink;
+  tracker.bypass = true;
   tracker.init();
   tracker.start_recording();  
   

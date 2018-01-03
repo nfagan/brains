@@ -1,4 +1,4 @@
-function create()
+function opts = create()
 
 %   CREATE -- Create the config file.
 %
@@ -114,12 +114,11 @@ TIMINGS.LED = 4e3;
 SERIAL.messages.shared = struct();
 SERIAL.messages.M1 = struct();
 SERIAL.messages.M2 = struct();
-SERIAL.ports.M1 = 'COM4';
-SERIAL.ports.M2 = 'COM3';
-SERIAL.reward_channels.M1 = { 'A', 'B' };
-SERIAL.reward_channels.M2 = { 'B', 'A' };
+SERIAL.reward_port = 'COM4';
+SERIAL.reward_channels = { 'B', 'A' };
 SERIAL.baud_rate = 115200;
-SERIAL.led_calibration_port = struct( 'M1', 'COM4', 'M2', 'COM3' );
+SERIAL.ports.reward = 'COM4';
+SERIAL.ports.led_calibration = 'COM3';
 
 % - TCP - %
 TCP.server_address = '169.254.139.190';
@@ -322,6 +321,7 @@ opts.TCP =            TCP;
 opts.ROIS =           ROIS;
 opts.STIMULI =        STIMULI;
 opts.IMAGES =         IMAGES;
+opts.SOUNDS =         SOUNDS;
 opts.REWARDS =        REWARDS;
 
 brains.config.save( opts );

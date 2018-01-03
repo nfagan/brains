@@ -13,20 +13,23 @@ conf = brains.config.load();
 SERIAL = conf.SERIAL;
 
 is_master = conf.INTERFACE.is_master_arduino;
+is_m1 = conf.INTERFACE.IS_M1;
 
 if ( is_master )
-  m_str = 'M1';
   role = 'master';
 else
-  m_str = 'M2';
   role = 'slave';
 end
 
-port = SERIAL.ports.(m_str);
-rwd_channels = SERIAL.reward_channels.(m_str);
-rwd_channels = fliplr( rwd_channels );
-messages = [ SERIAL.messages.shared; SERIAL.messages.(m_str) ];
+if ( is_m1 )
+  m_str = 'M1';
+else
+  m_str = 'M2';
+end
 
+port = SERIAL.ports.reward;
+rwd_channels = SERIAL.reward_channels;
+messages = [ SERIAL.messages.shared; SERIAL.messages.(m_str) ];
 comm = BrainsSerialManagerPaired( port, messages, rwd_channels, role );
 
 end
