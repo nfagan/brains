@@ -25,8 +25,10 @@ end
 
 gaze_sync_times = nan( 10e3, 2 );
 plex_sync_times = nan( 10e3, 1 );
-plex_sync_stp = 1;
+reward_sync_times = nan( 10e3, 1 );
 
+plex_sync_stp = 1;
+reward_sync_stp = 1;
 gaze_stp = 1;
 gaze_sync_stp = 1;
 
@@ -82,7 +84,10 @@ try
     end
     if ( isnan(reward_period_timer) || toc(reward_period_timer) > reward_period/1e3 )
       if ( ~isinf(reward_period) )
+        serial_comm.sync_pulse( 3 );
         comm.reward( 1, reward_amount );
+        reward_sync_times(reward_sync_stp) = toc( task_timer );
+        reward_sync_stp = reward_sync_stp + 1;
       end
       reward_period_timer = tic;
     end
@@ -137,6 +142,7 @@ try
         'position', gaze_data ...
       , 'sync_times', gaze_sync_times ...
       , 'plex_sync_times', plex_sync_times ...
+      , 'reward_sync_times', reward_sync_times ...
       );
     save( fullfile(save_p, gaze_data_file), 'gaze_data' );
   end
