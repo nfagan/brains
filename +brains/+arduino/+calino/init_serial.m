@@ -1,7 +1,7 @@
 function comm = init_serial(port, baud_rate)
 
 if ( nargin < 2 )
-  baud_rate = 115200;
+  baud_rate = 9600;
 end
 
 comm = serial( port );

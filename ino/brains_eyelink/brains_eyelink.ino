@@ -157,8 +157,8 @@ void setup()
         //
     }
 
-    Serial.begin(115200);
-
+    Serial.begin(9600);
+    
     Serial.print(ids.init);
 
     m1_gaze = new el_manager(&Serial, pins.m1_x, pins.m1_y);

@@ -1,3 +1,5 @@
+function example__far_plane_calibration()
+
 conf = brains.config.load();
 date_dir = datestr( now, 'mmddyy' );
 data_dir = fullfile( conf.IO.repo_folder, 'brains', 'data', date_dir, 'calibration' );
@@ -12,8 +14,6 @@ targets = [ 1:7 ];
 light_dur = 1000;
 
 keys = brains.calibrate.calibrate_far_plane( targets, light_dur );
-
-%%
 
 if ( save_data )
   save( fullfile(data_dir, key_filename), 'keys' );

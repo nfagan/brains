@@ -42,6 +42,10 @@ reward_period_timer = NaN;
 edf_sync_interval = 1;
 tcp_sync_interval = 1;
 
+sync_pulse_map = brains.arduino.get_sync_pulse_map();
+required_fields = { 'start', 'periodic_sync', 'reward' };
+shared_utils.assertions.assert__are_fields( sync_pulse_map, required_fields );
+
 try
   
   tracker = EyeTracker( conf.IO.edf_file, conf.IO.edf_folder, 0 );
@@ -56,7 +60,7 @@ try
   
   tracker.send_message( 'SYNCH' );
   fprintf( '\n Sync!' );
-  comm.sync_pulse( 1 );
+  comm.sync_pulse( sync_pulse_map.start );
   
   plex_sync_times(plex_sync_stp) = toc( task_timer );
   plex_sync_stp = plex_sync_stp + 1;
@@ -84,7 +88,7 @@ try
     end
     if ( isnan(reward_period_timer) || toc(reward_period_timer) > reward_period/1e3 )
       if ( ~isinf(reward_period) )
-        serial_comm.sync_pulse( 3 );
+        comm.sync_pulse( sync_pulse_map.reward );
         comm.reward( 1, reward_amount );
         reward_sync_times(reward_sync_stp) = toc( task_timer );
         reward_sync_stp = reward_sync_stp + 1;
@@ -118,7 +122,7 @@ try
     
     if ( toc(task_timer) > next_edf_pulse_time )
       tracker.send_message( 'RESYNCH' );
-      comm.sync_pulse( 2 );
+      comm.sync_pulse( sync_pulse_map.periodic_sync );
       next_edf_pulse_time = toc( task_timer ) + edf_sync_interval;
       plex_sync_times(plex_sync_stp) = toc( task_timer );
       plex_sync_stp = plex_sync_stp + 1;

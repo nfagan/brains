@@ -30,7 +30,7 @@ cmd = sprintf( '%s%s', cmd, ids.roi.(roi_id) );
 for i = 1:numel(bounds)
   full_cmd = sprintf( '%s%d%d', cmd, i-1, bounds(i) );  
   fprintf( comm, full_cmd );
-  brains.arduino.calino.await_char( comm, ids.ack, 'Bounds acknowledgement timed out.' );
+  brains.arduino.calino.await_char( comm, ids.ack, 'Incorrect bounds ack character.' );
 end
 
 end

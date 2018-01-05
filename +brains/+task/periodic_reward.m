@@ -1,4 +1,4 @@
-function periodic_reward(reward_period, reward_amount)
+function periodic_reward(total_time, reward_period, reward_amount)
 
 %   PERIODIC_REWARD -- Deliver reward every x ms.
 %
@@ -7,11 +7,11 @@ function periodic_reward(reward_period, reward_amount)
 %       - `reward_amount` (double) -- Reward-sie, in ms.
 
 conf = brains.config.load();
-comm = brains.arduino.get_serial_comm();
-comm.start();
 
 reward_key_timer = NaN;
 reward_period_timer = NaN;
+
+sync_pulse_map = brains.arduino.get_sync_pulse_map();
 
 try
   
@@ -21,7 +21,16 @@ try
   tracker.init();
   tracker.start_recording();  
   
+  comm = brains.arduino.get_serial_comm();
+  comm.bypass = ~conf.INTERFACE.use_arduino;
+  comm.start();
+  
+  task_timer = tic();
+  
+  comm.sync_pulse( sync_pulse_map.start );
+  
   while ( true )
+    if ( toc(task_timer) > total_time ), break; end
     [key_pressed, ~, key_code] = KbCheck();
     if ( key_pressed )
       if ( key_code(conf.INTERFACE.stop_key) ), break; end;
@@ -38,6 +47,7 @@ try
       end
     end
     if ( isnan(reward_period_timer) || toc(reward_period_timer) > reward_period/1e3 )
+      comm.sync_pulse( sync_pulse_map.reward );
       comm.reward( 1, reward_amount );
       reward_period_timer = tic;
     end
@@ -53,7 +63,7 @@ end
 
 function local_cleanup(comm, tracker, conf)
 
-comm.close();
+% comm.close();
 brains.arduino.close_ports();
 
 if ( conf.INTERFACE.save_data )
