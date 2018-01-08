@@ -441,6 +441,8 @@ while ( true )
       failed_to_choose_in_time = false;
       looked_away = false;
       first_entry = false;
+      disp( 'Is gaze trial?' );
+      disp( is_gaze_trial );
     end
     TRACKER.update_coordinates();
     fix_targ.update_targets();
@@ -518,11 +520,14 @@ while ( true )
       end
       if ( ~fix_targ.in_bounds() )
         %   MARK: goto: error
+        STRUCTURE.m2_chose = [];
         tcp_comm.send_when_ready( 'error', 3 );
         STATES.current = STATES.error;
         tcp_comm.send_when_ready( 'state', STATES.current );
         initiated_error = true;
         first_entry = true;
+      else
+        STRUCTURE.m2_chose = 0;
       end
     else
       Screen( 'Flip', opts.WINDOW.index );
@@ -578,6 +583,11 @@ while ( true )
         failed_to_choose_in_time = true;
         initiated_error = true;
         tcp_comm.send_when_ready( 'state', STATES.current );
+        first_entry = true;
+      elseif ( ~is_gaze_trial )
+        STATES.current = STATES.fixation_delay;
+        tcp_comm.send_when_ready( 'state', STATES.current );
+        tcp_comm.send_when_ready( 'choice', 0 );
         first_entry = true;
       end
     end
