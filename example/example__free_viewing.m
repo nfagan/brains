@@ -4,9 +4,11 @@ data_dir = 'C:\Repositories\brains\data';
 dist_file = brains_analysis.util.io.try_json_decode( fullfile(data_dir, 'distances', 'active_distance.json') );
 roi_file = brains_analysis.util.io.try_json_decode( fullfile(data_dir, 'rois', 'rois.json') );
 
-key_filename = 'far_plane_calibration.mat';
-key_file = load( fullfile(data_dir, brains.util.get_latest_data_dir(), 'calibration', key_filename) );
-key_file = key_file.(char(fieldnames(key_file)));
+% key_filename = 'far_plane_calibration.mat';
+% key_file = load( fullfile(data_dir, brains.util.get_latest_data_dir(), 'calibration', key_filename) );
+% key_file = key_file.(char(fieldnames(key_file)));
+
+key_file = brains.util.get_latest_far_plane_calibration();
 
 reward_period = 8e3;
 % reward_amount = 400;

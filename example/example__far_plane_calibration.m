@@ -1,9 +1,9 @@
 function example__far_plane_calibration()
 
 conf = brains.config.load();
-date_dir = datestr( now, 'mmddyy' );
-data_dir = fullfile( conf.IO.repo_folder, 'brains', 'data', date_dir, 'calibration' );
-key_filename = 'far_plane_calibration.mat';
+data_dir = fullfile( brains.util.get_latest_data_dir_path(), 'calibration' );
+calib_n = brains.util.get_far_plane_calibration_number();
+key_filename = sprintf( 'far_plane_calibration%d.mat', calib_n );
 
 save_data = true;
 

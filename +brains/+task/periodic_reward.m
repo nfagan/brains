@@ -1,10 +1,14 @@
-function periodic_reward(total_time, reward_period, reward_amount)
+function periodic_reward(total_time, reward_period, reward_amount, reward_channels)
 
 %   PERIODIC_REWARD -- Deliver reward every x ms.
 %
 %     IN:
 %       - `reward_period` (double) -- Inter-reward interval, in ms.
 %       - `reward_amount` (double) -- Reward-sie, in ms.
+
+if ( nargin < 2 )
+  reward_channels = 1;
+end
 
 conf = brains.config.load();
 
@@ -41,14 +45,17 @@ try
           should_reward = toc( reward_key_timer ) > conf.REWARDS.main/1e3;
         end
         if ( should_reward )
-          comm.reward( 1, conf.REWARDS.main );
+          comm.reward( 1, conf.REWARDS.key_press );
+          comm.reward( 2, conf.REWARDS.key_press );
           reward_key_timer = tic;
         end
       end
     end
     if ( isnan(reward_period_timer) || toc(reward_period_timer) > reward_period/1e3 )
       comm.sync_pulse( sync_pulse_map.reward );
-      comm.reward( 1, reward_amount );
+      for j = 1:numel(reward_channels)
+        comm.reward( reward_channels(j), reward_amount );
+      end
       reward_period_timer = tic;
     end
   end
