@@ -61,6 +61,7 @@ STRUCTURE.trials_per_block = 1;
 STRUCTURE.image_frequency = .5;
 STRUCTURE.fixation_led_duration = 1e3;
 STRUCTURE.draw_frame_cues = true;
+STRUCTURE.align_center_stimuli_to_top = true;
 STRUCTURE.gui_fields.exclude = { 'rule_cue_types' };
 
 % - STATES - %
@@ -98,7 +99,6 @@ time_in.evaluate_choice = 0;
 time_in.iti = 1;
 time_in.error = 1;
 time_in.error__fixation = 1;
-time_in.debounce_arduino_messages = .01;
 
 delays.fixation_delay = .5:.05:.8;
 
@@ -115,10 +115,11 @@ SERIAL.messages.shared = struct();
 SERIAL.messages.M1 = struct();
 SERIAL.messages.M2 = struct();
 SERIAL.reward_port = 'COM4';
-SERIAL.reward_channels = { 'B', 'A' };
+SERIAL.reward_channels = { 'A', 'B' };
 SERIAL.baud_rate = 115200;
 SERIAL.ports.reward = 'COM4';
 SERIAL.ports.led_calibration = 'COM3';
+SERIAL.outputs = struct( 'reward', [1, 2] );
 
 % - TCP - %
 TCP.server_address = '169.254.139.190';
@@ -200,6 +201,7 @@ STIMULI.gaze_cue_correct = struct( ...
   , 'target_duration',  fixations.gaze_cue_correct ...
   , 'target_padding',   100 ...
   , 'target_offset',    [0, 0] ...
+  , 'shift_amount',     0 ...
   , 'non_editable',     non_editable_properties ...
 );
 
@@ -213,6 +215,7 @@ STIMULI.gaze_cue_incorrect = struct( ...
   , 'target_duration',  fixations.gaze_cue_incorrect ...
   , 'target_padding',   100 ...
   , 'target_offset',    [0, 0] ...
+  , 'shift_amount',     0 ...
   , 'non_editable',     non_editable_properties ...
 );
 
@@ -293,6 +296,7 @@ SOUNDS.fixation_task_new_trial_cue = fullfile( IO.stimuli_path, ...
 % - REWARDS - %
 REWARDS.main = 250; % ms
 REWARDS.fixation = 250;
+REWARDS.post_rule_cue = 250;
 REWARDS.iti = 100;
 REWARDS.iti_pulses = 3;
 REWARDS.key_press = 200;

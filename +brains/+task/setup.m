@@ -94,6 +94,8 @@ COMMUNICATORS.tcp_comm = tcp_comm;
 % - ROIS - %
 ROIS = structfun( @(x) Target( TRACKER, x, Inf ), ROIS, 'un', false );
 
+stimuli_setup = STIMULI;
+
 % - STIMULI - %
 stim_fs = fieldnames( STIMULI );
 for i = 1:numel(stim_fs)
@@ -129,6 +131,8 @@ for i = 1:numel(stim_fs)
   end
   STIMULI.(stim_fs{i}) = stim_;
 end
+
+STIMULI.setup = stimuli_setup;
 
 % - load images
 fs = fieldnames( IMAGES );

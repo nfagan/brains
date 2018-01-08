@@ -27,8 +27,12 @@ else
   m_str = 'M2';
 end
 
+Alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
 port = SERIAL.ports.reward;
-rwd_channels = SERIAL.reward_channels;
+% rwd_channels = SERIAL.reward_channels;
+rwd_indices = SERIAL.outputs.reward;
+rwd_channels = arrayfun( @(x) x, Alphabet(rwd_indices), 'un', false );
 messages = [ SERIAL.messages.shared; SERIAL.messages.(m_str) ];
 comm = BrainsSerialManagerPaired( port, messages, rwd_channels, role );
 

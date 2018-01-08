@@ -24,9 +24,9 @@ first_entry = true;
 STATES.current = STATES.new_trial;
 STATES.previous = NaN;
 
-GAZE_CUE_SHIFT_AMOUNT = 100;
+GAZE_CUE_SHIFT_AMOUNT = STIMULI.setup.gaze_cue_correct.shift_amount;
 
-ALIGN_CENTER_STIMULI_TO_TOP = true;
+ALIGN_CENTER_STIMULI_TO_TOP = STRUCTURE.align_center_stimuli_to_top;
 SCREEN_HEIGHT = 27.3;
 SCREEN_OFFSET = 19.5;
 SCREEN_HEIGHT_PX = 768;
@@ -195,7 +195,8 @@ while ( true )
       fixation_delay_time = tcp_comm.await_data( 'delay' );
       if ( isnan(fixation_delay_time) )
         assert( ~INTERFACE.require_synch, 'Received NaN for fixation_delay.' );
-        fixation_delay_time = TIMINGS.delays.fixation_delay(1);
+%         fixation_delay_time = TIMINGS.delays.fixation_delay(1);
+        fixation_delay_time = TIMINGS.time_in.fixation_delay;
       end
     end
     if ( TRIAL_NUMBER == 1 && ALIGN_CENTER_STIMULI_TO_TOP )
@@ -291,6 +292,7 @@ while ( true )
       else
         STATES.current = STATES.error;
         errors.initial_fixation_not_met = true;
+        initiated_error = true;
       end
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
@@ -385,7 +387,7 @@ while ( true )
       end
       if ( ~isnan(other_fix_met) && other_fix_met )
         %   MARK: goto: cue_display
-        serial_comm.reward( 1, REWARDS.bridge );
+        serial_comm.reward( 1, REWARDS.post_rule_cue );
         STATES.current = STATES.cue_display2;
         tcp_comm.send_when_ready( 'state', STATES.current );
         first_entry = true;
@@ -441,8 +443,6 @@ while ( true )
       failed_to_choose_in_time = false;
       looked_away = false;
       first_entry = false;
-      disp( 'Is gaze trial?' );
-      disp( is_gaze_trial );
     end
     TRACKER.update_coordinates();
     fix_targ.update_targets();
@@ -462,7 +462,9 @@ while ( true )
           serial_comm.sync_pulse( 3 );
           did_log_plex_progress = true;
         end
-        fprintf( '\n M2: Looked to %d', correct_is );
+        if ( INTERFACE.DEBUG )
+          fprintf( '\n M2: Looked to %d', correct_is );
+        end
 %         STRUCTURE.m2_chose = correct_is;
 %         tcp_comm.send_when_ready( 'choice', correct_is );
         did_look = true;
@@ -1018,10 +1020,10 @@ while ( true )
       if ( isnan(reward_key_timer) )
         should_reward = true;
       else
-        should_reward = toc( reward_key_timer ) > REWARDS.iti/1e3;
+        should_reward = toc( reward_key_timer ) > REWARDS.key_press/1e3;
       end
       if ( should_reward )
-        serial_comm.reward( 1, REWARDS.iti );
+        serial_comm.reward( 1, REWARDS.key_press );
         reward_key_timer = tic;
       end
     end
