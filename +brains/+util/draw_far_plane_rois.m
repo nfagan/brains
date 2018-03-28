@@ -14,7 +14,9 @@ brains.util.el_draw_square( [], 0, 0, bypass );
 
 for i = 1:numel(fs)
   coords = key_file.(fs{i}).coordinates;
-  brains.util.el_draw_square( coords, sz, colors(i), bypass );
+  if ( ~isempty(coords) )
+    brains.util.el_draw_square( coords, sz, colors(i), bypass );
+  end
 end
 
 end

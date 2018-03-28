@@ -36,7 +36,7 @@ REWARDS.pulse_timer = NaN;
 REWARDS.current_frequency = REWARDS.min_frequency;
 REWARDS.debounce_timer = NaN;
 
-ALIGN_CENTER_STIMULI_TO_TOP = true;
+ALIGN_CENTER_STIMULI_TO_TOP = opts.STRUCTURE.align_center_stimuli_to_top;
 SCREEN_HEIGHT = 27.3;
 SCREEN_OFFSET = 19.5;
 SCREEN_HEIGHT_PX = 768;
@@ -152,7 +152,12 @@ while (true)
         sound( aud, fs );
       end
       square_ind = strcmp( IMAGES.fixation.filenames, 'square.png' );
-      fix_targ.image = IMAGES.fixation.matrices{ square_ind };
+      if ( isa(fix_targ, 'image') )
+        fix_targ.image = IMAGES.fixation.matrices{ square_ind };
+      end
+      if ( ~TRACKER.bypass )
+        brains.util.el_draw_stimulus( fix_targ, 1 );
+      end
       active_target = fix_targ;
       errors.fix_broken = false;
       errors.fix_not_met = false;

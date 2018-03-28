@@ -1,4 +1,4 @@
-function free_viewing(task_time, reward_period, reward_amount, dist_file, roi_file, key_file, other_monk)
+function free_viewing(task_time, reward_period, reward_amount, key_file, key_map)
 
 %   PERIODIC_REWARD -- Deliver reward every x ms.
 %
@@ -8,20 +8,32 @@ function free_viewing(task_time, reward_period, reward_amount, dist_file, roi_fi
 
 conf = brains.config.load();
 
-if ( ~conf.INTERFACE.allow_overwrite && conf.INTERFACE.save_data )
-  brains.util.assert__file_does_not_exist( fullfile(conf.IO.edf_folder, conf.IO.edf_file) );
-end
+save_p = fullfile( conf.IO.repo_folder, 'brains', 'data', datestr(now, 'mmddyy') );
+if ( exist(save_p, 'dir') ~= 7 ), mkdir(save_p); end
+
+edfs = shared_utils.io.find( save_p, '.edf' );
+n_edfs = numel( edfs );
+edf_file = sprintf( '%s%d.edf', conf.IO.edf_file, n_edfs + 1 );
+
+% if ( ~conf.INTERFACE.allow_overwrite && conf.INTERFACE.save_data )
+  brains.util.assert__file_does_not_exist( fullfile(save_p, edf_file) );
+% end
 
 screen_constants = brains_analysis.gaze.util.get_screen_constants();
 first_invocation = true;
 
+calibration_constants = bfw.calibration.define_calibration_target_constants();
+calibration_padding = bfw.calibration.define_padding();
+
 edf_sample_rate = 1e3;
 
 if ( ~isinf(task_time) )
-  gaze_data = nan( 3, task_time * edf_sample_rate );
+  gaze_data = nan( 4, task_time * edf_sample_rate );
 else
-  gaze_data = nan( 3, 1 );
+  gaze_data = nan( 4, 1 );
 end
+
+tracker_exists = false;
 
 gaze_sync_times = nan( 10e3, 2 );
 plex_sync_times = nan( 10e3, 1 );
@@ -40,15 +52,20 @@ reward_key_timer = NaN;
 reward_period_timer = NaN;
 
 edf_sync_interval = 1;
-tcp_sync_interval = 1;
+tcp_sync_interval = 0.5;
 
 sync_pulse_map = brains.arduino.get_sync_pulse_map();
 required_fields = { 'start', 'periodic_sync', 'reward' };
 shared_utils.assertions.assert__are_fields( sync_pulse_map, required_fields );
 
+fixation_keys = { 'eyes', 'face' };
+fixations = containers.Map( fixation_keys, zeros(1, numel(fixation_keys)) );
+fixation_state = containers.Map( fixation_keys, false(1, numel(fixation_keys)) );
+
 try
   
-  tracker = EyeTracker( conf.IO.edf_file, conf.IO.edf_folder, 0 );
+  tracker = EyeTracker( edf_file, save_p, 0 );
+  tracker_exists = true;
   tracker.bypass = ~conf.INTERFACE.use_eyelink;
   tracker.init();
   
@@ -130,29 +147,69 @@ try
     
     if ( ~isempty(tracker.coordinates) )
       gaze_data(1:2, gaze_stp) = tracker.coordinates;
-      gaze_data(3, gaze_stp) = toc( task_timer );
+      gaze_data(3, gaze_stp) = tracker.pupil_size;
+      gaze_data(4, gaze_stp) = toc( task_timer );
       gaze_stp = gaze_stp + 1;
+      
+      x = tracker.coordinates(1);
+      y = tracker.coordinates(2);
+      
+      face_bounds = bfw.calibration.rect_face( key_file, key_map, calibration_padding, calibration_constants );
+      eye_bounds = bfw.calibration.rect_eyes( key_file, key_map, calibration_padding, calibration_constants );
+      
+      clc;
+      
+      if ( bfw.bounds.rect(x, y, face_bounds) )
+        fprintf( '\n In bounds face!' );
+        if ( ~fixation_state('face') )
+          fixation_state('face') = true;
+          fixations('face') = fixations('face') + 1;
+        end
+      else
+        fprintf( '\n -- ' );
+        fixation_state('face') = false;
+      end
+      if ( bfw.bounds.rect(x, y, eye_bounds) )
+        fprintf( '\n In bounds eyes!' );
+        if ( ~fixation_state('eyes') )
+          fixation_state('eyes') = true;
+          fixations('eyes') = fixations('eyes') + 1;
+        end
+      else
+        fprintf( '\n -- ' );
+        fixation_state('eyes') = false;
+      end
+      
+      for j = 1:numel(fixation_keys)
+        fprintf( '\n %s: %d', fixation_keys{j}, fixations(fixation_keys{j}) );
+      end
     end
   end
-  disp( gaze_stp );
   
-  if ( conf.INTERFACE.save_data )
-    save_p = fullfile( conf.IO.repo_folder, 'brains', 'data', datestr(now, 'mmddyy') );
-    if ( exist(save_p, 'dir') ~= 7 ), mkdir(save_p); end
+%   if ( conf.INTERFACE.save_data )
     mats = shared_utils.io.dirnames( save_p, '.mat' );
     next_id = numel( mats ) + 1;
     gaze_data_file = sprintf( 'position_%d.mat', next_id );
     gaze_data = struct( ...
-        'position', gaze_data ...
+        'gaze', gaze_data ...
       , 'sync_times', gaze_sync_times ...
       , 'plex_sync_times', plex_sync_times ...
       , 'reward_sync_times', reward_sync_times ...
+      , 'far_plane_calibration', key_file ...
+      , 'far_plane_key_map', key_map ...
+      , 'far_plane_padding', calibration_padding ...
+      , 'far_plane_constants', calibration_constants ...
+      , 'date', datestr( now ) ...
+      , 'edf_file', edf_file ...
       );
     save( fullfile(save_p, gaze_data_file), 'gaze_data' );
-  end
+%   end
   
   local_cleanup( comm, tracker, conf );
 catch err
+  if ( ~tracker_exists )
+    tracker = [];
+  end
   local_cleanup( comm, tracker, conf );
   throw( err );
 end
@@ -164,13 +221,16 @@ end
 
 function local_cleanup(comm, tracker, conf)
 
-comm.close();
 brains.arduino.close_ports();
 
-if ( conf.INTERFACE.save_data && ~isempty(tracker) )
+% if ( conf.INTERFACE.save_data && ~isempty(tracker) )
+%   tracker.shutdown();
+% else
+%   tracker.stop_recording();
+% end
+
+if ( ~isempty(tracker) )
   tracker.shutdown();
-else
-  tracker.stop_recording();
 end
 
 end

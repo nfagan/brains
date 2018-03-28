@@ -101,7 +101,6 @@ void handleSerialComm() {
   if ( plex_ind != -1 ) {
     plex_state_changed[plex_ind] = true;
     plex_times[plex_ind] = plex_sync_pulse_length;
-    Serial.println("!");
     return;
   }
   

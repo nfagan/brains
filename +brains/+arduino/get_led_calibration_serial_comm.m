@@ -10,9 +10,9 @@ conf = brains.config.load();
 
 port = conf.SERIAL.ports.led_calibration;
 
-led_chars = { 'Q', 'W', 'E', 'R', 'T', 'Y', 'U' };
+n_leds = 14;
 
-comm = brains.arduino.LEDComm( port, led_chars );
+comm = brains.arduino.LEDComm( port, n_leds );
 comm.bypass = ~conf.INTERFACE.use_arduino;
 
 end

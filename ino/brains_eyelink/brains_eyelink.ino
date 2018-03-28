@@ -1,6 +1,7 @@
 #include "eyelink.h"
 
 #define __DEBUG__
+#define __PRINT_M1_GAZE__
 
 struct IDS
 {
@@ -74,6 +75,21 @@ void gaze_check()
 
     bool m1m = m1_gaze->in_bounds(ROI_INDICES::mouth);
     bool m2m = m2_gaze->in_bounds(ROI_INDICES::mouth);
+
+    if (m1f && m2f)
+    {
+        Serial.println("BOTH IN BOUNDS");
+    }
+
+    if (m1f)
+    {
+        Serial.println("M1 IN BOUNDS");
+    }
+
+    if (m2f)
+    {
+        Serial.println("M2 IN BOUNDS");
+    }
 
     //
     //  compare here

@@ -24,9 +24,9 @@ first_entry = true;
 STATES.current = STATES.new_trial;
 STATES.previous = NaN;
 
-GAZE_CUE_SHIFT_AMOUNT = STIMULI.setup.gaze_cue_correct.shift_amount;
+GAZE_CUE_SHIFT_AMOUNT = 100;
 
-ALIGN_CENTER_STIMULI_TO_TOP = STRUCTURE.align_center_stimuli_to_top;
+ALIGN_CENTER_STIMULI_TO_TOP = false;
 SCREEN_HEIGHT = 27.3;
 SCREEN_OFFSET = 19.5;
 SCREEN_HEIGHT_PX = 768;
@@ -40,10 +40,22 @@ FRAMES.mean = 0;
 FRAMES.min = Inf;
 FRAMES.max = -Inf;
 
-PSUEDO_RANDOM_GAZE_CUES = true;
+% `PSUEDO_RANDOM_GAZE_CUES`:
+% if false, gaze cue placement will only change if a trial is successful.
+% if true, gaze cue placement will change on each trial, and will draw
+% from a distribution of `GAZE_CUE_PLACEMENT_TYPES` with
+% `GAZE_CUE_BLOCK_SIZE` elements, psuedorandomly.
+PSUEDO_RANDOM_GAZE_CUES = false;
 GAZE_CUE_BLOCK_SIZE = 8;
 GAZE_CUE_PLACEMENT_TYPES = { 'center-left', 'center-right' };
 GAZE_CUE_PLACEMENTS = get_gaze_cue_placement( GAZE_CUE_BLOCK_SIZE );
+% if `PSUEDO_RANDOM_GAZE_CUES` is false, `M2_GAZE_CUE_P_RIGHT` determines
+% the probability that the correct cue will appear on the right.
+M2_GAZE_CUE_P_RIGHT = 0.5;
+% SAME_GAZE_CUE_PLACEMENT_ON_ERROR:
+%   if true, correct gaze cue will appear on same side as preceding trial,
+%   if preceding trial was error.
+SAME_GAZE_CUE_PLACEMENT_ON_ERROR = true;
 
 MESSAGES = {};
 
@@ -54,6 +66,7 @@ errors = struct( ...
     'initial_fixation_not_met', false ...
   , 'broke_fixation', false ...
   , 'm2_wrong_target', false ...
+  , 'm2_looked_away_from_gaze_cue', false ...
   , 'm2_no_choice', false ...
   , 'm2_fix_delay_no_look', false ...
   , 'm1_wrong_target', false ...
@@ -136,7 +149,7 @@ while ( true )
       STRUCTURE.rule_cue_type = STRUCTURE.rule_cue_types{trial_type_num};
     end
     %   get correct target location for m2
-    if ( ~any_errors && PSUEDO_RANDOM_GAZE_CUES )
+    if ( PSUEDO_RANDOM_GAZE_CUES && (~any_errors || ~SAME_GAZE_CUE_PLACEMENT_ON_ERROR) )
       if ( isempty(GAZE_CUE_PLACEMENTS) )
         GAZE_CUE_PLACEMENTS = get_gaze_cue_placement( GAZE_CUE_BLOCK_SIZE );
       end
@@ -152,8 +165,8 @@ while ( true )
         incorrect_is = 2;
       end    
       GAZE_CUE_PLACEMENTS(gaze_cue_placement_ind) = [];
-    elseif ( ~any_errors )
-      if ( rand() > .3 )
+    elseif ( ~any_errors || ~SAME_GAZE_CUE_PLACEMENT_ON_ERROR )
+      if ( rand() < M2_GAZE_CUE_P_RIGHT )
         correct_location = 'center-right';
       else
         correct_location = 'center-left';
@@ -292,7 +305,6 @@ while ( true )
       else
         STATES.current = STATES.error;
         errors.initial_fixation_not_met = true;
-        initiated_error = true;
       end
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
@@ -387,7 +399,7 @@ while ( true )
       end
       if ( ~isnan(other_fix_met) && other_fix_met )
         %   MARK: goto: cue_display
-        serial_comm.reward( 1, REWARDS.post_rule_cue );
+        serial_comm.reward( 1, REWARDS.bridge );
         STATES.current = STATES.cue_display2;
         tcp_comm.send_when_ready( 'state', STATES.current );
         first_entry = true;
@@ -443,6 +455,8 @@ while ( true )
       failed_to_choose_in_time = false;
       looked_away = false;
       first_entry = false;
+      disp( 'Is gaze trial?' );
+      disp( is_gaze_trial );
     end
     TRACKER.update_coordinates();
     fix_targ.update_targets();
@@ -462,9 +476,7 @@ while ( true )
           serial_comm.sync_pulse( 3 );
           did_log_plex_progress = true;
         end
-        if ( INTERFACE.DEBUG )
-          fprintf( '\n M2: Looked to %d', correct_is );
-        end
+        fprintf( '\n M2: Looked to %d', correct_is );
 %         STRUCTURE.m2_chose = correct_is;
 %         tcp_comm.send_when_ready( 'choice', correct_is );
         did_look = true;
@@ -477,6 +489,7 @@ while ( true )
         tcp_comm.send_when_ready( 'choice', 0 );
         tcp_comm.send_when_ready( 'state', STATES.current );
         looked_away = true;
+        errors.m2_looked_away_from_gaze_cue = true;
         initiated_error = true;
         first_entry = true;
         continue;
@@ -611,7 +624,7 @@ while ( true )
       end
       tcp_comm.consume( 'fix_met' );
       PROGRESS.fixation_delay = TIMER.get_time( 'task' );
-      if ( TIMINGS.time_in.fixation_delay == 0 )
+      if ( INTERFACE.require_synch && TIMINGS.time_in.fixation_delay == 0 )
         TIMER.set_durations( 'fixation_delay', Inf );
       else
         TIMER.set_durations( 'fixation_delay', TIMINGS.time_in.fixation_delay );
@@ -628,7 +641,7 @@ while ( true )
     end
     TRACKER.update_coordinates();
     m2_active_target.update_targets();
-    if ( TIMINGS.time_in.fixation_delay == 0 )
+    if ( ~INTERFACE.require_synch || TIMINGS.time_in.fixation_delay == 0 )
       if ( ~did_show )
         m2_active_target.draw();
         Screen( 'Flip', opts.WINDOW.index );
@@ -698,7 +711,9 @@ while ( true )
   %%   STATE RESPONSE
   if ( STATES.current == STATES.response )
     if ( first_entry )
-      Screen( 'Flip', opts.WINDOW.index );
+      if ( ~INTERFACE.IS_M1 )
+        Screen( 'Flip', opts.WINDOW.index );
+      end
       if ( INTERFACE.DEBUG )
         disp( 'Entered response' );
       end
@@ -733,6 +748,7 @@ while ( true )
       STRUCTURE.m1_chose = [];
       did_show = false;
       made_error = false;
+      m2_entered_fix_targ = false;
       first_entry = false;
     end
     TRACKER.update_coordinates();
@@ -769,26 +785,16 @@ while ( true )
         Screen( 'Flip', opts.WINDOW.index );
         did_show = true;
       end
-      if ( ~m2_active_target.in_bounds() )
-%         made_error = true;
-%         tcp_comm.send_when_ready( 'error', 5 );
+      if ( ~m2_active_target.in_bounds() && ...
+          (TIMER.get_time('response') > 1 || m2_entered_fix_targ) )
+        made_error = true;
+        tcp_comm.send_when_ready( 'error', 5 );
 %         %   MARK: goto: error;
-%         STATES.current = STATES.error;
-%         tcp_comm.send_when_ready( 'state', STATES.current );
-%         first_entry = true;
-      else
-%         if ( isnan(last_pulse) )
-%           should_reward = true;
-%         else
-%           should_reward = toc( last_pulse ) > REWARDS.pulse_frequency/1e3;
-%         end
-%         if ( should_reward )
-%           if ( INTERFACE.DEBUG )
-%             disp( 'Rewarding ...' );
-%           end
-%           serial_comm.reward( 1, REWARDS.main );
-%           last_pulse = tic;
-%         end
+        STATES.current = STATES.error;
+        tcp_comm.send_when_ready( 'state', STATES.current );
+        first_entry = true;
+      elseif ( m2_active_target.in_bounds() )
+        m2_entered_fix_targ = true;
       end
       received_m1_choice = tcp_comm.consume( 'choice' );
       if ( ~isnan(received_m1_choice) && ~made_error )

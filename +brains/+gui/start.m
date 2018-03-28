@@ -195,7 +195,7 @@ panels.run = uipanel( F ...
 );
 
 funcs = { 'save as', 'load', 'close-ports', 'hard reset', 'reset to default', 'make default' ...
-  , 'clean-up', 'flush', 'calibrate', 'start fixation', 'start' };
+  , 'clean-up', 'flush', 'calibrate', 'start fixation task', 'start saccade task' };
 w = .5;
 l = 1 / numel(funcs);
 x = 0;
@@ -252,11 +252,11 @@ function handle_button(source, event)
   
   func = source.String;
   switch ( func )
-    case 'start'
+    case 'start saccade task'
       clear mex;
       brains.config.save( config, '-file', CURRENT_CONFIG_FILE);
       brains.task.start();
-    case 'start fixation'
+    case 'start fixation task'
       clear mex;
       brains.config.save( config, '-file', CURRENT_CONFIG_FILE);
       brains.task.start( 'fixation' );

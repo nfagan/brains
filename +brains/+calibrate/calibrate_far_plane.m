@@ -17,6 +17,7 @@ assert( ~isempty(pts), 'Points can''t be empty.' );
 arrayfun( @(x) assert(isa(x, 'double') && mod(x, 1) == 0 ...
       , 'Points must be whole-number doubles.'), pts );
 
+key_code_map = brains.arduino.calino.get_key_code_led_index_map();
     
 try
   fprintf( '\n Initializing ... ' );
@@ -45,7 +46,7 @@ try
     keys.(sprintf('key__%d', pts(i))) = struct( ...
         'coordinates', [0, 0] ...
       , 'was_pressed', false ...
-      , 'key_code', KbName(sprintf('%d', pts(i))) ...
+      , 'key_code', key_code_map(pts(i)) ...
       , 'led_index', pts(i) ...
       , 'timer', NaN ...
       );
@@ -163,7 +164,12 @@ function should_abort = handle_key_press()
       end
       keys.(active_field).coordinates = tracker.coordinates;
       keys.(active_field).timer = tic();
-      brains.util.draw_far_plane_rois( keys, target_size, target_colors, tracker.bypass );
+      if ( ~isempty(tracker.coordinates) )
+        brains.util.draw_far_plane_rois( keys, target_size, target_colors, tracker.bypass );
+      else
+        fprintf( ['\nWARNING: Coordinates not present. Tracking might be deficient;' ...
+          , ' you may want to recalibrate.'] );
+      end
     end
     known_key = true;
   end

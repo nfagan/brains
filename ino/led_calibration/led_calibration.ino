@@ -2,15 +2,22 @@
 //  Initialization + reward
 //
 
+struct IDS 
+{
+  const char terminator = 'e';
+  const char error = '!';
+} ids;
+
 char init_char = '*';
 
 //
 //  LED
 //
+const int BUFFER_SIZE = 32;
+char BUFFER[BUFFER_SIZE];
 
-const int n_leds = 7;
-int led_pins[n_leds] = { 2 };
-char led_messages[n_leds] = { 'Q', 'W', 'E', 'R', 'T', 'Y', 'U' };
+const int n_leds = 14;
+int led_pins[n_leds] = { 22 };
 const char led_time_end = 'X';
 int led_times[n_leds] = { 0 };
 int led_magnitudes[n_leds] = { 200 };
@@ -29,9 +36,14 @@ void setup() {
     //  wait
   }
 
-  Serial.print( init_char );
+  for (int i = 0; i < BUFFER_SIZE; i++) {
+    BUFFER[i] = 'a';
+  }
 
   Serial.begin( 115200 );
+
+  Serial.print( init_char );
+  
   for ( int i = 0; i < n_leds; i++ ) {
     pinMode( led_pins[i], OUTPUT );
   }
@@ -63,16 +75,46 @@ void initialize_led_arrays()
 void handleSerialComm() {
 
   if ( Serial.available() <= 0 ) return;
-  int inByte = Serial.read();
-  char inChar = char( inByte );
-  int led_index = findIndex( led_messages, n_leds, inChar );
-  if ( led_index == -1 ) return;
-  String led_time_str = readIn( led_time_end, "" );
-  int led_time = stringToInt( led_time_str, 0 );
+  int led_index = get_led_index();
+  int led_time = get_led_time();
   handleNewLEDTime( led_index, led_time );
 }
 
+void clear_buffer() {
+  for (int i = 0; i < BUFFER_SIZE; i++) {
+    BUFFER[i] = 'a';
+  }
+}
+
+int get_led_index() {
+  return await_int(ids.terminator);
+}
+
+int get_led_time() {
+  return await_int(ids.terminator);
+}
+
+int await_int(char terminator) {
+  int n_read = Serial.readBytesUntil(terminator, BUFFER, sizeof(BUFFER)-1);
+
+    if (n_read == 0)
+    {
+        Serial.print(ids.error);
+        return -1;
+    }
+
+    BUFFER[n_read] = '\0';
+
+    return atoi(BUFFER);
+}
+
 void handleNewLEDTime( int index, int value ) {
+
+  if (index < 0 || index > n_leds-1)
+  {
+      Serial.print(ids.error);
+      return;
+  }
   
   led_times[index] = value;
   led_state_changed[index] = true;
@@ -96,41 +138,4 @@ void handleLED() {
     }
     led_state_changed[i] = false;
   }
-  
-}
-
-String readIn( char endMessage, String initial ) {
-
-  while ( Serial.available() <= 0 ) {
-    delay( 5 );
-  }
-  while ( Serial.available() > 0 ) {
-    int pos = Serial.read();
-    pos = char( pos );
-    if ( pos == endMessage ) break;
-    initial += char(pos);
-  }
-  return initial;
-}
-
-int findIndex( char* arr, int arrsz, char search ) {
-
-  int pos = -1;
-  for ( int i = 0; i < arrsz; i++ ) {
-    if ( arr[i] == search ) {
-      pos = i;
-      break;
-    }
-  }
-  return pos;
-}
-
-int stringToInt( String str, int removeNLeading ) {
-  int bufferSize = str.length() + 1;
-  char charNumber[ bufferSize ] = { 'b' };
-  for ( int i = 0; i < removeNLeading; i++ ) {
-    str.remove(0, 1);
-  }
-  str.toCharArray( charNumber, bufferSize );
-  return atol( charNumber );
 }
