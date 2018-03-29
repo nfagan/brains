@@ -1,5 +1,7 @@
 function send_bounds(comm, m_id, roi_id, bounds)
 
+%   SEND_BOUNDS -- Send 4-element bounds to arduino.
+
 import shared_utils.assertions.*;
 
 assert__isa( comm, 'serial', 'the serial comm' );

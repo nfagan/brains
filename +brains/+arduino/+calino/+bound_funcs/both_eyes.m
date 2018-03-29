@@ -11,7 +11,7 @@ eyel_coord = brains.arduino.calino.get_coord( calibration_data, eyel );
 eyer_coord = brains.arduino.calino.get_coord( calibration_data, eyer );
 eye_y = mean( [eyel_coord(2), eyer_coord(2)] );
 
-dist_eyes_px = eyer_coord(1) - eyel_coord(2);
+dist_eyes_px = eyer_coord(1) - eyel_coord(1);
 dist_eyes_cm = const.INTER_EYE_DISTANCE_CM;
 ratio = dist_eyes_px / dist_eyes_cm;
 
@@ -20,6 +20,6 @@ eyer_px = eyer_coord(1) + (padding_info.eyes.x * ratio);
 eyeb_px = eye_y - (padding_info.eyes.y * ratio);
 eyet_px = eye_y + (padding_info.eyes.y * ratio);
 
-bounds = [ eyel_px, eyer_px, eyeb_px, eyet_px ];
+bounds = [ eyel_px, eyeb_px, eyer_px, eyet_px ];
 
 end

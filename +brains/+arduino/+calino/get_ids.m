@@ -4,7 +4,9 @@ function ids = get_ids()
 
 ids = struct();
 ids.ack = 'a';
+ids.error = '!';
 ids.bounds = 'o';
+ids.stim_param = 't';
 
 monk_ids = struct();
 monk_ids.m1 = 'j';
@@ -16,7 +18,13 @@ roi_ids.mouth = 'm';
 roi_ids.screen = 's';
 roi_ids.face = 'f';
 
+stim_params = struct();
+stim_params.probability = 'y';
+stim_params.frequency = 'u';
+stim_params.protocol = 'i';
+
 ids.monkey = monk_ids;
 ids.roi = roi_ids;
+ids.stim_params = stim_params;
 
 end
