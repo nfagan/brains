@@ -2,24 +2,17 @@
 
 #include "rois.h"
 
-namespace PROTOCOLS {
-	enum PROTOCOLS {
-		EVENT = 0,
-		RANDOM = 1
-	};
-}
-
 struct stimulation_params
 {
 	stimulation_params();
 	~stimulation_params();
 
 	void update(unsigned long delta);
-	bool should_stimulate();
+	bool can_stimulate();
+	void mark_stimulation_onset();
 
 	int frequency;
 	int probability;
-	unsigned int protocol;
 
 	unsigned long ms_remaining;
 };
@@ -27,18 +20,32 @@ struct stimulation_params
 class stimulation_protocol
 {
 public:
-	stimulation_protocol();
+	stimulation_protocol(int pin);
 	~stimulation_protocol();
 
-	void set_probability(unsigned int index, int probability);
-	void set_frequency(unsigned int index, int frequency);
-	void set_protocol(unsigned int index, unsigned int protocol);
+	bool set_probability(unsigned int index, int probability);
+	bool set_frequency(unsigned int index, int frequency);
+	void set_is_global_stimulation_timeout(bool state);
+
 	void update(unsigned long delta);
 
 	void allow_stimulation(unsigned int index);
 	void disallow_stimulation(unsigned int index);
+	bool conditional_stimulate(unsigned int index, unsigned long current_time);
 
 private:
+	static const int STIM_PULSE_DURATION = 10;
+
+	int m_stimulation_pin;
+	int m_stim_pulse_ms_remaining;
+
 	int m_allow_stimulation[ROI_INDICES::N_ROI_INDICES];
-	m_stimulation_params[ROI_INDICES::N_ROI_INDICES] stim_params;
+
+	stimulation_params m_stimulation_params[ROI_INDICES::N_ROI_INDICES];
+
+	unsigned long m_last_stimulation_time;
+	int m_last_stimulation_duration;
+	int m_last_stimulation_index;
+
+	bool m_is_global_stimulation_timeout;
 };

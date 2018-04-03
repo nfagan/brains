@@ -4,6 +4,22 @@
 #define __DEBUG__
 #define __PRINT_M1_GAZE__
 
+namespace PROTOCOLS {
+    enum PROTOCOLS
+    {
+        MUTUAL_EVENT = 0,
+        M1_EXCLUSIVE_EVENT = 1,
+        M2_EXCLUSIVE_EVENT = 2,
+        EXCLUSIVE_EVENT = 3,
+        ANY_EVENT = 4,
+        PROBABILISTIC = 5
+    };
+
+    PROTOCOLS current_protocol = MUTUAL_EVENT;
+
+    const int N_PROTOCOLS = 6;
+}
+
 struct IDS
 {
     const char eol = '\n';
@@ -13,9 +29,10 @@ struct IDS
     //	indicates that command will be a stimulation parameter
     const char stim_param = 't';
     const char stim_stop_start = 'r';
-	const char probability = 'y';
-	const char frequency = 'u';
-	const char protocol = 'i';
+    const char global_stim_timeout = 'q';
+	  const char probability = 'y';
+	  const char frequency = 'u';
+	  const char protocol = 'i';
     const char screen = 's';
     const char eyes = 'e';
     const char mouth = 'm';
@@ -33,13 +50,14 @@ struct PINS
     const int m1_y = 1;
     const int m2_x = 2;
     const int m2_y = 3;
+    const int stimulation_trigger = 4;
 } pins;
 
 //
 //	stimulation protocol
 //
 
-stimulation_protocol STIM_PROTOCOL;
+stimulation_protocol STIM_PROTOCOL(pins.stimulation_trigger);
 
 //
 //  main
@@ -94,37 +112,68 @@ void debug_print()
     m2_gaze->print_bounds();
 }
 
-void gaze_check()
+//
+//  protocol_probabilistic: Stimulate regardless of looking events.
+//
+void protocol_probabilistic()
+{
+    for (int i = 0; i < ROI_INDICES::N_ROI_INDICES; i++)
+    {
+        if (STIM_PROTOCOL.conditional_stimulate(i, timing::this_frame))
+        {
+            //  mark stimulating
+        }
+    }
+}
+
+//
+//  protocol_gaze_event: Stimulate on gaze event
+//
+void protocol_gaze_event()
 {   
-    bool m1f = m1_gaze->in_bounds(ROI_INDICES::face);
-    bool m2f = m2_gaze->in_bounds(ROI_INDICES::face);
-
-    bool m1e = m1_gaze->in_bounds(ROI_INDICES::eyes);
-    bool m2e = m2_gaze->in_bounds(ROI_INDICES::eyes);
-
-    bool m1m = m1_gaze->in_bounds(ROI_INDICES::mouth);
-    bool m2m = m2_gaze->in_bounds(ROI_INDICES::mouth);
-
-    if (m1f && m2f)
+    for (unsigned int i = 0; i < ROI_INDICES::N_ROI_INDICES; i++)
     {
-        Serial.println("BOTH IN BOUNDS");
+        bool m1_in = m1_gaze->in_bounds((ROI_INDICES::ROI_INDICES) i);
+        bool m2_in = m2_gaze->in_bounds((ROI_INDICES::ROI_INDICES) i);
+        bool mut = m1_in && m2_in;
+        bool any = m1_in || m2_in;
+
+        switch (PROTOCOLS::current_protocol)
+        {
+            case PROTOCOLS::MUTUAL_EVENT:
+                if (mut && STIM_PROTOCOL.conditional_stimulate(i, timing::this_frame))
+                {
+                    //
+                }
+                break;
+            case PROTOCOLS::M1_EXCLUSIVE_EVENT:
+                if (m1_in && STIM_PROTOCOL.conditional_stimulate(i, timing::this_frame))
+                {
+                    //
+                }
+                break;
+            case PROTOCOLS::M2_EXCLUSIVE_EVENT:
+                if (m2_in && STIM_PROTOCOL.conditional_stimulate(i, timing::this_frame))
+                {
+                    //
+                }
+                break;
+            case PROTOCOLS::EXCLUSIVE_EVENT:
+                if (!mut && STIM_PROTOCOL.conditional_stimulate(i, timing::this_frame))
+                {
+                    //
+                }
+                break;
+            case PROTOCOLS::ANY_EVENT:
+                if (any && STIM_PROTOCOL.conditional_stimulate(i, timing::this_frame))
+                {
+                    //
+                }
+                break;
+            default:
+                break;
+        }
     }
-
-    if (m1f)
-    {
-        Serial.println("M1 IN BOUNDS");
-    }
-
-    if (m2f)
-    {
-        Serial.println("M2 IN BOUNDS");
-    }
-
-    //
-    //  compare here
-    //
-
-    // if (m1f && m2f)
 }
 
 void handle_new_stim_param()
@@ -135,7 +184,7 @@ void handle_new_stim_param()
 
 	get_stimulation_parami(&id, &roi_index, &param);
 
-	if (roi_index == -1 || param == -1 || id == ids.error || roi_index > ROI_INDICES::N_ROI_INDICES)
+	if (roi_index < 0 || param < 0 || id == ids.error || roi_index >= ROI_INDICES::N_ROI_INDICES)
 	{
 		Serial.print(ids.error);
 		return;
@@ -143,19 +192,51 @@ void handle_new_stim_param()
 
 	char response = ids.ack;
 
-	if (id == ids.probability)
+    if (id == ids.protocol)
+    {
+        if (param >= PROTOCOLS::N_PROTOCOLS)
+        {
+            response = ids.error;
+        }
+        else
+        {
+            PROTOCOLS::current_protocol = (PROTOCOLS::PROTOCOLS) param;
+        }
+    }
+	else if (id == ids.probability)
 	{
-		STIM_PROTOCOL.set_probability(roi_index, param);
+        bool status = STIM_PROTOCOL.set_probability(roi_index, param);
+
+        if (!status)
+        {
+            response = ids.error;
+        }
 	}
 	else if (id == ids.frequency)
 	{
-		STIM_PROTOCOL.set_frequency(roi_index, param);
+		bool status = STIM_PROTOCOL.set_frequency(roi_index, param);
+
+        if (!status)
+        {
+            response = ids.error;
+        }
 	}
-	else if (id == ids.protocol)
-	{
-		STIM_PROTOCOL.set_protocol(roi_index, param);	
-	}
-	else if (id == ids.begin_stim)
+  else if (id == ids.global_stim_timeout)
+  {
+    if (param == 0)
+    {
+      STIM_PROTOCOL.set_is_global_stimulation_timeout(false);
+    }
+    else if (param == 1)
+    {
+      STIM_PROTOCOL.set_is_global_stimulation_timeout(true);
+    }
+    else
+    {
+      response = ids.error;
+    }
+  }
+	else if (id == ids.stim_stop_start)
 	{
 		if (param == 0)
 		{
@@ -236,14 +317,14 @@ void handle_new_bounds()
     	return;
     }
 
-    manager->set_rect_element(roi_index, roi_element_index, value);
+    manager->set_rect_element((ROI_INDICES::ROI_INDICES) roi_index, roi_element_index, value);
 
     Serial.print(ids.ack);
 }
 
 int get_roi_index_from_id(char roi_id)
 {
-	if (roi_id == ids.screen) return ROI_INDICES::screen;
+	  if (roi_id == ids.screen) return ROI_INDICES::screen;
     else if (roi_id == ids.face) return ROI_INDICES::face;
     else if (roi_id == ids.eyes) return ROI_INDICES::eyes;
     else if (roi_id == ids.mouth) return ROI_INDICES::mouth;
@@ -287,6 +368,7 @@ void get_stimulation_parami(char* id, int* roi_idx, int* param)
 
 void setup()
 {
+    randomSeed(analogRead(0));
     
     while (!Serial)
     {
@@ -317,9 +399,16 @@ void loop()
     m1_gaze->update();
     m2_gaze->update();
 
-    STIM_PROTOCOL->update(timing::delta);
+    STIM_PROTOCOL.update(timing::delta);
 
-    gaze_check();
+    if (PROTOCOLS::current_protocol != PROTOCOLS::PROBABILISTIC)
+    {
+        protocol_gaze_event();
+    }
+    else
+    {
+        protocol_probabilistic();
+    }
 
     timing::last_frame = timing::this_frame;
 }
