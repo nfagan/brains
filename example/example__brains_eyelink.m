@@ -8,6 +8,7 @@ port = 'COM6';
 baud = 9600;
 
 comm = brains.arduino.calino.init_serial( port, baud );
+comm.BytesAvailableFcn = @(x) fprintf('%s', x);
 
 send_bounds( comm, 'm1', 'screen', [0, 0, 1024, 768] );
 send_bounds( comm, 'm2', 'screen', [0, 0, 1024, 768] );
@@ -23,8 +24,12 @@ ids = brains.arduino.calino.get_ids();
 send_stim_param( comm, 'eyes', 'probability', 100 );
 send_stim_param( comm, 'eyes', 'frequency', 100 );
 send_stim_param( comm, 'eyes', 'stim_stop_start', 1 );
-send_stim_param( comm, 'eyes', 'protocol', ids.stim_protocols.mutual_event );
+send_stim_param( comm, 'eyes', 'protocol', ids.stim_protocols.probabilistic );
 send_stim_param( comm, 'eyes', 'global_stim_timeout', 1 );
+
+%%
+
+
 
 %%
 

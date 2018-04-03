@@ -112,16 +112,47 @@ void debug_print()
     m2_gaze->print_bounds();
 }
 
+void handle_stimulation()
+{
+    if (PROTOCOLS::current_protocol != PROTOCOLS::PROBABILISTIC)
+    {
+        protocol_gaze_event();
+    }
+    else
+    {
+        protocol_probabilistic();
+    }
+}
+
 //
 //  protocol_probabilistic: Stimulate regardless of looking events.
 //
 void protocol_probabilistic()
 {
+    static unsigned long n_stim = 0;
+    static unsigned long n_reject = 0;
+    
     for (int i = 0; i < ROI_INDICES::N_ROI_INDICES; i++)
     {
+        bool ellapsed = STIM_PROTOCOL.ellapsed(i);
+        
         if (STIM_PROTOCOL.conditional_stimulate(i, timing::this_frame))
         {
-            //  mark stimulating
+            n_stim++;
+            Serial.println("STIMULATE");
+
+            Serial.println(n_stim);
+            Serial.println(n_reject);
+            Serial.println("--");
+        }
+        else if (i == 1 && ellapsed)
+        {
+            n_reject++;
+            Serial.println("REJECT");
+            
+            Serial.println(n_stim);
+            Serial.println(n_reject);
+            Serial.println("--");
         }
     }
 }
@@ -214,7 +245,7 @@ void handle_new_stim_param()
 	}
 	else if (id == ids.frequency)
 	{
-		bool status = STIM_PROTOCOL.set_frequency(roi_index, param);
+		    bool status = STIM_PROTOCOL.set_frequency(roi_index, param);
 
         if (!status)
         {
@@ -401,14 +432,7 @@ void loop()
 
     STIM_PROTOCOL.update(timing::delta);
 
-    if (PROTOCOLS::current_protocol != PROTOCOLS::PROBABILISTIC)
-    {
-        protocol_gaze_event();
-    }
-    else
-    {
-        protocol_probabilistic();
-    }
+    handle_stimulation();
 
     timing::last_frame = timing::this_frame;
 }

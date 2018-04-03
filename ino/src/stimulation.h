@@ -8,7 +8,7 @@ struct stimulation_params
 	~stimulation_params();
 
 	void update(unsigned long delta);
-	bool can_stimulate();
+	bool can_stimulate() const;
 	void mark_stimulation_onset();
 
 	int frequency;
@@ -28,6 +28,7 @@ public:
 	void set_is_global_stimulation_timeout(bool state);
 
 	void update(unsigned long delta);
+  bool ellapsed(unsigned int index);
 
 	void allow_stimulation(unsigned int index);
 	void disallow_stimulation(unsigned int index);
@@ -37,7 +38,7 @@ private:
 	static const int STIM_PULSE_DURATION = 10;
 
 	int m_stimulation_pin;
-	int m_stim_pulse_ms_remaining;
+	long m_stim_pulse_ms_remaining;
 
 	int m_allow_stimulation[ROI_INDICES::N_ROI_INDICES];
 

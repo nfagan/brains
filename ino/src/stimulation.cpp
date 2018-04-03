@@ -22,7 +22,7 @@ void stimulation_params::update(unsigned long delta)
 {
 	if (ms_remaining == 0)
 	{
-		return;
+		ms_remaining = frequency;
 	}
 
 	unsigned long result = ms_remaining - delta;
@@ -38,7 +38,7 @@ void stimulation_params::update(unsigned long delta)
 	}
 }
 
-bool stimulation_params::can_stimulate()
+bool stimulation_params::can_stimulate() const
 {
 	if (ms_remaining > 0)
 	{
@@ -46,12 +46,14 @@ bool stimulation_params::can_stimulate()
 	}
 
 	//	integer in range [0, 99]
-	long p = random(100);
+	int p = random(100) + 1;
 
-	if (p > (100 - probability - 1))
+	if (p >= (100 - probability))
 	{
 		return true;
 	}
+  
+//   Serial.println("REJECTED");
 
 	return false;
 }
@@ -127,8 +129,15 @@ bool stimulation_protocol::conditional_stimulate(unsigned int index, unsigned lo
 	{
 		digitalWrite(m_stimulation_pin, HIGH);
 	}
+  
+  m_stimulation_params[index].mark_stimulation_onset();
 
 	return true;
+}
+
+bool stimulation_protocol::ellapsed(unsigned int index)
+{
+  return m_stimulation_params[index].ms_remaining == 0;
 }
 
 void stimulation_protocol::update(unsigned long delta)
