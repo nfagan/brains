@@ -1,5 +1,8 @@
 function free_stim(calibration_data, key_map)
 
+import brains.arduino.calino.send_bounds;
+import brains.arduino.calino.send_stim_param;
+
 conf = brains.config.load();
 
 screen_rect = conf.CALIBRATION.full_rect;
@@ -9,29 +12,35 @@ stim_baud = 9600;
 
 stim_comm = brains.arduino.calino.init_serial( stim_port, stim_baud );
 
-eye_rect = both_eyes(calibration_data, key_map, padding_info, const);
+own_eyes = get_eye_rect(calibration_data, key_map, padding_info, const);
+own_face = get_face_rect();
+own_mouth = get_mouth_rect();
 
-require_sync = conf.INTERFACE.require_synch;
 is_master = conf.INTERFACE.is_master_arduino;
 
 tcp_comm = brains.server.get_tcp_comm();
 
 if ( is_master )
-  m2_eyes = await_rect( tcp_comm );
-  m2_face = await_rect( tcp_comm );
-  m2_mouth = await_rect( tcp_comm );
+  other_eyes = await_rect( tcp_comm );
+  other_face = await_rect( tcp_comm );
+  other_mouth = await_rect( tcp_comm );
 else
-  send_rect( tcp_comm, eye_rect );
-  send_rect( tcp_comm, face_rect );
-  send_rect( tcp_comm, mouth_rect );
+  send_rect( tcp_comm, own_eyes );
+  send_rect( tcp_comm, own_face );
+  send_rect( tcp_comm, own_mouth );
 end
 
 send_bounds( stim_comm, 'm1', 'screen', screen_rect );
 send_bounds( stim_comm, 'm2', 'screen', screen_rect );
-send_bounds( stim_comm, 'm1', 'eyes', eye_rect );
-send_bounds( stim_comm, 'm2', 'eyes', [100, 0, 101, 1024*3] );
-send_bounds( stim_comm, 'm1', 'face', [1024, 0, 100, 200] );
-send_bounds( stim_comm, 'm2', 'mouth', [0, 0, 100, 200] );
+
+send_bounds( stim_comm, 'm1', 'eyes', own_eyes );
+send_bounds( stim_comm, 'm2', 'eyes', other_eyes );
+
+send_bounds( stim_comm, 'm1', 'face', own_face);
+send_bounds( stim_comm, 'm2', 'face', other_face );
+
+send_bounds( stim_comm, 'm1', 'mouth', own_mouth );
+send_bounds( stim_comm, 'm2', 'mouth', other_mouth );
 
 end
 
@@ -43,6 +52,11 @@ send_when_ready( obj, rect(3:4) );
 end
 
 function rect = await_rect( obj )
+
+if ( obj.bypass )
+  rect = zeros( 1, 4 ); 
+  return; 
+end
 
 recta = await_data( obj, 'gaze' );
 rectb = await_data( obj, 'gaze' );

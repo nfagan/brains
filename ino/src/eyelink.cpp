@@ -113,6 +113,14 @@ void el_manager::update()
 	m_rois.update(gaze_x, gaze_y);
 }
 
+coord el_manager::get_position() const
+{
+	coord res;
+	res.x = gaze_x;
+	res.y = gaze_y;
+	return res;
+}
+
 float el_manager::update_one(int pin, int min_i, int max_i)
 {
 	int level = analogRead(pin);

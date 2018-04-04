@@ -1,5 +1,4 @@
-#include "eyelink.h"
-#include "stimulation.h"
+#include "brains.h"
 
 #define __DEBUG__
 #define __PRINT_M1_GAZE__
@@ -30,9 +29,9 @@ struct IDS
     const char stim_param = 't';
     const char stim_stop_start = 'r';
     const char global_stim_timeout = 'q';
-	  const char probability = 'y';
-	  const char frequency = 'u';
-	  const char protocol = 'i';
+  	const char probability = 'y';
+  	const char frequency = 'u';
+	const char protocol = 'i';
     const char screen = 's';
     const char eyes = 'e';
     const char mouth = 'm';
@@ -51,6 +50,7 @@ struct PINS
     const int m2_x = 2;
     const int m2_y = 3;
     const int stimulation_trigger = 4;
+    const int plex_sync = 5;
 } pins;
 
 //
@@ -58,6 +58,12 @@ struct PINS
 //
 
 stimulation_protocol STIM_PROTOCOL(pins.stimulation_trigger);
+
+//
+//  plex sync
+//
+
+util::pulse plex_sync(pins.plex_sync);
 
 //
 //  main
@@ -138,6 +144,8 @@ void protocol_probabilistic()
         
         if (STIM_PROTOCOL.conditional_stimulate(i, timing::this_frame))
         {
+            plex_sync.deliver(50);
+
             n_stim++;
             Serial.println("STIMULATE");
 
@@ -164,47 +172,54 @@ void protocol_gaze_event()
 {   
     for (unsigned int i = 0; i < ROI_INDICES::N_ROI_INDICES; i++)
     {
-        bool m1_in = m1_gaze->in_bounds((ROI_INDICES::ROI_INDICES) i);
-        bool m2_in = m2_gaze->in_bounds((ROI_INDICES::ROI_INDICES) i);
+    	ROI_INDICES::ROI_INDICES index = i;
+
+        bool m1_in = m1_gaze->in_bounds(index);
+        bool m2_in = m2_gaze->in_bounds(index);
+
         bool mut = m1_in && m2_in;
         bool any = m1_in || m2_in;
+        
+        bool criterion = false;
 
         switch (PROTOCOLS::current_protocol)
         {
             case PROTOCOLS::MUTUAL_EVENT:
-                if (mut && STIM_PROTOCOL.conditional_stimulate(i, timing::this_frame))
-                {
-                    //
-                }
+            	criterion = mut;
                 break;
             case PROTOCOLS::M1_EXCLUSIVE_EVENT:
-                if (m1_in && STIM_PROTOCOL.conditional_stimulate(i, timing::this_frame))
-                {
-                    //
-                }
+                criterion = m1_in && !m2_in;
                 break;
             case PROTOCOLS::M2_EXCLUSIVE_EVENT:
-                if (m2_in && STIM_PROTOCOL.conditional_stimulate(i, timing::this_frame))
-                {
-                    //
-                }
+                criterion = m2_in && !m1_in;
                 break;
             case PROTOCOLS::EXCLUSIVE_EVENT:
-                if (!mut && STIM_PROTOCOL.conditional_stimulate(i, timing::this_frame))
-                {
-                    //
-                }
+            	criterion = (m1_in || m2_in) && !mut;
                 break;
             case PROTOCOLS::ANY_EVENT:
-                if (any && STIM_PROTOCOL.conditional_stimulate(i, timing::this_frame))
-                {
-                    //
-                }
+                criterion = any;
                 break;
             default:
                 break;
         }
+
+        if (criterion && STIM_PROTOCOL.conditional_stimulate(i, timing::this_frame))
+        {
+            plex_sync.deliver(50);
+        }
     }
+}
+
+void handle_new_protocol(int roi_index, PROTOCOLS::PROTOCOLS new_protocol)
+{
+	if (new_protocol == PROTOCOLS::PROBABILISTIC)
+	{
+		STIM_PROTOCOL.set_stimulation_mode(roi_index, STIMULATION_MODES::INTERVAL);
+	}
+	else
+	{
+		STIM_PROTOCOL.set_stimulation_mode(roi_index, STIMULATION_MODES::EVENT);	
+	}
 }
 
 void handle_new_stim_param()
@@ -232,6 +247,7 @@ void handle_new_stim_param()
         else
         {
             PROTOCOLS::current_protocol = (PROTOCOLS::PROTOCOLS) param;
+            handle_new_protocol(roi_index, PROTOCOLS::current_protocol);
         }
     }
 	else if (id == ids.probability)
@@ -245,28 +261,28 @@ void handle_new_stim_param()
 	}
 	else if (id == ids.frequency)
 	{
-		    bool status = STIM_PROTOCOL.set_frequency(roi_index, param);
+		bool status = STIM_PROTOCOL.set_frequency(roi_index, param);
 
         if (!status)
         {
             response = ids.error;
         }
 	}
-  else if (id == ids.global_stim_timeout)
-  {
-    if (param == 0)
-    {
-      STIM_PROTOCOL.set_is_global_stimulation_timeout(false);
-    }
-    else if (param == 1)
-    {
-      STIM_PROTOCOL.set_is_global_stimulation_timeout(true);
-    }
-    else
-    {
-      response = ids.error;
-    }
-  }
+  	else if (id == ids.global_stim_timeout)
+  	{
+	    if (param == 0)
+	    {
+	      	STIM_PROTOCOL.set_is_global_stimulation_timeout(false);
+	    }
+	    else if (param == 1)
+	    {
+	      	STIM_PROTOCOL.set_is_global_stimulation_timeout(true);
+	    }
+	    else
+	    {
+	      	response = ids.error;
+	    }
+	}
 	else if (id == ids.stim_stop_start)
 	{
 		if (param == 0)
@@ -355,7 +371,7 @@ void handle_new_bounds()
 
 int get_roi_index_from_id(char roi_id)
 {
-	  if (roi_id == ids.screen) return ROI_INDICES::screen;
+    if (roi_id == ids.screen) return ROI_INDICES::screen;
     else if (roi_id == ids.face) return ROI_INDICES::face;
     else if (roi_id == ids.eyes) return ROI_INDICES::eyes;
     else if (roi_id == ids.mouth) return ROI_INDICES::mouth;
@@ -432,7 +448,14 @@ void loop()
 
     STIM_PROTOCOL.update(timing::delta);
 
+    plex_sync.update(timing::delta);
+
     handle_stimulation();
 
     timing::last_frame = timing::this_frame;
+
+    if (timing::delta > 1)
+    {
+        Serial.println("Computation time exceeded 1ms");
+    }
 }

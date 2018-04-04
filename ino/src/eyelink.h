@@ -23,6 +23,12 @@ struct rois
 	void print(HardwareSerial *serial);
 };
 
+struct coord
+{
+	float x;
+	float y;
+};
+
 class el_manager
 {
 public:
@@ -39,6 +45,8 @@ public:
 	void init_pins();
 	void set_rect_element(ROI_INDICES::ROI_INDICES index, unsigned int element, long value);
 	bool in_bounds(ROI_INDICES::ROI_INDICES index);
+
+	coord get_position() const;
 
 	static float to_pixels(int level, int denom, int screen_min, int screen_max);
 

@@ -6,6 +6,7 @@ stimulation_params::stimulation_params()
 	frequency = 0;
 	probability = 0;
 	ms_remaining = 0;
+	stimulation_mode = STIMULATION_MODES::EVENT;
 }
 
 stimulation_params::~stimulation_params()
@@ -18,11 +19,23 @@ void stimulation_params::mark_stimulation_onset()
 	ms_remaining = frequency;
 }
 
+bool stimulation_params::ellapsed() const
+{
+	return ms_remaining == 0;
+}
+
 void stimulation_params::update(unsigned long delta)
 {
 	if (ms_remaining == 0)
 	{
-		ms_remaining = frequency;
+		if (stimulation_mode == STIMULATION_MODES::INTERVAL)
+		{
+			ms_remaining = frequency;
+		}
+		else
+		{
+			return;
+		}
 	}
 
 	unsigned long result = ms_remaining - delta;
@@ -38,13 +51,8 @@ void stimulation_params::update(unsigned long delta)
 	}
 }
 
-bool stimulation_params::can_stimulate() const
+bool stimulation_params::probability_check() const
 {
-	if (ms_remaining > 0)
-	{
-		return false;
-	}
-
 	//	integer in range [0, 99]
 	int p = random(100) + 1;
 
@@ -52,8 +60,6 @@ bool stimulation_params::can_stimulate() const
 	{
 		return true;
 	}
-  
-//   Serial.println("REJECTED");
 
 	return false;
 }
@@ -62,12 +68,14 @@ bool stimulation_params::can_stimulate() const
 //	stim protocol
 //
 
-stimulation_protocol::stimulation_protocol(int pin)
+stimulation_protocol::stimulation_protocol(unsigned int pin)
 {
 	for (int i = 0; i < ROI_INDICES::N_ROI_INDICES; i++)
 	{
 		m_allow_stimulation[i] = 0;
 	}
+
+	pinMode(pin, OUTPUT);
 
 	m_last_stimulation_time = 0;
 	m_last_stimulation_duration = 0;
@@ -93,10 +101,24 @@ void stimulation_protocol::disallow_stimulation(unsigned int index)
 	m_allow_stimulation[index] = 0;
 }
 
+
+//	conditional_stimulate: deliver stimulation if probability and timing criteria
+//		are satisifed. Return whether stimulation was triggered.
 bool stimulation_protocol::conditional_stimulate(unsigned int index, unsigned long current_time)
 {
-	if (!m_allow_stimulation[index] || !m_stimulation_params[index].can_stimulate())
+	stimulation_params* params = &m_stimulation_params[index];
+
+	if (!m_allow_stimulation[index] || !params->ellapsed())
 	{
+		return false;
+	}
+
+	//	make non-stimulated trials consistent with stimulated trials, 
+	//	resetting the timer, despite not stimulating.
+	if (!params->probability_check())
+	{
+		params->mark_stimulation_onset();
+
 		return false;
 	}
 
@@ -111,7 +133,7 @@ bool stimulation_protocol::conditional_stimulate(unsigned int index, unsigned lo
 	bool is_overlapping_stim = m_stim_pulse_ms_remaining > 0;
 
 	m_last_stimulation_time = current_time;
-	m_last_stimulation_duration = m_stimulation_params[index].frequency;
+	m_last_stimulation_duration = params->frequency;
 	m_last_stimulation_index = index;
 	m_stim_pulse_ms_remaining = STIM_PULSE_DURATION;
 
@@ -130,14 +152,14 @@ bool stimulation_protocol::conditional_stimulate(unsigned int index, unsigned lo
 		digitalWrite(m_stimulation_pin, HIGH);
 	}
   
-  m_stimulation_params[index].mark_stimulation_onset();
+  	params->mark_stimulation_onset();
 
 	return true;
 }
 
 bool stimulation_protocol::ellapsed(unsigned int index)
 {
-  return m_stimulation_params[index].ms_remaining == 0;
+  return m_stimulation_params[index].ellapsed();
 }
 
 void stimulation_protocol::update(unsigned long delta)
@@ -161,6 +183,11 @@ void stimulation_protocol::update(unsigned long delta)
 		digitalWrite(m_stimulation_pin, LOW);
 		m_stim_pulse_ms_remaining = 0;
 	}
+}
+
+void stimulation_protocol::set_stimulation_mode(unsigned int index, STIMULATION_MODES::STIMULATION_MODES to)
+{
+	m_stimulation_params[index].stimulation_mode = to;
 }
 
 void stimulation_protocol::set_is_global_stimulation_timeout(bool state)
