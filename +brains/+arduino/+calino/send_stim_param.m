@@ -7,6 +7,7 @@ if ( strcmp(roi_name, 'all') )
   for i = 1:numel(rois)
     brains.arduino.calino.send_stim_param( comm, rois{i}, param_name, param );
   end
+  return;
 end
 
 ids = brains.arduino.calino.get_ids();

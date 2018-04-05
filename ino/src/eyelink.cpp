@@ -10,6 +10,15 @@ bounds::bounds()
 	{
 		rect[i] = 0;
 	}
+  
+  state_changed = false;
+}
+
+void bounds::update(float x, float y)
+{
+    bool prev = in;
+    check(x, y);
+    state_changed = prev != in;    
 }
 
 void bounds::check(float x, float y)
@@ -52,7 +61,7 @@ void rois::update(float x, float y)
 {
 	for (unsigned i = 0; i < n_rects; ++i)
 	{
-		rects[i].check(x, y);
+    rects[i].update(x, y);
 	}
 }
 
@@ -146,6 +155,11 @@ void el_manager::set_rect_element(ROI_INDICES::ROI_INDICES index, unsigned int e
 		return;
 	}
 	m_rois.rects[index].rect[element] = value;
+}
+
+bool el_manager::state_changed(ROI_INDICES::ROI_INDICES index)
+{
+  return m_rois.rects[index].state_changed;
 }
 
 bool el_manager::in_bounds(ROI_INDICES::ROI_INDICES index)

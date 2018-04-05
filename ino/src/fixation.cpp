@@ -1,13 +1,26 @@
 #include "fixation.h"
 
-fixation_detection::fixation_detection()
+fixation_detection::fixation_detection(float threshold)
 {
 	m_place_coord_index = 0;
+  m_threshold = threshold;
+  m_dispersion = 0.0f;
+}
+
+fixation_detection::~fixation_detection()
+{
+  //
 }
 
 void fixation_detection::update(coord new_coord)
 {
 	insert_coord(new_coord);
+  m_dispersion = get_dispersion();  
+}
+
+bool fixation_detection::is_fixating() const
+{
+  return m_dispersion < m_threshold;
 }
 
 void fixation_detection::insert_coord(coord new_coord)

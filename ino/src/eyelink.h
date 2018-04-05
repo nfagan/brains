@@ -8,8 +8,10 @@ struct bounds
 	static const int size = ROI_INDICES::N_ROI_INDICES;
 	long rect[size];
 	bool in;
+  bool state_changed;
 
 	bounds();
+  void update(float x, float y);
 	void check(float x, float y);
 	void print(HardwareSerial *serial);
 };
@@ -45,6 +47,7 @@ public:
 	void init_pins();
 	void set_rect_element(ROI_INDICES::ROI_INDICES index, unsigned int element, long value);
 	bool in_bounds(ROI_INDICES::ROI_INDICES index);
+  bool state_changed(ROI_INDICES::ROI_INDICES index);
 
 	coord get_position() const;
 

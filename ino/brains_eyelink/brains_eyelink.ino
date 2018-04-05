@@ -50,7 +50,7 @@ struct PINS
     const int m2_x = 2;
     const int m2_y = 3;
     const int stimulation_trigger = 4;
-    const int plex_sync = 5;
+    const int plex_sync = 22;
 } pins;
 
 //
@@ -64,6 +64,13 @@ stimulation_protocol STIM_PROTOCOL(pins.stimulation_trigger);
 //
 
 util::pulse plex_sync(pins.plex_sync);
+
+//
+//  fixation detection
+//
+
+fixation_detection m1_fix_detect(100.0f);
+fixation_detection m2_fix_detect(100.0f);
 
 //
 //  main
@@ -134,10 +141,7 @@ void handle_stimulation()
 //  protocol_probabilistic: Stimulate regardless of looking events.
 //
 void protocol_probabilistic()
-{
-    static unsigned long n_stim = 0;
-    static unsigned long n_reject = 0;
-    
+{    
     for (int i = 0; i < ROI_INDICES::N_ROI_INDICES; i++)
     {
         bool ellapsed = STIM_PROTOCOL.ellapsed(i);
@@ -145,22 +149,6 @@ void protocol_probabilistic()
         if (STIM_PROTOCOL.conditional_stimulate(i, timing::this_frame))
         {
             plex_sync.deliver(50);
-
-            n_stim++;
-            Serial.println("STIMULATE");
-
-            Serial.println(n_stim);
-            Serial.println(n_reject);
-            Serial.println("--");
-        }
-        else if (i == 1 && ellapsed)
-        {
-            n_reject++;
-            Serial.println("REJECT");
-            
-            Serial.println(n_stim);
-            Serial.println(n_reject);
-            Serial.println("--");
         }
     }
 }
@@ -170,6 +158,11 @@ void protocol_probabilistic()
 //
 void protocol_gaze_event()
 {   
+
+    bool m1_fix = m1_fix_detect.is_fixating();
+    bool m2_fix = m2_fix_detect.is_fixating();
+    bool both_fix = m1_fix && m2_fix;
+  
     for (unsigned int i = 0; i < ROI_INDICES::N_ROI_INDICES; i++)
     {
     	ROI_INDICES::ROI_INDICES index = i;
@@ -177,7 +170,11 @@ void protocol_gaze_event()
         bool m1_in = m1_gaze->in_bounds(index);
         bool m2_in = m2_gaze->in_bounds(index);
 
-        bool mut = m1_in && m2_in;
+        bool m1_changed = m1_gaze->state_changed(index);
+        bool m2_changed = m2_gaze->state_changed(index);
+        bool any_changed = m1_changed || m2_changed;
+
+        bool mut = m1_in && m2_in && (m1_changed || m2_changed);
         bool any = m1_in || m2_in;
         
         bool criterion = false;
@@ -185,19 +182,19 @@ void protocol_gaze_event()
         switch (PROTOCOLS::current_protocol)
         {
             case PROTOCOLS::MUTUAL_EVENT:
-            	criterion = mut;
+            	criterion = mut && both_fix;
                 break;
             case PROTOCOLS::M1_EXCLUSIVE_EVENT:
-                criterion = m1_in && !m2_in;
+                criterion = m1_in && !m2_in && m1_changed && m1_fix;
                 break;
             case PROTOCOLS::M2_EXCLUSIVE_EVENT:
-                criterion = m2_in && !m1_in;
+                criterion = m2_in && !m1_in && m2_changed && m2_fix;
                 break;
             case PROTOCOLS::EXCLUSIVE_EVENT:
-            	criterion = (m1_in || m2_in) && !mut;
+            	criterion = (m1_in || m2_in) && !mut && any_changed;
                 break;
             case PROTOCOLS::ANY_EVENT:
-                criterion = any;
+                criterion = any && any_changed;
                 break;
             default:
                 break;
@@ -454,8 +451,9 @@ void loop()
 
     timing::last_frame = timing::this_frame;
 
-    if (timing::delta > 1)
+    if (timing::delta > 0)
     {
-        Serial.println("Computation time exceeded 1ms");
+      m1_fix_detect.update(m1_gaze->get_position());
+      m2_fix_detect.update(m2_gaze->get_position());
     }
 }
