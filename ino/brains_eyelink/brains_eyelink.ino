@@ -162,6 +162,11 @@ void protocol_gaze_event()
     bool m1_fix = m1_fix_detect.is_fixating();
     bool m2_fix = m2_fix_detect.is_fixating();
     bool both_fix = m1_fix && m2_fix;
+
+    bool m1_changed = m1_fix_detect.state_changed();
+    bool m2_changed = m2_fix_detect.state_changed();
+    bool both_changed = m1_changed && m2_changed;
+    bool any_changed = m1_changed || m2_changed;
   
     for (unsigned int i = 0; i < ROI_INDICES::N_ROI_INDICES; i++)
     {
@@ -170,11 +175,7 @@ void protocol_gaze_event()
         bool m1_in = m1_gaze->in_bounds(index);
         bool m2_in = m2_gaze->in_bounds(index);
 
-        bool m1_changed = m1_gaze->state_changed(index);
-        bool m2_changed = m2_gaze->state_changed(index);
-        bool any_changed = m1_changed || m2_changed;
-
-        bool mut = m1_in && m2_in && (m1_changed || m2_changed);
+        bool mut = m1_in && m2_in && any_changed;
         bool any = m1_in || m2_in;
         
         bool criterion = false;
@@ -453,7 +454,7 @@ void loop()
 
     if (timing::delta > 0)
     {
-      m1_fix_detect.update(m1_gaze->get_position());
-      m2_fix_detect.update(m2_gaze->get_position());
+        m1_fix_detect.update(m1_gaze->get_position());
+        m2_fix_detect.update(m2_gaze->get_position());
     }
 }

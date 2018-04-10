@@ -3,24 +3,36 @@
 fixation_detection::fixation_detection(float threshold)
 {
 	m_place_coord_index = 0;
-  m_threshold = threshold;
-  m_dispersion = 0.0f;
+  	m_threshold = threshold;
+  	m_dispersion = 0.0f;
+  	m_is_fixating = false;
+  	m_state_changed = false;
 }
 
 fixation_detection::~fixation_detection()
 {
-  //
+	//
 }
 
 void fixation_detection::update(coord new_coord)
 {
 	insert_coord(new_coord);
-  m_dispersion = get_dispersion();  
+  	m_dispersion = get_dispersion();
+
+  	bool tmp_state = m_is_fixating;
+
+  	m_is_fixating = m_dispersion < m_threshold;
+  	m_state_changed = tmp_state != m_is_fixating;
 }
 
 bool fixation_detection::is_fixating() const
 {
-  return m_dispersion < m_threshold;
+	return m_is_fixating;
+}
+
+bool fixation_detection::state_changed() const
+{
+	return m_state_changed;
 }
 
 void fixation_detection::insert_coord(coord new_coord)
