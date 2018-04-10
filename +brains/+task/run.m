@@ -69,6 +69,7 @@ errors = struct( ...
   , 'm2_looked_away_from_gaze_cue', false ...
   , 'm2_no_choice', false ...
   , 'm2_fix_delay_no_look', false ...
+  , 'm2_broke_response_cue_fixation', false ...
   , 'm1_wrong_target', false ...
   , 'm1_no_choice', false ...
   );
@@ -305,6 +306,7 @@ while ( true )
       else
         STATES.current = STATES.error;
         errors.initial_fixation_not_met = true;
+        initiated_error = true;
       end
       tcp_comm.send_when_ready( 'state', STATES.current );
       first_entry = true;
@@ -788,6 +790,8 @@ while ( true )
       if ( ~m2_active_target.in_bounds() && ...
           (TIMER.get_time('response') > 1 || m2_entered_fix_targ) )
         made_error = true;
+        initiated_error = true;
+        errors.m2_broke_response_cue_fixation = true;
         tcp_comm.send_when_ready( 'error', 5 );
 %         %   MARK: goto: error;
         STATES.current = STATES.error;
@@ -937,15 +941,20 @@ while ( true )
       tcp_comm.await_matching_state( STATES.current );
       PROGRESS.error = TIMER.get_time( 'task' );
       TIMER.reset_timers( 'error' );
-      if ( errors.initial_fixation_not_met )
+      is_initial_fix_err = errors.initial_fixation_not_met || errors.broke_fixation;
+      is_cue_fix_err = errors.m2_broke_response_cue_fixation || ...
+        errors.m2_looked_away_from_gaze_cue;
+      if ( is_initial_fix_err )
         err_cue = STIMULI.fixation_error_cue;
-      else
+      elseif ( is_cue_fix_err )
         err_cue = STIMULI.error_cue;
+      else
+        err_cue = STIMULI.m2_wrong_cue;
       end
       did_show = false;
       first_entry = false;
     end
-    if ( ~did_show && initiated_error )
+    if ( ~did_show && initiated_error && ~errors.m2_no_choice )
       err_cue.draw();
       Screen( 'Flip', opts.WINDOW.index );
       did_show = true;
