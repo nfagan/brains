@@ -655,7 +655,8 @@ while ( true )
         is_fixating = 1;
         did_look = true;
       elseif ( did_look )
-        errors.broke_fixation = true;
+%         errors.broke_fixation = true;
+        errors.m2_broke_response_cue_fixation = true;
         made_error = true;
         initiated_error = true;
         tcp_comm.send_when_ready( 'error', 4 );
@@ -943,7 +944,8 @@ while ( true )
       TIMER.reset_timers( 'error' );
       is_initial_fix_err = errors.initial_fixation_not_met || errors.broke_fixation;
       is_cue_fix_err = errors.m2_broke_response_cue_fixation || ...
-        errors.m2_looked_away_from_gaze_cue;
+        errors.m2_looked_away_from_gaze_cue || ...
+        errors.m2_fix_delay_no_look;
       if ( is_initial_fix_err )
         err_cue = STIMULI.fixation_error_cue;
       elseif ( is_cue_fix_err )
