@@ -1,6 +1,6 @@
 config_p = 'C:\Repositories\brains\config\config_files\m2\';
 
-fname = fullfile( config_p, 'Ephron_SACCADE_TaskTraining_bigtargets.mat' );
+fname = fullfile( config_p, 'Ephron_FIXATION_TaskTraining.mat' );
 
 conf = shared_utils.io.fload( fname );
 
