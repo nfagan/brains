@@ -1,4 +1,4 @@
-function keys = calibrate_far_plane( pts, light_dur )
+function keys = calibrate_far_plane( pts, light_dur, key_code_map )
 
 %   CALIBRATE_FAR_PLANE -- Calibrate with distant LEDs.
 %
@@ -17,7 +17,9 @@ assert( ~isempty(pts), 'Points can''t be empty.' );
 arrayfun( @(x) assert(isa(x, 'double') && mod(x, 1) == 0 ...
       , 'Points must be whole-number doubles.'), pts );
 
-key_code_map = brains.arduino.calino.get_key_code_led_index_map();
+if ( nargin < 3 )
+  key_code_map = brains.arduino.calino.get_key_code_led_index_map();
+end
     
 try
   fprintf( '\n Initializing ... ' );
