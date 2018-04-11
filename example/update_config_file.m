@@ -18,3 +18,19 @@ conf.STIMULI.m2_wrong_cue = struct( ...
 conf.SERIAL.outputs.reward = [ 2, 1 ];
 
 save( fname, 'conf' );
+
+%%
+
+config_mats = shared_utils.io.find( config_p, '.mat', true );
+
+for i = 1:numel(config_mats)
+  conf = shared_utils.io.fload( config_mats{i} );
+  
+  if ( isfield(conf.CALIBRATION, 'far_plane_type') )
+    continue;
+  end
+  
+  conf.CALIBRATION.far_plane_type = 'outer';
+  
+  save( config_mats{i}, 'conf' );
+end
