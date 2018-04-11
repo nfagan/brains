@@ -1,4 +1,4 @@
-function keys = calibrate_far_plane( pts, light_dur, key_code_map )
+function keys = calibrate_far_plane( key_code_map, light_dur )
 
 %   CALIBRATE_FAR_PLANE -- Calibrate with distant LEDs.
 %
@@ -9,15 +9,11 @@ function keys = calibrate_far_plane( pts, light_dur, key_code_map )
 %     the active target, returning the results in `keys`.
 %
 %     IN:
-%       - `pts` (double)
+%       - `key_code_map` (containers.Map)
 %     OUT:
 %       - `keys` (struct)
 
-assert( ~isempty(pts), 'Points can''t be empty.' );
-arrayfun( @(x) assert(isa(x, 'double') && mod(x, 1) == 0 ...
-      , 'Points must be whole-number doubles.'), pts );
-
-if ( nargin < 3 )
+if ( nargin < 1 )
   key_code_map = brains.arduino.calino.get_key_code_led_index_map();
 end
     
@@ -43,13 +39,23 @@ try
   ListenChar( 2 );
   reward_key_timer = NaN;
   keys = struct();
+  
+  key_code_map_k = key_code_map.keys();
+  key_code_map_v = key_code_map.values();
+  num_pad_zero = 96;
 
-  for i = 1:numel(pts)
-    keys.(sprintf('key__%d', pts(i))) = struct( ...
+  for i = 1:numel(key_code_map_k)
+    key_n = key_code_map_v{i} - num_pad_zero;
+    
+    if ( key_n == 0 )
+      key_n = 10;
+    end
+    
+    keys.(sprintf('key__%d', key_n)) = struct( ...
         'coordinates', [0, 0] ...
       , 'was_pressed', false ...
-      , 'key_code', key_code_map(pts(i)) ...
-      , 'led_index', pts(i) ...
+      , 'key_code', key_code_map_v{i} ...
+      , 'led_index',key_code_map_k{i} ...
       , 'timer', NaN ...
       );
   end

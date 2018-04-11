@@ -401,7 +401,7 @@ while ( true )
       end
       if ( ~isnan(other_fix_met) && other_fix_met )
         %   MARK: goto: cue_display
-        serial_comm.reward( 1, REWARDS.bridge );
+%         serial_comm.reward( 1, REWARDS.bridge );
         STATES.current = STATES.cue_display2;
         tcp_comm.send_when_ready( 'state', STATES.current );
         first_entry = true;

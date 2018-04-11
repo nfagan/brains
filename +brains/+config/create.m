@@ -52,6 +52,7 @@ CALIBRATION.full_rect =     [ 0, 0, 3072, 768 ];
 CALIBRATION.cal_rect =      [ 1024, 0, 2048, 768 ];
 CALIBRATION.n_points =      5;
 CALIBRATION.target_size =   50;
+CALIBRATION.far_plane_type = 'outer'; % 'inner'
 
 % - STRUCTURE - %
 STRUCTURE.rule_cue_type = 'gaze';
