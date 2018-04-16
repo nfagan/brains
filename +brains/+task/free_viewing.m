@@ -114,7 +114,7 @@ try
     end
     
     if ( first_invocation )
-      brains.util.draw_far_plane_rois( key_file, 20, 1, tracker.bypass );
+%       brains.util.draw_far_plane_rois( key_file, 20, 1, tracker.bypass );
 %       brains.util.draw_eyelink_rois( conf, tracker, dist_file, roi_file, screen_constants, other_monk, true );
       first_invocation = false;
     else

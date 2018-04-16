@@ -7,6 +7,7 @@ fixation_detection::fixation_detection(float threshold)
   	m_dispersion = 0.0f;
   	m_is_fixating = false;
   	m_state_changed = false;
+    m_last_update = 0;
 }
 
 fixation_detection::~fixation_detection()
@@ -14,15 +15,23 @@ fixation_detection::~fixation_detection()
 	//
 }
 
-void fixation_detection::update(coord new_coord)
+void fixation_detection::update(coord new_coord, unsigned long current_time)
 {
-	insert_coord(new_coord);
+    insert_coord(new_coord);
   	m_dispersion = get_dispersion();
 
   	bool tmp_state = m_is_fixating;
 
   	m_is_fixating = m_dispersion < m_threshold;
-  	m_state_changed = tmp_state != m_is_fixating;
+//   	m_state_changed = tmp_state != m_is_fixating;
+    m_state_changed = m_is_fixating && !tmp_state;
+    
+    m_last_update = current_time;
+}
+
+bool fixation_detection::should_update(unsigned long current_time) const
+{
+    return current_time - m_last_update > fixation_detection::UPDATE_INTERVAL;
 }
 
 bool fixation_detection::is_fixating() const
@@ -44,7 +53,7 @@ void fixation_detection::insert_coord(coord new_coord)
 	else
 	{
 		shift_left();
-		m_coords[m_place_coord_index-1] = new_coord;
+		m_coords[N_SAMPLES-1] = new_coord;
 	}
 }
 
@@ -85,6 +94,6 @@ float fixation_detection::get_dispersion()
 			first_iteration = false;
 		}
 	}
-
-	return (maxs.x + maxs.y) / 2;
+  
+  return (maxs.x + maxs.y) / 2.0f;
 }

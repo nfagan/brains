@@ -18,7 +18,7 @@ void bounds::update(float x, float y)
 {
     bool prev = in;
     check(x, y);
-    state_changed = prev != in;    
+    state_changed = prev != in;
 }
 
 void bounds::check(float x, float y)

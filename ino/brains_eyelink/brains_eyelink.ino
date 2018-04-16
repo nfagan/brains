@@ -49,7 +49,7 @@ struct PINS
     const int m1_y = 1;
     const int m2_x = 2;
     const int m2_y = 3;
-    const int stimulation_trigger = 4;
+    const int stimulation_trigger = 23;
     const int plex_sync = 22;
 } pins;
 
@@ -69,8 +69,10 @@ util::pulse plex_sync(pins.plex_sync);
 //  fixation detection
 //
 
-fixation_detection m1_fix_detect(100.0f);
-fixation_detection m2_fix_detect(100.0f);
+const float FIX_DISPERSION = 20.0f;
+
+fixation_detection m1_fix_detect(FIX_DISPERSION);
+fixation_detection m2_fix_detect(FIX_DISPERSION);
 
 //
 //  main
@@ -143,9 +145,7 @@ void handle_stimulation()
 void protocol_probabilistic()
 {    
     for (int i = 0; i < ROI_INDICES::N_ROI_INDICES; i++)
-    {
-        bool ellapsed = STIM_PROTOCOL.ellapsed(i);
-        
+    {        
         if (STIM_PROTOCOL.conditional_stimulate(i, timing::this_frame))
         {
             plex_sync.deliver(50);
@@ -158,44 +158,53 @@ void protocol_probabilistic()
 //
 void protocol_gaze_event()
 {   
-
+    static bool m1_roi_criterion[ROI_INDICES::N_ROI_INDICES] = { true };
+    static bool m2_roi_criterion[ROI_INDICES::N_ROI_INDICES] = { true };
+  
     bool m1_fix = m1_fix_detect.is_fixating();
     bool m2_fix = m2_fix_detect.is_fixating();
     bool both_fix = m1_fix && m2_fix;
 
-    bool m1_changed = m1_fix_detect.state_changed();
-    bool m2_changed = m2_fix_detect.state_changed();
-    bool both_changed = m1_changed && m2_changed;
-    bool any_changed = m1_changed || m2_changed;
+    bool m1_fix_changed = m1_fix_detect.state_changed();
+    bool m2_fix_changed = m2_fix_detect.state_changed();
+    
+    bool both_changed = m1_fix_changed && m2_fix_changed;
+    bool any_changed = m1_fix_changed || m2_fix_changed;
   
     for (unsigned int i = 0; i < ROI_INDICES::N_ROI_INDICES; i++)
     {
-    	ROI_INDICES::ROI_INDICES index = i;
+    	  ROI_INDICES::ROI_INDICES index = i;
 
         bool m1_in = m1_gaze->in_bounds(index);
         bool m2_in = m2_gaze->in_bounds(index);
 
         bool mut = m1_in && m2_in && any_changed;
         bool any = m1_in || m2_in;
+
+        bool m1_roi_changed = m1_roi_criterion[i];
+        bool m2_roi_changed = m2_roi_criterion[i];
+
+        bool any_roi_changed = m1_roi_changed || m2_roi_changed;
         
         bool criterion = false;
 
         switch (PROTOCOLS::current_protocol)
         {
             case PROTOCOLS::MUTUAL_EVENT:
-            	criterion = mut && both_fix;
+            	  criterion = mut && both_fix && ((m1_fix_changed && m1_roi_changed) || 
+            	    (m2_fix_changed && m2_roi_changed));
                 break;
             case PROTOCOLS::M1_EXCLUSIVE_EVENT:
-                criterion = m1_in && !m2_in && m1_changed && m1_fix;
+                criterion = m1_in && !m2_in && m1_fix && m1_fix_changed && m1_roi_changed;
                 break;
             case PROTOCOLS::M2_EXCLUSIVE_EVENT:
-                criterion = m2_in && !m1_in && m2_changed && m2_fix;
+                criterion = m2_in && !m1_in && m2_fix_changed && m2_fix && m2_roi_changed;
                 break;
             case PROTOCOLS::EXCLUSIVE_EVENT:
-            	criterion = (m1_in || m2_in) && !mut && any_changed;
+            	  criterion = (m1_in || m2_in) && !mut && any_changed;
                 break;
             case PROTOCOLS::ANY_EVENT:
-                criterion = any && any_changed;
+                criterion = any && any_changed && any_roi_changed;
                 break;
             default:
                 break;
@@ -204,6 +213,26 @@ void protocol_gaze_event()
         if (criterion && STIM_PROTOCOL.conditional_stimulate(i, timing::this_frame))
         {
             plex_sync.deliver(50);
+
+            if (m1_in)
+            {
+                m1_roi_criterion[i] = false;
+            }
+
+            if (m2_in)
+            {
+                m2_roi_criterion[i] = false;
+            }
+        }
+
+        if (!m1_in)
+        {
+            m1_roi_criterion[i] = true;
+        }
+
+        if (!m2_in)
+        {
+            m2_roi_criterion[i] = true;
         }
     }
 }
@@ -450,11 +479,11 @@ void loop()
 
     handle_stimulation();
 
-    timing::last_frame = timing::this_frame;
-
-    if (timing::delta > 0)
+    if (m1_fix_detect.should_update(timing::this_frame))
     {
-        m1_fix_detect.update(m1_gaze->get_position());
-        m2_fix_detect.update(m2_gaze->get_position());
+        m1_fix_detect.update(m1_gaze->get_position(), timing::this_frame);
+        m2_fix_detect.update(m2_gaze->get_position(), timing::this_frame);
     }
+
+    timing::last_frame = timing::this_frame;
 }

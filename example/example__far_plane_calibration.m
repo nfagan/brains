@@ -15,8 +15,10 @@ light_dur = 1000;
 switch ( calibration_type )
   case 'outer'
     key_map = brains.arduino.calino.get_outer_key_code_led_index_map();
+    key_name_map = brains.arduino.calino.get_outer_calibration_key_roi_map();
   case 'inner'
     key_map = brains.arduino.calino.get_inner_key_code_led_index_map();
+    key_name_map = brains.arduino.calino.get_inner_calibration_key_roi_map();
   otherwise
     error( 'Unrecognized calibration type "%s".', calibration_type );
 end
@@ -24,5 +26,5 @@ end
 keys = brains.calibrate.calibrate_far_plane( key_map, light_dur );
 
 if ( save_data )
-  save( fullfile(data_dir, key_filename), 'keys', 'key_map', 'conf' );
+  save( fullfile(data_dir, key_filename), 'keys', 'key_name_map', 'key_map', 'conf' );
 end

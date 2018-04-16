@@ -1,6 +1,6 @@
 function example__free_viewing()
 
-key_file = brains.util.get_latest_far_plane_calibration();
+key_file = brains.util.get_latest_far_plane_calibration( [], true );
 
 reward_period = 8e3;
 % reward_amount = 400;
