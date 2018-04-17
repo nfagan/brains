@@ -1,6 +1,7 @@
 #pragma once
 
 #include "rois.h"
+#include "brandom.h"
 
 namespace STIMULATION_MODES {
 	enum STIMULATION_MODES
@@ -19,6 +20,7 @@ struct stimulation_params
 	void mark_stimulation_onset();
 	bool ellapsed() const;
 	bool probability_check() const;
+	void set_probability(int p);
 
 	int frequency;
 	int probability;
@@ -26,6 +28,8 @@ struct stimulation_params
 	STIMULATION_MODES::STIMULATION_MODES stimulation_mode;
 
 	unsigned long ms_remaining;
+
+	brandom randomizer;
 };
 
 class stimulation_protocol
@@ -47,7 +51,7 @@ public:
 	bool conditional_stimulate(unsigned int index, unsigned long current_time);
 
 private:
-	static const int STIM_PULSE_DURATION = 10;
+	static const int STIM_PULSE_DURATION = 50;
 
 	unsigned int m_stimulation_pin;
 	long m_stim_pulse_ms_remaining;

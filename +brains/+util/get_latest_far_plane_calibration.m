@@ -1,7 +1,11 @@
-function key = get_latest_far_plane_calibration(p)
+function key = get_latest_far_plane_calibration(p, file_only)
 
-if ( nargin < 1 )
+if ( nargin < 1 || isempty(p) )
   p = fullfile( brains.util.get_latest_data_dir_path(), 'calibration' );
+end
+
+if ( nargin < 2 )
+  file_only = true;
 end
 
 try
@@ -33,7 +37,7 @@ else
 end
 
 key = load( fullfile(p, file) );
-% key = key.(char(fieldnames(key)));
-key = key.keys;
-
+if ( file_only )
+  key = key.keys;
+end
 end

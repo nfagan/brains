@@ -7,11 +7,17 @@ stimulation_params::stimulation_params()
 	probability = 0;
 	ms_remaining = 0;
 	stimulation_mode = STIMULATION_MODES::EVENT;
+	randomizer.set_probability(0.0f);
 }
 
 stimulation_params::~stimulation_params()
 {
 	//
+}
+
+void stimulation_params::set_probability(int p)
+{
+	randomizer.set_probability((float)p / (float)100);
 }
 
 void stimulation_params::mark_stimulation_onset()
@@ -53,15 +59,7 @@ void stimulation_params::update(unsigned long delta)
 
 bool stimulation_params::probability_check() const
 {
-	//	integer in range [0, 99]
-	int p = random(100) + 1;
-
-	if (p >= (100 - probability))
-	{
-		return true;
-	}
-
-	return false;
+	return randomizer.next();
 }
 
 //
@@ -202,7 +200,7 @@ bool stimulation_protocol::set_probability(unsigned int index, int probability)
 		return false;
 	}
 
-	m_stimulation_params[index].probability = probability;
+	m_stimulation_params[index].set_probability(probability);
 
 	return true;
 }
