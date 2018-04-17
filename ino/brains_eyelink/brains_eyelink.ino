@@ -191,7 +191,7 @@ void protocol_gaze_event()
         switch (PROTOCOLS::current_protocol)
         {
             case PROTOCOLS::MUTUAL_EVENT:
-            	  criterion = mut && both_fix && ((m1_fix_changed && m1_roi_changed) || 
+                criterion = mut && both_fix && ((m1_fix_changed && m1_roi_changed) || 
             	    (m2_fix_changed && m2_roi_changed));
                 break;
             case PROTOCOLS::M1_EXCLUSIVE_EVENT:

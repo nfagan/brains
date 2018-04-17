@@ -15,7 +15,7 @@ public:
 
 private:
 	static const unsigned int N_SAMPLES = 4;
-  static const unsigned long UPDATE_INTERVAL = 50;
+  	static const unsigned long UPDATE_INTERVAL = 50;
 	coord m_coords[N_SAMPLES];
 	int m_place_coord_index;
   	float m_threshold;
