@@ -1,27 +1,57 @@
 function example__free_viewing()
 
+import brains.arduino.calino.bound_funcs.both_eyes;
+import brains.arduino.calino.bound_funcs.face_top_and_bottom;
+
 key_file = brains.util.get_latest_far_plane_calibration( [], false );
+padding_cm = brains.arduino.calino.define_padding();
+
+%
+%   reward
+%
 
 reward_period = 8e3;
-% reward_amount = 400;
 reward_amount = 0;
 task_time = 5 * 60;
 
-padding_info = brains.arduino.calino.define_padding();
+%
+%   padding info
+%
+
+padding_cm.eyes.x = 2.75;
+padding_cm.eyes.y = 2.75;
+padding_cm.face.x = 0;
+padding_cm.face.y = 0;
+padding_cm.mouth.x = 0;
+padding_cm.mouth.y = 0;
+
+%
+%   stimulation params
+%
+
+ids = brains.arduino.calino.get_ids();
+
+stim_params = struct();
+stim_params.probability = 100;
+stim_params.frequency = 100;
+stim_params.active_rois = { 'face', 'eyes' };
+stim_params.protocol = ids.stim_protocols.probabilistic;
+% stim_params.protocol = ids.stim_protocols.m1_exclusive_event
+% stim_params.protocol = ids.stim_protocols.m2_exclusive_event
+% stim_params.protocol = ids.stim_protocols.mutual_event
+
+
 consts = brains.arduino.calino.define_calibration_target_constants();
 key_map = key_file.key_name_map;
 key_file.keys = brains.arduino.calino.convert_key_struct( key_file.keys, key_file.key_map );
 
-padding_info.eyes.x = 2.75;
-padding_info.eyes.y = 2.75;
-padding_info.face.x = 0;
-padding_info.face.y = 0;
-
 bounds = struct();
-bounds.eyes = brains.arduino.calino.bound_funcs.both_eyes( key_file.keys, key_map, padding_info, consts );
-bounds.face = brains.arduino.calino.bound_funcs.face_top_and_bottom( key_file.keys, key_map, padding_info, consts );
+bounds.eyes = both_eyes( key_file.keys, key_map, padding_cm, consts );
+bounds.face = face_top_and_bottom( key_file.keys, key_map, padding_cm, consts );
+bounds.mouth = zeros( 1, 4 );
        
-brains.task.free_viewing( task_time, reward_period, reward_amount, key_file.keys, key_map, bounds );
+brains.task.free_viewing( task_time, reward_period ...
+  , reward_amount, key_file.keys, key_map, bounds, stim_params );
 
 %%
 

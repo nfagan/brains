@@ -1,4 +1,4 @@
-function opts = create()
+function opts = create(do_save)
 
 %   CREATE -- Create the config file.
 %
@@ -7,6 +7,10 @@ function opts = create()
 %
 %     OUT:
 %       - `opts` (struct) -- Complete options.
+
+if ( nargin < 1 )
+  do_save = true;
+end
 
 % - IO - %
 IO.repo_folder =    get_repo_dir();
@@ -120,6 +124,7 @@ SERIAL.reward_channels = { 'A', 'B' };
 SERIAL.baud_rate = 115200;
 SERIAL.ports.reward = 'COM4';
 SERIAL.ports.led_calibration = 'COM3';
+SERIAL.ports.stimulation = 'COM6';
 SERIAL.outputs = struct( 'reward', [1, 2] );
 
 % - TCP - %
@@ -338,8 +343,10 @@ opts.IMAGES =         IMAGES;
 opts.SOUNDS =         SOUNDS;
 opts.REWARDS =        REWARDS;
 
-brains.config.save( opts );
-brains.config.save( opts, '-default' );
+if ( do_save )
+  brains.config.save( opts );
+  brains.config.save( opts, '-default' );
+end
 
 end
 

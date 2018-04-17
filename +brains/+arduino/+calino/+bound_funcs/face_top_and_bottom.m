@@ -20,15 +20,18 @@ y2 = facebr(2);
 y3 = facetl(2);
 y4 = facetr(2);
 
-width_px = mean( [x2-x1, x3-x4] );
+width_px = mean( [x2-x1, x4-x3] );
 width_cm = const.FACE_WIDTH_CM;
 ratio = width_px / width_cm;
 
 x0 = mean( [x1, x3] );
 x1 = mean( [x2, x4] );
 
-y0 = mean( [y1, y3] );
-y1 = mean( [y2, y4] );
+%   note that "face bottom" is actually higher in px than face top, since
+%   the y axis is inverted, with 0 being with respect to the upper-left
+%   corner of the monitor.
+y0 = mean( [y3, y4] );
+y1 = mean( [y1, y2] );
 
 x0 = x0 - (padding_info.face.x * ratio);
 x1 = x1 + (padding_info.face.x * ratio);

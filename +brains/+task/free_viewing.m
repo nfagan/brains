@@ -1,4 +1,4 @@
-function free_viewing(task_time, reward_period, reward_amount, key_file, key_map, bounds)
+function free_viewing(task_time, reward_period, reward_amount, key_file, key_map, bounds, stim_params)
 
 %   PERIODIC_REWARD -- Deliver reward every x ms.
 %
@@ -7,6 +7,8 @@ function free_viewing(task_time, reward_period, reward_amount, key_file, key_map
 %       - `reward_amount` (double) -- Reward-sie, in ms.
 
 conf = brains.config.load();
+
+stim_comm = [];
 
 save_p = fullfile( conf.IO.repo_folder, 'brains', 'data', datestr(now, 'mmddyy') );
 if ( exist(save_p, 'dir') ~= 7 ), mkdir(save_p); end
@@ -17,7 +19,6 @@ edf_file = sprintf( '%s%d.edf', conf.IO.edf_file, n_edfs + 1 );
 
 brains.util.assert__file_does_not_exist( fullfile(save_p, edf_file) );
 
-screen_constants = brains_analysis.gaze.util.get_screen_constants();
 first_invocation = true;
 
 calibration_constants = bfw.calibration.define_calibration_target_constants();
@@ -70,6 +71,8 @@ try
   tcp_comm = brains.server.get_tcp_comm();
   tcp_comm.bypass = ~conf.INTERFACE.require_synch;
   tcp_comm.start();
+  
+  stim_comm = init_stim_comm( conf, tcp_comm, stim_params, bounds );
   
   task_timer = tic();
   
@@ -194,17 +197,19 @@ try
     , 'far_plane_key_map', key_map ...
     , 'far_plane_padding', calibration_padding ...
     , 'far_plane_constants', calibration_constants ...
+    , 'rois', bounds ...
+    , 'stimulation_params', stim_params ...
     , 'date', datestr( now ) ...
     , 'edf_file', edf_file ...
     );
   save( fullfile(save_p, gaze_data_file), 'gaze_data' );
   
-  local_cleanup( comm, tracker, conf );
+  local_cleanup( comm, tracker, conf, stim_comm );
 catch err
   if ( ~tracker_exists )
     tracker = [];
   end
-  local_cleanup( comm, tracker, conf );
+  local_cleanup( comm, tracker, conf, stim_comm );
   throw( err );
 end
 
@@ -213,18 +218,96 @@ tcp_comm.close();
 
 end
 
-function local_cleanup(comm, tracker, conf)
+function stim_comm = init_stim_comm(conf, tcp_comm, stim_params, bounds)
+
+is_master = conf.INTERFACE.is_master_arduino;
+
+own_screen = conf.CALIBRATION.cal_rect;
+own_eyes = bounds.eyes;
+own_face = bounds.face;
+own_mouth = bounds.mouth;
+
+if ( is_master )
+  other_screen = await_rect( tcp_comm );
+  other_eyes = await_rect( tcp_comm );
+  other_face = await_rect( tcp_comm );
+  other_mouth = await_rect( tcp_comm );
+else
+  send_rect( tcp_comm, own_screen );
+  send_rect( tcp_comm, own_eyes );
+  send_rect( tcp_comm, own_face );
+  send_rect( tcp_comm, own_mouth );
+end
+
+if ( is_master )
+  baud = 9600;
+  port = conf.SERIAL.ports.stimulation;
+  stim_comm = brains.arduino.calino.init_serial( port, baud );
+else
+  stim_comm = [];
+end
+
+if ( ~is_master )
+  return;
+end
+
+send_bounds( stim_comm, 'm1', 'screen', own_screen );
+send_bounds( stim_comm, 'm2', 'screen', other_screen );
+
+send_bounds( stim_comm, 'm1', 'eyes', own_eyes );
+send_bounds( stim_comm, 'm2', 'eyes', other_eyes );
+
+send_bounds( stim_comm, 'm1', 'face', own_face);
+send_bounds( stim_comm, 'm2', 'face', other_face );
+
+send_bounds( stim_comm, 'm1', 'mouth', own_mouth );
+send_bounds( stim_comm, 'm2', 'mouth', other_mouth );
+
+send_stim_param( stim_comm, 'all', 'probability', stim_params.probability );
+send_stim_param( stim_comm, 'all', 'frequency', stim_params.frequency );
+send_stim_param( stim_comm, 'all', 'stim_stop_start', 0 );
+
+active_rois = stim_params.active_rois;
+
+if ( ~iscell(active_rois) ), active_rois = { active_rois }; end
+
+send_stim_param( stim_comm, 'all', 'protocol', stim_params.protocol );
+
+cellfun( @(x) send_stim_param(stim_comm, x, 'stim_stop_start', 1), active_rois );
+
+end
+
+function local_cleanup(comm, tracker, conf, stim_comm)
 
 brains.arduino.close_ports();
-
-% if ( conf.INTERFACE.save_data && ~isempty(tracker) )
-%   tracker.shutdown();
-% else
-%   tracker.stop_recording();
-% end
 
 if ( ~isempty(tracker) )
   tracker.shutdown();
 end
+
+if ( ~isempty(stim_comm) )
+  fclose( stim_comm );
+end
+
+end
+
+function send_rect( obj, rect )
+
+send_when_ready( obj, rect(1:2) );
+send_when_ready( obj, rect(3:4) );
+
+end
+
+function rect = await_rect( obj )
+
+if ( obj.bypass )
+  rect = zeros( 1, 4 );
+  return; 
+end
+
+recta = await_data( obj, 'gaze' );
+rectb = await_data( obj, 'gaze' );
+
+rect = [ recta, rectb ];
 
 end
