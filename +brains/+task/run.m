@@ -24,7 +24,7 @@ first_entry = true;
 STATES.current = STATES.new_trial;
 STATES.previous = NaN;
 
-GAZE_CUE_SHIFT_AMOUNT = 0;
+GAZE_CUE_SHIFT_AMOUNT = 100;
 
 ALIGN_CENTER_STIMULI_TO_TOP = false;
 SCREEN_HEIGHT = 27.3;

@@ -33,6 +33,7 @@ else
 end
 
 key = load( fullfile(p, file) );
-key = key.(char(fieldnames(key)));
+% key = key.(char(fieldnames(key)));
+key = key.keys;
 
 end
