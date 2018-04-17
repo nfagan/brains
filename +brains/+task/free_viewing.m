@@ -6,7 +6,7 @@ function free_viewing(task_time, reward_period, reward_amount, key_file, key_map
 %       - `reward_period` (double) -- Inter-reward interval, in ms.
 %       - `reward_amount` (double) -- Reward-sie, in ms.
 
-conf = brains.config.load();
+conf = brains.config.reconcile( brains.config.load() );
 
 stim_comm = [];
 
@@ -115,8 +115,9 @@ try
     end
     
     if ( first_invocation )
-      structfun( @(x) brains.util.el_draw_rect(x, 3), bounds );
       brains.util.draw_far_plane_rois( key_file, 20, 1, tracker.bypass );
+      brains.util.el_draw_rect( round(bounds.face), 3 );
+      brains.util.el_draw_rect( round(bounds.eyes), 4 );
       first_invocation = false;
     end
     
@@ -220,9 +221,14 @@ end
 
 function stim_comm = init_stim_comm(conf, tcp_comm, stim_params, bounds)
 
+import brains.arduino.calino.send_bounds;
+import brains.arduino.calino.get_ids;
+import brains.arduino.calino.send_stim_param;
+
 is_master = conf.INTERFACE.is_master_arduino;
 
 own_screen = conf.CALIBRATION.cal_rect;
+
 own_eyes = bounds.eyes;
 own_face = bounds.face;
 own_mouth = bounds.mouth;
@@ -251,17 +257,17 @@ if ( ~is_master )
   return;
 end
 
-send_bounds( stim_comm, 'm1', 'screen', own_screen );
-send_bounds( stim_comm, 'm2', 'screen', other_screen );
+send_bounds( stim_comm, 'm1', 'screen', round(own_screen) );
+send_bounds( stim_comm, 'm2', 'screen', round(other_screen) );
 
-send_bounds( stim_comm, 'm1', 'eyes', own_eyes );
-send_bounds( stim_comm, 'm2', 'eyes', other_eyes );
+send_bounds( stim_comm, 'm1', 'eyes', round(own_eyes) );
+send_bounds( stim_comm, 'm2', 'eyes', round(other_eyes) );
 
-send_bounds( stim_comm, 'm1', 'face', own_face);
-send_bounds( stim_comm, 'm2', 'face', other_face );
+send_bounds( stim_comm, 'm1', 'face', round(own_face) );
+send_bounds( stim_comm, 'm2', 'face', round(other_face) );
 
-send_bounds( stim_comm, 'm1', 'mouth', own_mouth );
-send_bounds( stim_comm, 'm2', 'mouth', other_mouth );
+send_bounds( stim_comm, 'm1', 'mouth', round(own_mouth) );
+send_bounds( stim_comm, 'm2', 'mouth', round(other_mouth) );
 
 send_stim_param( stim_comm, 'all', 'probability', stim_params.probability );
 send_stim_param( stim_comm, 'all', 'frequency', stim_params.frequency );
@@ -273,7 +279,9 @@ if ( ~iscell(active_rois) ), active_rois = { active_rois }; end
 
 send_stim_param( stim_comm, 'all', 'protocol', stim_params.protocol );
 
-cellfun( @(x) send_stim_param(stim_comm, x, 'stim_stop_start', 1), active_rois );
+for i = 1:numel(active_rois)
+  send_stim_param( stim_comm, active_rois{i}, 'stim_stop_start', 1 );
+end
 
 end
 
@@ -293,8 +301,8 @@ end
 
 function send_rect( obj, rect )
 
-send_when_ready( obj, rect(1:2) );
-send_when_ready( obj, rect(3:4) );
+send_when_ready( obj, 'gaze', rect(1:2) );
+send_when_ready( obj, 'gaze', rect(3:4) );
 
 end
 
