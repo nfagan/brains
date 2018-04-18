@@ -225,6 +225,11 @@ import brains.arduino.calino.send_bounds;
 import brains.arduino.calino.get_ids;
 import brains.arduino.calino.send_stim_param;
 
+if ( ~stim_params.use_stim_comm )
+  stim_comm = [];
+  return;
+end
+
 is_master = conf.INTERFACE.is_master_arduino;
 
 own_screen = conf.CALIBRATION.cal_rect;
@@ -233,16 +238,18 @@ own_eyes = bounds.eyes;
 own_face = bounds.face;
 own_mouth = bounds.mouth;
 
-if ( is_master )
-  other_screen = await_rect( tcp_comm );
-  other_eyes = await_rect( tcp_comm );
-  other_face = await_rect( tcp_comm );
-  other_mouth = await_rect( tcp_comm );
-else
-  send_rect( tcp_comm, own_screen );
-  send_rect( tcp_comm, own_eyes );
-  send_rect( tcp_comm, own_face );
-  send_rect( tcp_comm, own_mouth );
+if ( stim_params.sync_m1_m2_params )
+  if ( is_master )
+    other_screen = await_rect( tcp_comm );
+    other_eyes = await_rect( tcp_comm );
+    other_face = await_rect( tcp_comm );
+    other_mouth = await_rect( tcp_comm );
+  else
+    send_rect( tcp_comm, own_screen );
+    send_rect( tcp_comm, own_eyes );
+    send_rect( tcp_comm, own_face );
+    send_rect( tcp_comm, own_mouth );
+  end
 end
 
 if ( is_master )
@@ -258,16 +265,28 @@ if ( ~is_master )
 end
 
 send_bounds( stim_comm, 'm1', 'screen', round(own_screen) );
-send_bounds( stim_comm, 'm2', 'screen', round(other_screen) );
+
+if ( stim_params.sync_m1_m2_params )
+  send_bounds( stim_comm, 'm2', 'screen', round(other_screen) );
+end
 
 send_bounds( stim_comm, 'm1', 'eyes', round(own_eyes) );
-send_bounds( stim_comm, 'm2', 'eyes', round(other_eyes) );
+
+if ( stim_params.sync_m1_m2_params )
+  send_bounds( stim_comm, 'm2', 'eyes', round(other_eyes) );
+end
 
 send_bounds( stim_comm, 'm1', 'face', round(own_face) );
-send_bounds( stim_comm, 'm2', 'face', round(other_face) );
+
+if ( stim_params.sync_m1_m2_params )
+  send_bounds( stim_comm, 'm2', 'face', round(other_face) );
+end
 
 send_bounds( stim_comm, 'm1', 'mouth', round(own_mouth) );
-send_bounds( stim_comm, 'm2', 'mouth', round(other_mouth) );
+
+if ( stim_params.sync_m1_m2_params )
+  send_bounds( stim_comm, 'm2', 'mouth', round(other_mouth) );
+end
 
 send_stim_param( stim_comm, 'all', 'probability', stim_params.probability );
 send_stim_param( stim_comm, 'all', 'frequency', stim_params.frequency );
