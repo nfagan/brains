@@ -295,6 +295,7 @@ end
 
 if ( ~isempty(stim_comm) )
   fclose( stim_comm );
+  brains.arduino.calino.send_stim_param( stim_comm, 'all', 'stim_stop_start', 0 );
 end
 
 end
