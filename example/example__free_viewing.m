@@ -34,9 +34,9 @@ ids = brains.arduino.calino.get_ids();
 stim_params = struct();
 stim_params.probability = 100;
 stim_params.frequency = 100;
-stim_params.active_rois = { 'face', 'eyes' };
-stim_params.protocol = ids.stim_protocols.probabilistic;
-% stim_params.protocol = ids.stim_protocols.m1_exclusive_event
+stim_params.active_rois = { 'eyes' };
+% stim_params.protocol = ids.stim_protocols.probabilistic;
+stim_params.protocol = ids.stim_protocols.m1_exclusive_event;
 % stim_params.protocol = ids.stim_protocols.m2_exclusive_event
 % stim_params.protocol = ids.stim_protocols.mutual_event
 
