@@ -14,6 +14,8 @@ import brains.util.assert__file_does_not_exist;
 %   load the config file
 opts = brains.config.load();
 
+opts = brains.config.reconcile( opts );
+
 IO =        opts.IO;
 SCREEN =    opts.SCREEN;
 TIMINGS =   opts.TIMINGS;

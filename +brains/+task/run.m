@@ -941,18 +941,22 @@ while ( true )
       Screen( 'Flip', opts.WINDOW.index );
       tcp_comm.await_matching_state( STATES.current );
       PROGRESS.error = TIMER.get_time( 'task' );
-      TIMER.reset_timers( 'error' );
       is_initial_fix_err = errors.initial_fixation_not_met || errors.broke_fixation;
       is_cue_fix_err = errors.m2_broke_response_cue_fixation || ...
         errors.m2_looked_away_from_gaze_cue || ...
         errors.m2_fix_delay_no_look;
       if ( is_initial_fix_err )
         err_cue = STIMULI.fixation_error_cue;
+        timeout = STIMULI.setup.fixation_error_cue.timeout;
       elseif ( is_cue_fix_err )
         err_cue = STIMULI.error_cue;
+        timeout = STIMULI.setup.error_cue.timeout;
       else
         err_cue = STIMULI.m2_wrong_cue;
+        timeout = STIMULI.setup.m2_wrong_cue.timeout;
       end
+      TIMER.set_durations( 'error', timeout );
+      TIMER.reset_timers( 'error' );
       did_show = false;
       first_entry = false;
     end

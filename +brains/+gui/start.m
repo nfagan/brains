@@ -15,6 +15,9 @@ narginchk( 0, 1 );
 persistent SINGLETON;
 
 config = brains.config.load();
+
+config = brains.config.reconcile( config );
+
 CURRENT_CONFIG_FILE = 'config.mat';
 
 if ( nargin == 1 )
