@@ -115,8 +115,8 @@ try
     end
     
     if ( first_invocation )
-      structfun( @(x) brains.util.el_draw_rect(x, 3), bounds );
       brains.util.draw_far_plane_rois( key_file, 20, 1, tracker.bypass );
+      structfun( @(x) brains.util.el_draw_rect(round(x), 3), bounds );
       first_invocation = false;
     end
     
@@ -293,8 +293,8 @@ end
 
 function send_rect( obj, rect )
 
-send_when_ready( obj, rect(1:2) );
-send_when_ready( obj, rect(3:4) );
+send_when_ready( obj, 'gaze', rect(1:2) );
+send_when_ready( obj, 'gaze', rect(3:4) );
 
 end
 
