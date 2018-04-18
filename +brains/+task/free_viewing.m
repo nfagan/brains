@@ -72,13 +72,13 @@ try
   tcp_comm.bypass = ~conf.INTERFACE.require_synch;
   tcp_comm.start();
   
-  stim_comm = init_stim_comm( conf, tcp_comm, stim_params, bounds );
-  
   task_timer = tic();
   
   tracker.send_message( 'SYNCH' );
   fprintf( '\n Sync!' );
   comm.sync_pulse( sync_pulse_map.start );
+  
+  stim_comm = init_stim_comm( conf, tcp_comm, stim_params, bounds );
   
   plex_sync_times(plex_sync_stp) = toc( task_timer );
   plex_sync_stp = plex_sync_stp + 1;
@@ -306,15 +306,16 @@ end
 
 function local_cleanup(comm, tracker, conf, stim_comm)
 
+if ( ~isempty(stim_comm) )
+  brains.arduino.abort_stim( stim_comm );
+%   brains.arduino.calino.send_stim_param( stim_comm, 'all', 'stim_stop_start', 0 );
+  fclose( stim_comm );
+end
+
 brains.arduino.close_ports();
 
 if ( ~isempty(tracker) )
   tracker.shutdown();
-end
-
-if ( ~isempty(stim_comm) )
-  fclose( stim_comm );
-  brains.arduino.calino.send_stim_param( stim_comm, 'all', 'stim_stop_start', 0 );
 end
 
 end

@@ -147,7 +147,7 @@ bool stimulation_protocol::conditional_stimulate(unsigned int index, unsigned lo
 	}
 	else
 	{
-		digitalWrite(m_stimulation_pin, HIGH);
+    digitalWrite(m_stimulation_pin, HIGH);
 	}
   
   	params->mark_stimulation_onset();

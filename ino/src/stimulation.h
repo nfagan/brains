@@ -51,7 +51,7 @@ public:
 	bool conditional_stimulate(unsigned int index, unsigned long current_time);
 
 private:
-	static const int STIM_PULSE_DURATION = 50;
+	static const int STIM_PULSE_DURATION = 25;
 
 	unsigned int m_stimulation_pin;
 	long m_stim_pulse_ms_remaining;
