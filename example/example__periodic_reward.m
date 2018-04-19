@@ -1,5 +1,5 @@
 reward_period = 3000; % ms
-reward_amount = 500;  % ms
+reward_amount = 200;  % ms
 total_time = 10*60;  % s
 
 %   1 -> m1;

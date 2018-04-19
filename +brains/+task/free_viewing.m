@@ -250,6 +250,11 @@ if ( stim_params.sync_m1_m2_params )
     send_rect( tcp_comm, own_face );
     send_rect( tcp_comm, own_mouth );
   end
+else
+  other_screen = zeros( 1, 4 );
+  other_eyes = repmat( -1, 1, 4 );
+  other_face = repmat( -1, 1, 4 );
+  other_mouth = repmat( -1, 1, 4 );
 end
 
 if ( is_master )
@@ -265,28 +270,16 @@ if ( ~is_master )
 end
 
 send_bounds( stim_comm, 'm1', 'screen', round(own_screen) );
-
-if ( stim_params.sync_m1_m2_params )
-  send_bounds( stim_comm, 'm2', 'screen', round(other_screen) );
-end
+send_bounds( stim_comm, 'm2', 'screen', round(other_screen) );
 
 send_bounds( stim_comm, 'm1', 'eyes', round(own_eyes) );
-
-if ( stim_params.sync_m1_m2_params )
-  send_bounds( stim_comm, 'm2', 'eyes', round(other_eyes) );
-end
+send_bounds( stim_comm, 'm2', 'eyes', round(other_eyes) );
 
 send_bounds( stim_comm, 'm1', 'face', round(own_face) );
-
-if ( stim_params.sync_m1_m2_params )
-  send_bounds( stim_comm, 'm2', 'face', round(other_face) );
-end
+send_bounds( stim_comm, 'm2', 'face', round(other_face) );
 
 send_bounds( stim_comm, 'm1', 'mouth', round(own_mouth) );
-
-if ( stim_params.sync_m1_m2_params )
-  send_bounds( stim_comm, 'm2', 'mouth', round(other_mouth) );
-end
+send_bounds( stim_comm, 'm2', 'mouth', round(other_mouth) );
 
 send_stim_param( stim_comm, 'all', 'probability', stim_params.probability );
 send_stim_param( stim_comm, 'all', 'frequency', stim_params.frequency );

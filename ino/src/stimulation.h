@@ -48,7 +48,7 @@ public:
 
 	void allow_stimulation(unsigned int index);
 	void disallow_stimulation(unsigned int index);
-	bool conditional_stimulate(unsigned int index, unsigned long current_time);
+	bool conditional_stimulate(unsigned int index, unsigned long current_time, bool* probability_rejected);
 
 private:
 	static const int STIM_PULSE_DURATION = 25;

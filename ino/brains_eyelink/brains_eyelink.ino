@@ -31,7 +31,7 @@ struct IDS
     const char global_stim_timeout = 'q';
   	const char probability = 'y';
   	const char frequency = 'u';
-	const char protocol = 'i';
+	  const char protocol = 'i';
     const char screen = 's';
     const char eyes = 'e';
     const char mouth = 'm';
@@ -51,6 +51,7 @@ struct PINS
     const int m2_y = 3;
     const int stimulation_trigger = 23;
     const int plex_sync = 22;
+    const int sham_plex_sync = 24;
 } pins;
 
 //
@@ -64,6 +65,7 @@ stimulation_protocol STIM_PROTOCOL(pins.stimulation_trigger);
 //
 
 util::pulse plex_sync(pins.plex_sync);
+util::pulse sham_plex_sync(pins.sham_plex_sync);
 
 //
 //  fixation detection
@@ -145,10 +147,16 @@ void handle_stimulation()
 void protocol_probabilistic()
 {    
     for (int i = 0; i < ROI_INDICES::N_ROI_INDICES; i++)
-    {        
-        if (STIM_PROTOCOL.conditional_stimulate(i, timing::this_frame))
+    {
+        bool probability_rejected = false;
+                
+        if (STIM_PROTOCOL.conditional_stimulate(i, timing::this_frame, &probability_rejected))
         {
             plex_sync.deliver(50);
+        }
+        else if (probability_rejected)
+        {
+          sham_plex_sync.deliver(50);
         }
     }
 }
@@ -188,6 +196,8 @@ void protocol_gaze_event()
         
         bool criterion = false;
 
+        bool probability_rejected = false;
+
         switch (PROTOCOLS::current_protocol)
         {
             case PROTOCOLS::MUTUAL_EVENT:
@@ -210,7 +220,7 @@ void protocol_gaze_event()
                 break;
         }
 
-        if (criterion && STIM_PROTOCOL.conditional_stimulate(i, timing::this_frame))
+        if (criterion && STIM_PROTOCOL.conditional_stimulate(i, timing::this_frame, &probability_rejected))
         {
             plex_sync.deliver(50);
 
@@ -223,6 +233,10 @@ void protocol_gaze_event()
             {
                 m2_roi_criterion[i] = false;
             }
+        } 
+        else if (probability_rejected)
+        {
+            sham_plex_sync.deliver(50);
         }
 
         if (!m1_in)
@@ -476,6 +490,7 @@ void loop()
     STIM_PROTOCOL.update(timing::delta);
 
     plex_sync.update(timing::delta);
+    sham_plex_sync.update(timing::delta);
 
     handle_stimulation();
 

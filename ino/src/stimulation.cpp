@@ -102,9 +102,11 @@ void stimulation_protocol::disallow_stimulation(unsigned int index)
 
 //	conditional_stimulate: deliver stimulation if probability and timing criteria
 //		are satisifed. Return whether stimulation was triggered.
-bool stimulation_protocol::conditional_stimulate(unsigned int index, unsigned long current_time)
+bool stimulation_protocol::conditional_stimulate(unsigned int index, unsigned long current_time, bool* probability_rejected)
 {
 	stimulation_params* params = &m_stimulation_params[index];
+  
+  *probability_rejected = false;
 
 	if (!m_allow_stimulation[index] || !params->ellapsed())
 	{
@@ -116,7 +118,7 @@ bool stimulation_protocol::conditional_stimulate(unsigned int index, unsigned lo
 	if (!params->probability_check())
 	{
 		params->mark_stimulation_onset();
-
+    *probability_rejected = true;
 		return false;
 	}
 
