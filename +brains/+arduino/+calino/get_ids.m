@@ -25,6 +25,8 @@ stim_params.probability = 'y';
 stim_params.frequency = 'u';
 stim_params.protocol = 'i';
 stim_params.event = 'w';
+stim_params.max_n = 'v';
+stim_params.print_n_stim = 'P';
 
 stim_protocols = struct();
 stim_protocols.mutual_event = 0;

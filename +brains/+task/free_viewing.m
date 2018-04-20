@@ -205,6 +205,8 @@ try
     );
   save( fullfile(save_p, gaze_data_file), 'gaze_data' );
   
+  print_n_stim( stim_comm );
+  
   local_cleanup( comm, tracker, conf, stim_comm );
 catch err
   if ( ~tracker_exists )
@@ -216,6 +218,22 @@ end
 
 tcp_comm.close();
 
+end
+
+function print_n_stim( stim_comm )
+
+if ( isempty(stim_comm) )
+  return;
+end
+
+try
+  n = brains.arduino.calino.check_n_stim( stim_comm );
+catch err
+  warning( err.message );
+  n = -1;
+end
+
+fprintf( '\n\n TOTAL N STIMULATIONS: %d', n );
 
 end
 

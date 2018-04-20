@@ -56,8 +56,9 @@ send_bounds( comm, 'm2', 'eyes', [1366, 316, 1460, 363] );
 
 ids = brains.arduino.calino.get_ids();
 
-send_stim_param( comm, 'all', 'probability', 50 );
-send_stim_param( comm, 'all', 'frequency', 1e3 );
+send_stim_param( comm, 'all', 'probability', 0 );
+send_stim_param( comm, 'all', 'frequency', 250 );
+send_stim_param( comm, 'all', 'max_n', intmax('int16') );
 send_stim_param( comm, 'all', 'stim_stop_start', 0 );
 send_stim_param( comm, 'eyes', 'stim_stop_start', 1 );
 send_stim_param( comm, 'all', 'protocol', ids.stim_protocols.probabilistic );
@@ -66,8 +67,7 @@ send_stim_param( comm, 'all', 'global_stim_timeout', 1 );
 
 %%
 
-
-
+brains.arduino.calino.check_n_stim( comm )
 
 %%
 

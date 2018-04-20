@@ -23,6 +23,8 @@ struct IDS
 {
     const char eol = '\n';
     const char init = '*';
+    //  print the total number of stimulations
+    const char print_n_stim = 'P';
     //	indicates that command will be a rect-bounds
     const char bounds = 'o';
     //	indicates that command will be a stimulation parameter
@@ -31,6 +33,7 @@ struct IDS
     const char global_stim_timeout = 'q';
   	const char probability = 'y';
   	const char frequency = 'u';
+    const char max_n = 'v';
 	  const char protocol = 'i';
     const char screen = 's';
     const char eyes = 'e';
@@ -114,6 +117,17 @@ void handle_serial_comm()
     {
         debug_print();
         Serial.read();
+    }
+    else if (identifier == ids.print_n_stim)
+    {
+        unsigned long n_stims = STIM_PROTOCOL.get_total_n_stim();
+        Serial.print(n_stims);
+        Serial.print(ids.ack);
+        Serial.read();
+    }
+    else if (identifier == ids.eol)
+    {
+      //
     }
     else
     {
@@ -339,6 +353,10 @@ void handle_new_stim_param()
 			response = ids.error;
 		}
 	}
+  else if (id == ids.max_n)
+  {
+    STIM_PROTOCOL.set_max_n_stimulations(roi_index, param);
+  }
 	else
 	{
 		response = ids.error;

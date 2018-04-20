@@ -8,6 +8,8 @@ stimulation_params::stimulation_params()
 	ms_remaining = 0;
 	stimulation_mode = STIMULATION_MODES::EVENT;
 	randomizer.set_probability(0.0f);
+  n_stimulations = 0;
+  max_n_stimulations = -1;
 }
 
 stimulation_params::~stimulation_params()
@@ -20,9 +22,14 @@ void stimulation_params::set_probability(int p)
 	randomizer.set_probability((float)p / (float)100);
 }
 
-void stimulation_params::mark_stimulation_onset()
+void stimulation_params::mark_stimulation_onset(bool is_sham)
 {
 	ms_remaining = frequency;
+  
+  if (!is_sham)
+  {
+    n_stimulations++;
+  }
 }
 
 bool stimulation_params::ellapsed() const
@@ -62,6 +69,16 @@ bool stimulation_params::probability_check() const
 	return randomizer.next();
 }
 
+bool stimulation_params::number_check() const
+{
+  if (max_n_stimulations < 0)
+  {
+    return true;
+  }
+  
+  return n_stimulations < max_n_stimulations;
+}
+
 //
 //	stim protocol
 //
@@ -89,6 +106,18 @@ stimulation_protocol::~stimulation_protocol()
 	//
 }
 
+unsigned long stimulation_protocol::get_total_n_stim() const
+{
+  unsigned long res = 0;
+  
+  for (int i = 0; i < ROI_INDICES::N_ROI_INDICES; i++)
+  {
+    res += m_stimulation_params[i].n_stimulations;
+  }
+  
+  return res;
+}
+
 void stimulation_protocol::allow_stimulation(unsigned int index)
 {
 	m_allow_stimulation[index] = 1;
@@ -108,7 +137,7 @@ bool stimulation_protocol::conditional_stimulate(unsigned int index, unsigned lo
   
   *probability_rejected = false;
 
-	if (!m_allow_stimulation[index] || !params->ellapsed())
+	if (!m_allow_stimulation[index] || !params->ellapsed() || !params->number_check())
 	{
 		return false;
 	}
@@ -117,7 +146,8 @@ bool stimulation_protocol::conditional_stimulate(unsigned int index, unsigned lo
 	//	resetting the timer, despite not stimulating.
 	if (!params->probability_check())
 	{
-		params->mark_stimulation_onset();
+    bool is_sham = true;
+		params->mark_stimulation_onset(is_sham);
     *probability_rejected = true;
 		return false;
 	}
@@ -152,7 +182,8 @@ bool stimulation_protocol::conditional_stimulate(unsigned int index, unsigned lo
     digitalWrite(m_stimulation_pin, HIGH);
 	}
   
-  	params->mark_stimulation_onset();
+  bool is_sham = false;
+  params->mark_stimulation_onset(is_sham);
 
 	return true;
 }
@@ -183,6 +214,11 @@ void stimulation_protocol::update(unsigned long delta)
 		digitalWrite(m_stimulation_pin, LOW);
 		m_stim_pulse_ms_remaining = 0;
 	}
+}
+
+void stimulation_protocol::set_max_n_stimulations(unsigned int index, int max_n)
+{
+  m_stimulation_params[index].max_n_stimulations = max_n;
 }
 
 void stimulation_protocol::set_stimulation_mode(unsigned int index, STIMULATION_MODES::STIMULATION_MODES to)
