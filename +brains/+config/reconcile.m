@@ -1,4 +1,4 @@
-function conf = reconcile(conf)
+function [conf, missing] = reconcile(conf)
 
 if ( nargin < 1 )
   conf = brains.config.load(); 

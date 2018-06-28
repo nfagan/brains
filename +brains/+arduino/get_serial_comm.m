@@ -33,7 +33,15 @@ port = SERIAL.ports.reward;
 % rwd_channels = SERIAL.reward_channels;
 rwd_indices = SERIAL.outputs.reward;
 rwd_channels = arrayfun( @(x) x, Alphabet(rwd_indices), 'un', false );
-messages = [ SERIAL.messages.shared; SERIAL.messages.(m_str) ];
+
+shared = SERIAL.messages.shared(:);
+own = reshape( SERIAL.messages.(m_str), [], 1 );
+messages = [ shared; own ];
+
+if ( iscell(messages) )
+  messages = [ messages{:} ];
+end
+
 comm = BrainsSerialManagerPaired( port, messages, rwd_channels, role );
 
 end
