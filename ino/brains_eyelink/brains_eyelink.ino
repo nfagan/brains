@@ -44,6 +44,7 @@ struct IDS
     const char m1 = 'j';
     const char m2 = 'k';
     const char print_gaze = 'p';
+    const char print_mean_frame = 'K';
 } ids;
 
 struct PINS
@@ -94,6 +95,8 @@ namespace timing {
 	unsigned long last_frame = 0;
 	unsigned long this_frame = 0;
 	unsigned long delta = 0;
+  float mean_frame = 0;
+  unsigned long n_iters = 0;
 }
 
 void handle_serial_comm()
@@ -128,6 +131,12 @@ void handle_serial_comm()
     else if (identifier == ids.eol)
     {
       //
+    }
+    else if (identifier == ids.print_mean_frame)
+    {
+        Serial.println(timing::mean_frame);
+        Serial.println(timing::n_iters);
+        Serial.println(timing::delta);
     }
     else
     {
@@ -472,6 +481,20 @@ void get_stimulation_parami(char* id, int* roi_idx, int* param)
     *param = atoi(param_buffer);
 }
 
+void calculate_mean_frame_time()
+{
+    if (timing::n_iters == 0)
+    {
+        timing::mean_frame = (float)timing::delta;
+        timing::n_iters++;
+        return;
+    }
+    
+    float current_mean = timing::mean_frame * (float)timing::n_iters;
+    timing::mean_frame = (current_mean + (float)timing::delta) / (float)(timing::n_iters+1);  
+    timing::n_iters++;
+}
+
 void setup()
 {
     randomSeed(analogRead(0));
@@ -497,8 +520,8 @@ void setup()
 
 void loop() 
 {  
-	timing::this_frame = millis();
-	timing::delta = timing::this_frame - timing::last_frame;
+	  timing::this_frame = millis();
+	  timing::delta = timing::this_frame - timing::last_frame;
 
     handle_serial_comm();
 
@@ -519,4 +542,6 @@ void loop()
     }
 
     timing::last_frame = timing::this_frame;
+
+    calculate_mean_frame_time();
 }

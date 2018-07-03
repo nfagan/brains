@@ -15,7 +15,7 @@ private:
 	void randomize();
 
 private:
-	static const int BLOCK_SIZE = 10;
+	static const int BLOCK_SIZE = 4;
 
 	float m_probability;
 	bool m_values[BLOCK_SIZE];

@@ -27,7 +27,6 @@ send_bounds( comm, 'm2', 'mouth', [0, 0, 100, 200] );
 
 %%
 
-
 brains.util.el_draw_rect( round(m1_eyes), 2 );
 
 %%
@@ -56,14 +55,25 @@ send_bounds( comm, 'm2', 'eyes', [1366, 316, 1460, 363] );
 
 ids = brains.arduino.calino.get_ids();
 
-send_stim_param( comm, 'all', 'probability', 0 );
-send_stim_param( comm, 'all', 'frequency', 250 );
+send_stim_param( comm, 'all', 'probability', 100 );
+send_stim_param( comm, 'all', 'frequency', 1e3 );
 send_stim_param( comm, 'all', 'max_n', intmax('int16') );
 send_stim_param( comm, 'all', 'stim_stop_start', 0 );
 send_stim_param( comm, 'eyes', 'stim_stop_start', 1 );
-send_stim_param( comm, 'all', 'protocol', ids.stim_protocols.probabilistic );
-% send_stim_param( comm, 'all', 'protocol', ids.stim_protocols.m1_exclusive_event );
+% send_stim_param( comm, 'all', 'protocol', ids.stim_protocols.probabilistic );
+send_stim_param( comm, 'all', 'protocol', ids.stim_protocols.m1_exclusive_event );
 send_stim_param( comm, 'all', 'global_stim_timeout', 1 );
+
+%%
+
+t = tic();
+while ( true )
+  if ( toc(t) > 0.5 )
+    sound(sin(1:1e3) * 60, 44.1e3);
+%     beep();
+    t = tic();
+  end
+end
 
 %%
 
