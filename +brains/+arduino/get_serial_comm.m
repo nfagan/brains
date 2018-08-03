@@ -35,7 +35,8 @@ rwd_indices = SERIAL.outputs.reward;
 rwd_channels = arrayfun( @(x) x, Alphabet(rwd_indices), 'un', false );
 
 shared = SERIAL.messages.shared(:);
-own = reshape( SERIAL.messages.(m_str), [], 1 );
+own = SERIAL.messages.(m_str);
+own = own(:);
 messages = [ shared; own ];
 
 if ( iscell(messages) )
