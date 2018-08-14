@@ -32,7 +32,7 @@ padding_cm.mouth.y = 0;
 ids = brains.arduino.calino.get_ids();
 
 stim_params = struct();
-stim_params.use_stim_comm = true;  % whether to initialize stimulation arduino
+stim_params.use_stim_comm = false;  % whether to initialize stimulation arduino
 stim_params.sync_m1_m2_params = false;  % whether to send m2's calibration data to m1
 stim_params.probability = 50; % percent
 stim_params.frequency = 5000;  % ISI, ms
