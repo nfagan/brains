@@ -17,6 +17,8 @@ roi_ids.eyes = 'e';
 roi_ids.mouth = 'm';
 roi_ids.screen = 's';
 roi_ids.face = 'f';
+roi_ids.social_control_dots_left = 'x';
+roi_ids.social_control_dots_right = 'z';
 
 stim_params = struct();
 stim_params.stim_stop_start = 'r';

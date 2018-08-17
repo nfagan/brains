@@ -66,13 +66,13 @@ opts.sync_pulse_map = sync_pulse_map;
 %
 
 dot_dirs = [ 0, 0 ];
-dot_coh = 100;
+dot_coh = 10;
 
 dot_coh = min( 999, dot_coh * 10 );
 
 dot_info = createDotInfo(); % initialize dots
-dot_info.apXYD(1, 3) = 60;
-dot_info.apXYD(2, 3) = 60;
+dot_info.apXYD(1, 3) = 30;
+dot_info.apXYD(2, 3) = 30;
 dot_info.numDotField = 2;
 
 dot_info.coh(:) = dot_coh;
@@ -106,6 +106,10 @@ try
   opts.next_edf_pulse_time = toc( task_timer ) + opts.edf_sync_interval;
   
   callback = @() update( tracker, conf, opts );
+  
+  if ( conf.INTERFACE.use_eyelink )
+    brains.util.el_draw_rect( round(bounds.social_control_dots_left), 3 );
+  end
   
   while ( toc(task_timer) < task_time )
     should_abort = dots_callback( screen_info, dot_info, callback );
@@ -199,11 +203,13 @@ own_screen = conf.CALIBRATION.cal_rect;
 own_eyes = bounds.eyes;
 own_face = bounds.face;
 own_mouth = bounds.mouth;
+own_sc_dots_left = bounds.social_control_dots_left;
 
 other_screen = zeros( 1, 4 );
 other_eyes = repmat( -1, 1, 4 );
 other_face = repmat( -1, 1, 4 );
 other_mouth = repmat( -1, 1, 4 );
+other_sc_dots_left = repmat( -1, 1, 4 );
 
 if ( is_master )
   baud = 9600;
@@ -228,6 +234,9 @@ send_bounds( stim_comm, 'm2', 'face', round(other_face) );
 
 send_bounds( stim_comm, 'm1', 'mouth', round(own_mouth) );
 send_bounds( stim_comm, 'm2', 'mouth', round(other_mouth) );
+
+send_bounds( stim_comm, 'm1', 'social_control_dots_left', round(own_sc_dots_left) );
+send_bounds( stim_comm, 'm2', 'social_control_dots_left', round(other_sc_dots_left) );
 
 send_stim_param( stim_comm, 'all', 'probability', stim_params.probability );
 send_stim_param( stim_comm, 'all', 'frequency', stim_params.frequency );

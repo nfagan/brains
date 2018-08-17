@@ -39,6 +39,8 @@ struct IDS
     const char eyes = 'e';
     const char mouth = 'm';
     const char face = 'f';
+    const char social_control_dots_left = 'x';
+    const char social_control_dots_right = 'z';
     const char error = '!';
     const char ack = 'a';
     const char m1 = 'j';
@@ -438,11 +440,13 @@ void handle_new_bounds()
 }
 
 int get_roi_index_from_id(char roi_id)
-{
+{  
     if (roi_id == ids.screen) return ROI_INDICES::screen;
     else if (roi_id == ids.face) return ROI_INDICES::face;
     else if (roi_id == ids.eyes) return ROI_INDICES::eyes;
     else if (roi_id == ids.mouth) return ROI_INDICES::mouth;
+    else if (roi_id == ids.social_control_dots_left) return ROI_INDICES::social_control_dots_left;
+    else if (roi_id == ids.social_control_dots_right) return ROI_INDICES::social_control_dots_right;
     return -1;
 }
 
