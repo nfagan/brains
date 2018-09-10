@@ -1,4 +1,4 @@
-function dot_stim(task_time, key_file, key_map, bounds, stim_params)
+function dot_stim(task_time, key_file, key_map, bounds, stim_params, dot_params)
 
 %   DOT_STIM -- Deliver reward every x ms.
 %
@@ -65,19 +65,17 @@ opts.sync_pulse_map = sync_pulse_map;
 %   DOT INIT
 %
 
-dot_dirs = [ 0, 0 ];
-dot_coh = 10;
-
-dot_coh = min( 999, dot_coh * 10 );
-
 dot_info = createDotInfo(); % initialize dots
-dot_info.apXYD(1, 3) = 30;
-dot_info.apXYD(2, 3) = 30;
 dot_info.numDotField = 2;
 
-dot_info.coh(:) = dot_coh;
-dot_info.dir = dot_dirs(:);
-dot_info.dotSize = 8;
+dot_info.apXYD(:, 3) = dot_params.aperture_size;
+
+dot_info.apXYD(1, 1) = -dot_params.x_spread;
+dot_info.apXYD(2, 1) = dot_params.x_spread;
+
+dot_info.dotSize = dot_params.dot_size;
+dot_info.coh(:) = min( 999, dot_params.coherence * 10 );
+dot_info.dir = repmat( dot_params.direction, dot_info.numDotField, 1 );
 dot_info.maxDotTime = 2;
 
 screen_ind = conf.SCREEN.index;
@@ -119,10 +117,28 @@ try
     end
   end
   
+  mats = shared_utils.io.dirnames( save_p, '.mat' );
+  next_id = numel( mats ) + 1;
+  data_file = sprintf( 'dot_%d.mat', next_id );
+  to_save = struct( ...
+      'config', conf ...
+    , 'sync_times', opts.gaze_sync_times ...
+    , 'plex_sync_times', opts.plex_sync_times ...
+    , 'reward_sync_times', opts.reward_sync_times ...
+    , 'rois', bounds ...
+    , 'stimulation_params', stim_params ...
+    , 'dot_params', dot_params ...
+    , 'date', datestr( now ) ...
+    , 'edf_file', edf_file ...
+    );
+  save( fullfile(save_p, data_file), 'to_save' );
+  
   print_n_stim( stim_comm );
   
   local_cleanup( comm, tracker, conf, stim_comm );
 catch err
+  brains.util.print_error_stack( err );
+  
   if ( ~tracker_exists )
     tracker = [];
   end

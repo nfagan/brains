@@ -31,13 +31,25 @@ padding_cm.mouth.x = 0;
 padding_cm.mouth.y = 0;
 
 %
+%   dot params
+%
+
+dot_params = struct();
+
+dot_params.x_spread = 50;
+dot_params.aperture_size = 100;
+dot_params.direction = 90;
+dot_params.coherence = 100;
+dot_params.dot_size = 8;
+
+%
 %   stimulation params
 %
 
 ids = brains.arduino.calino.get_ids();
 
 stim_params = struct();
-stim_params.use_stim_comm = true;  % whether to initialize stimulation arduino
+stim_params.use_stim_comm = false;  % whether to initialize stimulation arduino
 stim_params.sync_m1_m2_params = false;  % whether to send m2's calibration data to m1
 stim_params.probability = 100; % percent
 stim_params.frequency = 1000;  % ISI, ms
@@ -64,6 +76,6 @@ else
   bounds = struct();
 end
        
-brains.task.dot_stim( task_time, key_file.keys, key_map, bounds, stim_params );
+brains.task.dot_stim( task_time, key_file.keys, key_map, bounds, stim_params, dot_params );
 
 end
