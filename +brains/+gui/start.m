@@ -197,7 +197,7 @@ panels.run = uipanel( F ...
   , 'Position', [ X, Y, W, L ] ...
 );
 
-funcs = { 'save as', 'load', 'close-ports', 'hard reset', 'reset to default', 'make default' ...
+funcs = { 'shutdown eyelink', 'save as', 'load', 'close-ports', 'hard reset', 'reset to default', 'make default' ...
   , 'clean-up', 'flush', 'calibrate', 'start fixation task', 'start saccade task' };
 w = .5;
 l = 1 / numel(funcs);
@@ -263,6 +263,9 @@ function handle_button(source, event)
       clear mex;
       brains.config.save( config, '-file', CURRENT_CONFIG_FILE);
       brains.task.start( 'fixation' );
+    case 'shutdown eyelink'
+      clear mex;
+      Eyelink( 'Shutdown' );
     case 'calibrate'
       clear mex;
       brains.config.save( config, '-file', CURRENT_CONFIG_FILE);
