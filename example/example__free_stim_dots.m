@@ -4,6 +4,8 @@ import brains.arduino.calino.bound_funcs.both_eyes;
 import brains.arduino.calino.bound_funcs.face_top_and_bottom;
 import brains.arduino.calino.bound_funcs.social_control_dots_left;
 
+repadd( 'ShadlenDotsX', true );
+
 try
   key_file = brains.util.get_latest_far_plane_calibration( [], false );
 catch err
@@ -35,12 +37,14 @@ padding_cm.mouth.y = 0;
 %
 
 dot_params = struct();
+dot_params.direction = 90;  % direction of motion, degrees
+dot_params.coherence = 100; % percent dot coherence
+dot_params.dot_size = 6;  % relative size of each dot within the aperture.
 
-dot_params.x_spread = 50;
-dot_params.aperture_size = 100;
-dot_params.direction = 90;
-dot_params.coherence = 100;
-dot_params.dot_size = 8;
+dot_params.x_spread = 40; % distance between aperture centers
+dot_params.x_shift = 28;  % x-shift of each aperture center
+dot_params.y_shift = 20;  % y-shift of each aperture center
+dot_params.aperture_size = 60;  % size of each circle
 
 %
 %   stimulation params
@@ -49,12 +53,12 @@ dot_params.dot_size = 8;
 ids = brains.arduino.calino.get_ids();
 
 stim_params = struct();
-stim_params.use_stim_comm = false;  % whether to initialize stimulation arduino
+stim_params.use_stim_comm = true;  % whether to initialize stimulation arduino
 stim_params.sync_m1_m2_params = false;  % whether to send m2's calibration data to m1
-stim_params.probability = 100; % percent
-stim_params.frequency = 1000;  % ISI, ms
+stim_params.probability = 50; % percent
+stim_params.frequency = 5000;  % ISI, ms
 stim_params.max_n = intmax( 'int16' );  % maximum number of stimulations. max possible is intmax('int16');
-stim_params.active_rois = { 'social_control_dots_left' }; % which rois will trigger stimulation
+stim_params.active_rois = { 'eyes' }; % which rois will trigger stimulation
 % stim_params.protocol = ids.stim_protocols.probabilistic;
 stim_params.protocol = ids.stim_protocols.m1_exclusive_event;
 % stim_params.protocol = ids.stim_protocols.m2_exclusive_event

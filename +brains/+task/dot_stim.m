@@ -11,7 +11,7 @@ conf = brains.config.reconcile( brains.config.load() );
 stim_comm = [];
 
 save_p = fullfile( conf.IO.repo_folder, 'brains', 'data' ...
-  , datestr(now, 'mmddyy'), 'social_control' );
+  , datestr(now, 'mmddyy'), 'nonsocial_control' );
 if ( exist(save_p, 'dir') ~= 7 ), mkdir(save_p); end
 
 edfs = shared_utils.io.find( save_p, '.edf' );
@@ -70,8 +70,9 @@ dot_info.numDotField = 2;
 
 dot_info.apXYD(:, 3) = dot_params.aperture_size;
 
-dot_info.apXYD(1, 1) = -dot_params.x_spread;
-dot_info.apXYD(2, 1) = dot_params.x_spread;
+dot_info.apXYD(1, 1) = -dot_params.x_spread + dot_params.x_shift;
+dot_info.apXYD(2, 1) = dot_params.x_spread + dot_params.x_shift;
+dot_info.apXYD(:, 2) = dot_params.y_shift;
 
 dot_info.dotSize = dot_params.dot_size;
 dot_info.coh(:) = min( 999, dot_params.coherence * 10 );
@@ -106,7 +107,8 @@ try
   callback = @() update( tracker, conf, opts );
   
   if ( conf.INTERFACE.use_eyelink )
-    brains.util.el_draw_rect( round(bounds.social_control_dots_left), 3 );
+%     brains.util.el_draw_rect( round(bounds.social_control_dots_left), 3 );
+    brains.util.el_draw_rect( round(bounds.eyes), 4 );
   end
   
   while ( toc(task_timer) < task_time )
