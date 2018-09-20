@@ -104,15 +104,14 @@ try
   
   opts.next_edf_pulse_time = toc( task_timer ) + opts.edf_sync_interval;
   
-  callback = @() update( tracker, conf, opts );
-  
   if ( conf.INTERFACE.use_eyelink )
 %     brains.util.el_draw_rect( round(bounds.social_control_dots_left), 3 );
     brains.util.el_draw_rect( round(bounds.eyes), 4 );
   end
   
   while ( toc(task_timer) < task_time )
-    should_abort = dots_callback( screen_info, dot_info, callback );
+    callback = @() update( tracker, conf, opts );
+    [should_abort, opts] = dots_callback( screen_info, dot_info, callback );
     
     if ( should_abort )
       break
@@ -150,7 +149,7 @@ end
 
 end
 
-function should_abort = update(tracker, conf, opts)
+function [should_abort, opts] = update(tracker, conf, opts)
 
 should_abort = false;
 
@@ -199,7 +198,7 @@ catch err
   n = -1;
 end
 
-fprintf( '\n\n TOTAL N STIMULATIONS: %d', n );
+fprintf( '\n\n TOTAL N STIMULATIONS: %d\n\n', n );
 
 end
 
@@ -259,6 +258,7 @@ send_bounds( stim_comm, 'm2', 'social_control_dots_left', round(other_sc_dots_le
 send_stim_param( stim_comm, 'all', 'probability', stim_params.probability );
 send_stim_param( stim_comm, 'all', 'frequency', stim_params.frequency );
 send_stim_param( stim_comm, 'all', 'stim_stop_start', 0 );
+send_stim_param( stim_comm, 'all', 'max_n', stim_params.max_n );
 
 active_rois = stim_params.active_rois;
 
@@ -285,7 +285,9 @@ end
 brains.arduino.close_ports();
 
 if ( ~isempty(tracker) )
+  warning( 'off', 'all' );
   tracker.shutdown();
+  warning( 'on', 'all' );
 end
 
 end

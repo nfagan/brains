@@ -234,7 +234,7 @@ catch err
   n = -1;
 end
 
-fprintf( '\n\n TOTAL N STIMULATIONS: %d', n );
+fprintf( '\n\n TOTAL N STIMULATIONS: %d\n\n', n );
 
 end
 
@@ -303,6 +303,7 @@ send_bounds( stim_comm, 'm2', 'mouth', round(other_mouth) );
 send_stim_param( stim_comm, 'all', 'probability', stim_params.probability );
 send_stim_param( stim_comm, 'all', 'frequency', stim_params.frequency );
 send_stim_param( stim_comm, 'all', 'stim_stop_start', 0 );
+send_stim_param( stim_comm, 'all', 'max_n', stim_params.max_n );
 
 active_rois = stim_params.active_rois;
 
@@ -327,7 +328,9 @@ end
 brains.arduino.close_ports();
 
 if ( ~isempty(tracker) )
+  warning( 'off', 'all' );
   tracker.shutdown();
+  warning( 'on', 'all' );
 end
 
 end
