@@ -39,17 +39,20 @@ padding_cm.mouth.y = 0;
 %
 
 dot_params = struct();
-dot_params.direction = 90;  % direction of motion, degrees
+% dot_params.direction = 90;  % direction of motion, degrees
 dot_params.coherence = 100; % percent dot coherence
 dot_params.dot_size = 6;  % relative size of each dot within the aperture.
-dot_params.dot_directions = [ 90, 270 ];
+%dot_params.dot_directions = [ 180, 0 ]; % direction left and right
+dot_params.dot_directions = [ 90, 270]; % direction up and down 
+
+dot_params.direction_switch_delays = [ 15:40 ];
+% dot_params.dot_directions = 90;   % use only one direction
+% dot_params.direction_switch_delays = 1; % switch every second;
 
 dot_params.x_spread = 40; % distance between aperture centers
 dot_params.x_shift = 28;  % x-shift of each aperture center
 dot_params.y_shift = 20;  % y-shift of each aperture center
 dot_params.aperture_size = 60;  % size of each circle
-
-dot_params.direction_switch_delays = [10, 12];
 
 %
 %   stimulation params
