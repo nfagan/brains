@@ -43,6 +43,8 @@ reward_sync_stp = 1;
 gaze_stp = 1;
 gaze_sync_stp = 1;
 
+plex_sync_index = 0;
+
 comm = brains.arduino.get_serial_comm();
 comm.bypass = ~conf.INTERFACE.use_arduino;
 comm.start();
@@ -77,6 +79,11 @@ try
   tracker.send_message( 'SYNCH' );
   fprintf( '\n Sync!' );
   comm.sync_pulse( sync_pulse_map.start );
+  
+  if ( conf.INTERFACE.use_arduino )
+    brains.util.increment_start_pulse_count();
+    plex_sync_index = brains.util.get_current_start_pulse_count();
+  end
   
   stim_comm = init_stim_comm( conf, tcp_comm, stim_params, bounds );
   
@@ -202,6 +209,7 @@ try
     , 'rois', bounds ...
     , 'stimulation_params', stim_params ...
     , 'date', datestr( now ) ...
+    , 'plex_sync_index', plex_sync_index ...
     , 'edf_file', edf_file ...
     );
   save( fullfile(save_p, gaze_data_file), 'gaze_data' );

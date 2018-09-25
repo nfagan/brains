@@ -1,4 +1,6 @@
-function example__free_stim_dots()
+function example__free_stim_dots(use_stim_comm)
+
+if ( nargin < 1 ), use_stim_comm = true; end
 
 import brains.arduino.calino.bound_funcs.both_eyes;
 import brains.arduino.calino.bound_funcs.face_top_and_bottom;
@@ -40,11 +42,14 @@ dot_params = struct();
 dot_params.direction = 90;  % direction of motion, degrees
 dot_params.coherence = 100; % percent dot coherence
 dot_params.dot_size = 6;  % relative size of each dot within the aperture.
+dot_params.dot_directions = [ 90, 270 ];
 
 dot_params.x_spread = 40; % distance between aperture centers
 dot_params.x_shift = 28;  % x-shift of each aperture center
 dot_params.y_shift = 20;  % y-shift of each aperture center
 dot_params.aperture_size = 60;  % size of each circle
+
+dot_params.direction_switch_delays = [10, 12];
 
 %
 %   stimulation params
@@ -53,7 +58,7 @@ dot_params.aperture_size = 60;  % size of each circle
 ids = brains.arduino.calino.get_ids();
 
 stim_params = struct();
-stim_params.use_stim_comm = true;  % whether to initialize stimulation arduino
+stim_params.use_stim_comm = use_stim_comm;  % whether to initialize stimulation arduino
 stim_params.sync_m1_m2_params = false;  % whether to send m2's calibration data to m1
 stim_params.probability = 50; % percent
 stim_params.frequency = 15000;  % ISI, ms

@@ -22,6 +22,7 @@ brains.util.assert__file_does_not_exist( fullfile(save_p, edf_file) );
 
 opts = struct();
 opts.first_invocation = true;
+opts.debug = conf.INTERFACE.DEBUG;
 
 edf_sample_rate = 1e3;
 
@@ -39,6 +40,7 @@ opts.reward_sync_times = nan( 10e3, 1 );
 
 opts.plex_sync_stp = 1;
 opts.reward_sync_stp = 1;
+opts.plex_sync_index = 0;
 
 if ( conf.INTERFACE.use_arduino )
   comm = brains.arduino.get_serial_comm();
@@ -61,28 +63,29 @@ shared_utils.assertions.assert__are_fields( sync_pulse_map, required_fields );
 
 opts.sync_pulse_map = sync_pulse_map;
 
-%
-%   DOT INIT
-%
-
-dot_info = createDotInfo(); % initialize dots
-dot_info.numDotField = 2;
-
-dot_info.apXYD(:, 3) = dot_params.aperture_size;
-
-dot_info.apXYD(1, 1) = -dot_params.x_spread + dot_params.x_shift;
-dot_info.apXYD(2, 1) = dot_params.x_spread + dot_params.x_shift;
-dot_info.apXYD(:, 2) = dot_params.y_shift;
-
-dot_info.dotSize = dot_params.dot_size;
-dot_info.coh(:) = min( 999, dot_params.coherence * 10 );
-dot_info.dir = repmat( dot_params.direction, dot_info.numDotField, 1 );
-dot_info.maxDotTime = 2;
-
 screen_ind = conf.SCREEN.index;
 screen_rect = conf.SCREEN.rect.M1;
 
 screen_info = openExperiment( 38, 50, screen_ind, screen_rect );
+
+dot_iter = 1;
+dot_directions = dot_params.dot_directions;
+dot_direction_stp = 1;
+dot_direction_switch_delays = dot_params.direction_switch_delays;
+current_direction_block_size = 0;
+
+dot_sync = struct();
+dot_sync.iter = 1;
+dot_sync.times = [];
+dot_sync.directions = [];
+dot_sync.block_sizes = [];
+
+%
+%   DOT INIT
+%
+
+dot_params.direction = dot_directions(1);
+dot_info = make_dots( dot_params );
 
 try
   tracker = EyeTracker( edf_file, save_p, 0 );
@@ -97,6 +100,11 @@ try
   fprintf( '\n Sync!' );
   comm.sync_pulse( sync_pulse_map.start );
   
+  if ( conf.INTERFACE.use_arduino )
+    brains.util.increment_start_pulse_count();
+    opts.plex_sync_index = brains.util.get_current_start_pulse_count();
+  end
+  
   stim_comm = init_stim_comm( conf, [], stim_params, bounds );
   
   opts.plex_sync_times(opts.plex_sync_stp) = toc( task_timer );
@@ -110,12 +118,40 @@ try
   end
   
   while ( toc(task_timer) < task_time )
-    callback = @() update( tracker, conf, opts );
-    [should_abort, opts] = dots_callback( screen_info, dot_info, callback );
+    %   flip directions
+    if ( dot_iter > current_direction_block_size )      
+      rng( 'shuffle' );
+      
+      if ( dot_direction_stp > numel(dot_directions) )
+        dot_direction_stp = 1;
+      end
+      
+      dot_params.direction = dot_directions(dot_direction_stp);
+      dot_info = make_dots( dot_params );
+      dot_iter = 1;
+      current_direction_block_size = get_dot_direction_switch_block_size( dot_direction_switch_delays );
+      dot_direction_stp = dot_direction_stp + 1;
+      
+      if ( opts.debug )
+        disp( ['Current block size: ', num2str(current_direction_block_size)] );
+        disp( ['Current direction is: ', num2str(dot_params.direction)] );
+      end
+      
+      dot_sync.times(dot_sync.iter) = toc( task_timer );
+      dot_sync.directions(dot_sync.iter) = dot_params.direction;
+      dot_sync.block_sizes(dot_sync.iter) = current_direction_block_size;
+      
+      dot_sync.iter = dot_sync.iter + 1;
+    end
+    
+    callback = @(x) update( tracker, conf, x );
+    [should_abort, opts] = dots_callback( screen_info, dot_info, callback, opts );
     
     if ( should_abort )
       break
     end
+    
+    dot_iter = dot_iter + 1;
   end
   
   mats = shared_utils.io.dirnames( save_p, '.mat' );
@@ -125,6 +161,8 @@ try
       'config', conf ...
     , 'sync_times', opts.gaze_sync_times ...
     , 'plex_sync_times', opts.plex_sync_times ...
+    , 'plex_sync_index', opts.plex_sync_index ...
+    , 'dot_sync', dot_sync ...
     , 'reward_sync_times', opts.reward_sync_times ...
     , 'rois', bounds ...
     , 'stimulation_params', stim_params ...
@@ -146,6 +184,30 @@ catch err
   local_cleanup( comm, tracker, conf, stim_comm );
   throw( err );
 end
+
+end
+
+function n = get_dot_direction_switch_block_size(direction_switch_delays)
+
+n = direction_switch_delays( randi(numel(direction_switch_delays)) );
+
+end
+
+function dot_info = make_dots(dot_params)
+
+dot_info = createDotInfo(); % initialize dots
+dot_info.numDotField = 2;
+
+dot_info.apXYD(:, 3) = dot_params.aperture_size;
+
+dot_info.apXYD(1, 1) = -dot_params.x_spread + dot_params.x_shift;
+dot_info.apXYD(2, 1) = dot_params.x_spread + dot_params.x_shift;
+dot_info.apXYD(:, 2) = dot_params.y_shift;
+
+dot_info.dotSize = dot_params.dot_size;
+dot_info.coh(:) = min( 999, dot_params.coherence * 10 );
+dot_info.dir = repmat( dot_params.direction, dot_info.numDotField, 1 );
+dot_info.maxDotTime = 1;
 
 end
 
@@ -180,6 +242,10 @@ if ( toc(opts.task_timer) > opts.next_edf_pulse_time )
   opts.next_edf_pulse_time = toc( opts.task_timer ) + opts.edf_sync_interval;
   opts.plex_sync_times(opts.plex_sync_stp) = toc( opts.task_timer );
   opts.plex_sync_stp = opts.plex_sync_stp + 1;
+  
+  if ( opts.debug )
+    disp( 'sync' );
+  end
 end
 
 
