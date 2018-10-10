@@ -29,6 +29,7 @@ stim_params.protocol = 'i';
 stim_params.event = 'w';
 stim_params.max_n = 'v';
 stim_params.print_n_stim = 'P';
+stim_params.radius = '1';
 
 stim_protocols = struct();
 stim_protocols.mutual_event = 0;
@@ -37,6 +38,8 @@ stim_protocols.m2_exclusive_event = 2;
 stim_protocols.exclusive_event = 3;
 stim_protocols.any_event = 4;
 stim_protocols.probabilistic = 5;
+stim_protocols.m1_radius_excluding_inner_rect = 6;
+stim_protocols.m2_radius_excluding_inner_rect = 7;
 
 ids.monkey = monk_ids;
 ids.roi = roi_ids;

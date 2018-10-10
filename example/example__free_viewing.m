@@ -32,15 +32,20 @@ padding_cm.mouth.y = 0;
 ids = brains.arduino.calino.get_ids();
 
 stim_params = struct();
-stim_params.use_stim_comm = true;  % whether to initialize stimulation arduino
-stim_params.sync_m1_m2_params = true;  % whether to send m2's calibration data to m1
+stim_params.use_stim_comm = false;  % whether to initialize stimulation arduino
+stim_params.sync_m1_m2_params = false;  % whether to send m2's calibration data to m1
 stim_params.probability = 50; % percent
 stim_params.frequency = 5000;  % ISI, ms
 % stim_params.max_n = intmax( 'int16' );  % maximum number of stimulations. max possible is intmax('int16');
 stim_params.max_n = 10;
 stim_params.active_rois = { 'eyes' }; % which rois will trigger stimulation
+%   if protocol is one of 'm1_radius_excluding..' or 'm2_radius_excluding..'
+%   then `stim_params.radius` controls the size of the radius in which stim
+%   or sham can be triggered.
+stim_params.radius = 100;
 % stim_params.protocol = ids.stim_protocols.probabilistic;
 stim_params.protocol = ids.stim_protocols.m1_exclusive_event;
+% stim_params.protocol = ids.stim_protocols.m1_radius_excluding_inner_rect;
 % stim_params.protocol = ids.stim_protocols.m2_exclusive_event
 % stim_params.protocol = ids.stim_protocols.mutual_event
 

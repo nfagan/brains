@@ -121,10 +121,17 @@ try
       reward_period_timer = tic;
     end
     
-    if ( first_invocation )
+    if ( first_invocation )      
       brains.util.draw_far_plane_rois( key_file, 20, 1, tracker.bypass );
+      
+      if ( brains.arduino.calino.is_radius_excluding_inner_rect_protocol(stim_params.protocol) )
+        s = round( get_square_centered_on(bounds.eyes, stim_params.radius) );
+        brains.util.el_draw_rect( s, 5 );
+      end
+      
       brains.util.el_draw_rect( round(bounds.face), 3 );
       brains.util.el_draw_rect( round(bounds.eyes), 4 );
+      
       first_invocation = false;
     end
     
@@ -212,7 +219,10 @@ try
     , 'plex_sync_index', plex_sync_index ...
     , 'edf_file', edf_file ...
     );
-  save( fullfile(save_p, gaze_data_file), 'gaze_data' );
+  
+  if ( conf.INTERFACE.save_data )
+    save( fullfile(save_p, gaze_data_file), 'gaze_data' );
+  end
   
   print_n_stim( stim_comm );
   
@@ -243,6 +253,17 @@ catch err
 end
 
 fprintf( '\n\n TOTAL N STIMULATIONS: %d\n\n', n );
+
+end
+
+function s = get_square_centered_on(r, sz)
+
+cx = ((r(3) - r(1)) / 2) + r(1);
+cy = ((r(4) - r(2)) / 2) + r(2);
+
+sz2 = sz / 2;
+
+s = [ cx - sz2, cy - sz2, cx + sz2, cy + sz2 ];
 
 end
 
@@ -312,6 +333,7 @@ send_stim_param( stim_comm, 'all', 'probability', stim_params.probability );
 send_stim_param( stim_comm, 'all', 'frequency', stim_params.frequency );
 send_stim_param( stim_comm, 'all', 'stim_stop_start', 0 );
 send_stim_param( stim_comm, 'all', 'max_n', stim_params.max_n );
+send_stim_param( stim_comm, 'all', 'radius', round(stim_params.radius) );
 
 active_rois = stim_params.active_rois;
 
