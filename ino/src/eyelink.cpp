@@ -162,7 +162,28 @@ bool el_manager::state_changed(ROI_INDICES::ROI_INDICES index)
   return m_rois.rects[index].state_changed;
 }
 
-bool el_manager::in_bounds(ROI_INDICES::ROI_INDICES index)
+bool el_manager::in_bounds(ROI_INDICES::ROI_INDICES index) const
 {
 	return m_rois.rects[index].in;
+}
+
+bool el_manager::in_bounds_radius(ROI_INDICES::ROI_INDICES index, float radius) const
+{
+	const bounds *rect = &m_rois.rects[index];
+
+	float w = (float)(rect[2] - rect[0]);
+	float h = (float)(rect[3] - rect[1]);
+
+	float center_x = (float)rect[0] + (w / 2.0f);
+	float center_y = (float)rect[1] + (h / 2.0f);
+
+	float delta_x = gaze_x - center_x;
+	float delta_y = gaze_y - center_y;
+
+	float delta_x2 = delta_x * delta_x;
+	float delta_y2 = delta_y * delta_y;
+
+	float dist = sqrt(delta_x2 + delta_y2);
+
+	return dist <= radius;
 }

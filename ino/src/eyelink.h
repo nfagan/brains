@@ -11,7 +11,7 @@ struct bounds
   bool state_changed;
 
 	bounds();
-  	void update(float x, float y);
+	void update(float x, float y);
 	void check(float x, float y);
 	void print(HardwareSerial *serial);
 };
@@ -46,8 +46,9 @@ public:
 	void print_gaze();
 	void init_pins();
 	void set_rect_element(ROI_INDICES::ROI_INDICES index, unsigned int element, long value);
-	bool in_bounds(ROI_INDICES::ROI_INDICES index);
-  	bool state_changed(ROI_INDICES::ROI_INDICES index);
+	bool in_bounds(ROI_INDICES::ROI_INDICES index) const;
+	bool in_bounds_radius(ROI_INDICES::ROI_INDICES index, float radius) const;
+	bool state_changed(ROI_INDICES::ROI_INDICES index);
 
 	coord get_position() const;
 

@@ -11,12 +11,15 @@ namespace PROTOCOLS {
         M2_EXCLUSIVE_EVENT = 2,
         EXCLUSIVE_EVENT = 3,
         ANY_EVENT = 4,
-        PROBABILISTIC = 5
+        PROBABILISTIC = 5,
+        M1_RADIUS_EXCLUDING_INNER_RECT = 6,
+        M2_RADIUS_EXCLUDING_INNER_RECT = 7,
+        PROTOCOLS_MAX = M2_RADIUS_EXCLUDING_INNER_RECT
     };
 
     PROTOCOLS current_protocol = MUTUAL_EVENT;
 
-    const int N_PROTOCOLS = 6;
+    const int N_PROTOCOLS = PROTOCOLS::PROTOCOLS_MAX + 1;
 }
 
 struct IDS
@@ -34,7 +37,8 @@ struct IDS
   	const char probability = 'y';
   	const char frequency = 'u';
     const char max_n = 'v';
-	  const char protocol = 'i';
+    const char radius = '1';
+    const char protocol = 'i';
     const char screen = 's';
     const char eyes = 'e';
     const char mouth = 'm';
@@ -94,11 +98,15 @@ el_manager* m2_gaze = NULL;
 //
 
 namespace timing {
-	unsigned long last_frame = 0;
+    unsigned long last_frame = 0;
 	unsigned long this_frame = 0;
 	unsigned long delta = 0;
-  float mean_frame = 0;
-  unsigned long n_iters = 0;
+    float mean_frame = 0;
+    unsigned long n_iters = 0;
+}
+
+namespace criterion {
+    float radius = 0.0f;
 }
 
 void handle_serial_comm()
@@ -154,15 +162,20 @@ void debug_print()
     m2_gaze->print_bounds();
 }
 
+bool is_excluding_inner_rect_protocol(const PROTOCOLS::PROTOCOLS protocol)
+{
+    return protocol == PROTOCOLS::M1_RADIUS_EXCLUDING_INNER_RECT || protocol == PROTOCOLS::M2_RADIUS_EXCLUDING_INNER_RECT;
+}
+
 void handle_stimulation()
 {
-    if (PROTOCOLS::current_protocol != PROTOCOLS::PROBABILISTIC)
+    if (PROTOCOLS::current_protocol == PROTOCOLS::PROBABILISTIC)
     {
-        protocol_gaze_event();
+        protocol_probabilistic();
     }
     else
     {
-        protocol_probabilistic();
+        protocol_gaze_event();
     }
 }
 
@@ -206,7 +219,7 @@ void protocol_gaze_event()
   
     for (unsigned int i = 0; i < ROI_INDICES::N_ROI_INDICES; i++)
     {
-    	  ROI_INDICES::ROI_INDICES index = i;
+        ROI_INDICES::ROI_INDICES index = i;
 
         bool m1_in = m1_gaze->in_bounds(index);
         bool m2_in = m2_gaze->in_bounds(index);
@@ -222,6 +235,15 @@ void protocol_gaze_event()
         bool criterion = false;
 
         bool probability_rejected = false;
+
+        bool m1_radius_criterion;
+        bool m2_radius_criterion;
+
+        if (is_excluding_inner_rect_protocol(PROTOCOLS::current_protocol))
+        {
+          m1_radius_criterion = m1_gaze->in_bounds_radius(index, criterion::radius);
+          m2_radius_criterion = m2_gaze->in_bounds_radius(index, criterion::radius);
+        }
 
         switch (PROTOCOLS::current_protocol)
         {
@@ -240,6 +262,12 @@ void protocol_gaze_event()
                 break;
             case PROTOCOLS::ANY_EVENT:
                 criterion = any && any_changed && any_roi_changed;
+                break;
+            case PROTOCOLS::M1_RADIUS_EXCLUDING_INNER_RECT:
+                criterion = !m1_in && m1_fix && m1_fix_changed && m1_radius_criterion;
+                break;
+            case PROTOCOLS::M2_RADIUS_EXCLUDING_INNER_RECT:
+                criterion  = !m2_in && m2_fix && m2_fix_changed && m2_radius_criterion;
                 break;
             default:
                 break;
@@ -364,14 +392,18 @@ void handle_new_stim_param()
 			response = ids.error;
 		}
 	}
-  else if (id == ids.max_n)
-  {
-    STIM_PROTOCOL.set_max_n_stimulations(roi_index, param);
-  }
-	else
-	{
-		response = ids.error;
-	}
+    else if (id == ids.max_n)
+    {
+        STIM_PROTOCOL.set_max_n_stimulations(roi_index, param);
+    }
+    else if (id == ids.radius)
+    {
+        criterion::radius = (float)param;
+    }
+    else
+    {
+        response = ids.error;
+    }
 
 	Serial.print(response);
 }
