@@ -236,13 +236,13 @@ void protocol_gaze_event()
 
         bool probability_rejected = false;
 
-        bool m1_radius_criterion;
-        bool m2_radius_criterion;
+        bool m1_radius_criterion = false;
+        bool m2_radius_criterion = false;
 
         if (is_excluding_inner_rect_protocol(PROTOCOLS::current_protocol))
         {
-          m1_radius_criterion = m1_gaze->in_bounds_radius(index, criterion::radius);
-          m2_radius_criterion = m2_gaze->in_bounds_radius(index, criterion::radius);
+          m1_radius_criterion = m1_gaze->in_bounds_face(criterion::radius);
+          m2_radius_criterion = m2_gaze->in_bounds_face(criterion::radius);
         }
 
         switch (PROTOCOLS::current_protocol)

@@ -325,6 +325,7 @@ send_stim_param( stim_comm, 'all', 'probability', stim_params.probability );
 send_stim_param( stim_comm, 'all', 'frequency', stim_params.frequency );
 send_stim_param( stim_comm, 'all', 'stim_stop_start', 0 );
 send_stim_param( stim_comm, 'all', 'max_n', stim_params.max_n );
+send_stim_param( stim_comm, 'all', 'radius', round(stim_params.radius) );
 
 active_rois = stim_params.active_rois;
 

@@ -1,4 +1,4 @@
-function free_viewing(task_time, reward_period, reward_amount, key_file, key_map, bounds, stim_params)
+function free_viewing(task_time, reward_period, reward_amount, key_file, key_map, bounds, distances, stim_params)
 
 %   PERIODIC_REWARD -- Deliver reward every x ms.
 %
@@ -63,6 +63,13 @@ fixation_keys = { 'eyes', 'face' };
 fixations = containers.Map( fixation_keys, zeros(1, numel(fixation_keys)) );
 fixation_state = containers.Map( fixation_keys, false(1, numel(fixation_keys)) );
 
+c_bounds = bounds.(stim_params.active_rois{1});
+
+%   TODO: Make this non-specific to eyes.
+dist_eyes_cm = distances.eyes;
+dist_eyes_px = c_bounds(3) - c_bounds(1);
+% stim_params.radius = brains.util.gaze.cm_to_px( stim_params.radius, dist_eyes_cm, dist_eyes_px );
+
 try
   
   tracker = EyeTracker( edf_file, save_p, 0 );
@@ -125,8 +132,13 @@ try
       brains.util.draw_far_plane_rois( key_file, 20, 1, tracker.bypass );
       
       if ( brains.arduino.calino.is_radius_excluding_inner_rect_protocol(stim_params.protocol) )
-        s = round( get_square_centered_on(bounds.eyes, stim_params.radius) );
-        brains.util.el_draw_rect( s, 5 );
+        if ( numel(stim_params.active_rois) ~= 0 )
+          c_bounds = bounds.face;
+          s = round( get_square_centered_on(c_bounds, round(stim_params.radius)) );
+          brains.util.el_draw_rect( s, 5 );
+        else
+          warning( 'No active roi was specified.' );
+        end
       end
       
       brains.util.el_draw_rect( round(bounds.face), 3 );
