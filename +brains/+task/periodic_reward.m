@@ -25,13 +25,19 @@ try
   tracker.init();
   tracker.start_recording();  
   
+  use_arduino = conf.INTERFACE.use_arduino;
+  
   comm = brains.arduino.get_serial_comm();
-  comm.bypass = ~conf.INTERFACE.use_arduino;
+  comm.bypass = ~use_arduino;
   comm.start();
   
   task_timer = tic();
   
   comm.sync_pulse( sync_pulse_map.start );
+  
+  if ( use_arduino )
+    brains.util.increment_start_pulse_count();
+  end
   
   while ( true )
     if ( toc(task_timer) > total_time ), break; end
